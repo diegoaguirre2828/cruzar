@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/fetch-wait-times",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
