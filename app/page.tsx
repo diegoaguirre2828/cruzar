@@ -1,5 +1,6 @@
 import { PortList } from '@/components/PortList'
 import { NavBar } from '@/components/NavBar'
+import { GuestAds } from '@/components/GuestAds'
 
 export const metadata = {
   title: 'Cruza – How Long to Enter the US from Mexico',
@@ -30,6 +31,7 @@ export default function HomePage() {
           </span>
         </div>
 
+        <GuestAds />
         <PortList />
       </div>
     </main>

@@ -37,8 +37,8 @@ export default function DashboardPage() {
   const [newAlertThreshold, setNewAlertThreshold] = useState(20)
   const [origin, setOrigin] = useState('McAllen')
   interface RouteResult {
-    best: { portName: string; crossingName: string; vehicleWait: number | null; commercialWait: number | null; recommendation: string } | null
-    alternatives: { portName: string; crossingName: string; vehicleWait: number | null }[]
+    best: { portId: string; portName: string; crossingName: string; vehicleWait: number | null; commercialWait: number | null; recommendation: string } | null
+    alternatives: { portId: string; portName: string; crossingName: string; vehicleWait: number | null }[]
   }
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                 <select
                   value={newAlertPortId}
                   onChange={e => setNewAlertPortId(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select a crossing...</option>
                   {ports.map(p => (
@@ -208,7 +208,7 @@ export default function DashboardPage() {
                     value={newAlertThreshold}
                     onChange={e => setNewAlertThreshold(Number(e.target.value))}
                     min={5} max={120}
-                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <span className="text-sm text-gray-600">min</span>
                 </div>
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                   <select
                     value={origin}
                     onChange={e => setOrigin(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {ORIGINS.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
@@ -284,27 +284,31 @@ export default function DashboardPage() {
             {routeResult && (
               <div className="space-y-3">
                 {routeResult.best && (
-                  <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
-                    <p className="text-xs font-semibold text-green-600 mb-1">✅ BEST OPTION</p>
-                    <p className="font-bold text-gray-900">{routeResult.best.portName}</p>
-                    <p className="text-xs text-gray-500">{routeResult.best.crossingName}</p>
-                    <p className="text-sm text-green-700 font-medium mt-2">
-                      Vehicle: {routeResult.best.vehicleWait !== null ? `${routeResult.best.vehicleWait} min` : 'N/A'}
-                      {routeResult.best.commercialWait !== null && ` · Truck: ${routeResult.best.commercialWait} min`}
-                    </p>
-                    <p className="text-xs text-green-600 mt-1">{routeResult.best.recommendation}</p>
-                  </div>
+                  <Link href={`/port/${encodeURIComponent(routeResult.best.portId)}`}>
+                    <div className="bg-green-50 border border-green-200 rounded-2xl p-4 hover:shadow-md transition-shadow cursor-pointer">
+                      <p className="text-xs font-semibold text-green-600 mb-1">✅ BEST OPTION — tap to view</p>
+                      <p className="font-bold text-gray-900">{routeResult.best.portName}</p>
+                      <p className="text-xs text-gray-600">{routeResult.best.crossingName}</p>
+                      <p className="text-sm text-green-700 font-medium mt-2">
+                        Vehicle: {routeResult.best.vehicleWait !== null ? `${routeResult.best.vehicleWait} min` : 'N/A'}
+                        {routeResult.best.commercialWait !== null && ` · Truck: ${routeResult.best.commercialWait} min`}
+                      </p>
+                      <p className="text-xs text-green-600 mt-1">{routeResult.best.recommendation}</p>
+                    </div>
+                  </Link>
                 )}
 
                 {routeResult.alternatives?.map((alt, i) => (
-                  <div key={i} className="bg-white rounded-2xl border border-gray-200 p-4">
-                    <p className="text-xs text-gray-400 mb-1">Alternative #{i + 2}</p>
-                    <p className="font-semibold text-gray-900 text-sm">{alt.portName}</p>
-                    <p className="text-xs text-gray-400">{alt.crossingName}</p>
-                    <p className="text-sm text-gray-700 mt-1">
-                      Vehicle: {alt.vehicleWait !== null ? `${alt.vehicleWait} min` : 'N/A'}
-                    </p>
-                  </div>
+                  <Link key={i} href={`/port/${encodeURIComponent(alt.portId)}`}>
+                    <div className="bg-white rounded-2xl border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
+                      <p className="text-xs text-gray-500 mb-1 font-medium">Alternative #{i + 2} — tap to view</p>
+                      <p className="font-semibold text-gray-900 text-sm">{alt.portName}</p>
+                      <p className="text-xs text-gray-600">{alt.crossingName}</p>
+                      <p className="text-sm text-gray-800 font-medium mt-1">
+                        Vehicle: {alt.vehicleWait !== null ? `${alt.vehicleWait} min` : 'N/A'}
+                      </p>
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}
