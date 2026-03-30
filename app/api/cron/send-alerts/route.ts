@@ -11,7 +11,7 @@ async function sendEmail(email: string, portName: string, portId: string, wait: 
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Cruza Alerts <alerts@cruza.app>',
+      from: process.env.RESEND_FROM_EMAIL || 'Cruza Alerts <onboarding@resend.dev>',
       to: [email],
       subject: `🌉 ${portName} wait dropped to ${wait} min`,
       html: `
