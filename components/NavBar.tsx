@@ -10,6 +10,9 @@ export function NavBar() {
 
   return (
     <div className="flex items-center gap-2 mt-1">
+      <Link href="/advertise" className="text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors">
+        Local business?
+      </Link>
       {user ? (
         <>
           <Link
