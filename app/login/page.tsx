@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
+import { PhoneButton } from '@/components/PhoneButton'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -37,6 +38,7 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
           <GoogleButton label="Continue with Google" />
+          <PhoneButton label="Continue with Phone" />
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />

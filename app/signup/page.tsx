@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
+import { PhoneButton } from '@/components/PhoneButton'
 
 const ROLES = [
   { value: 'driver', label: '🚛 Driver / Operator', desc: 'I cross the border for work or daily commute' },
@@ -50,6 +51,7 @@ export default function SignupPage() {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
           <GoogleButton label="Sign up with Google" />
+          <PhoneButton label="Sign up with Phone" />
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
