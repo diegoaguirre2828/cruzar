@@ -85,12 +85,22 @@ export function PortCard({ port }: Props) {
           </div>
         </div>
 
-        <div className="flex gap-3 mt-2 justify-around">
-          <WaitBadge minutes={port.vehicle} label="Car" />
-          <WaitBadge minutes={port.sentri} label="SENTRI" />
-          <WaitBadge minutes={port.pedestrian} label="Walk" />
-          <WaitBadge minutes={port.commercial} label="Truck" />
-        </div>
+        {/* Only show lanes that have data */}
+        {[
+          { minutes: port.vehicle, label: 'Car' },
+          { minutes: port.sentri, label: 'SENTRI' },
+          { minutes: port.pedestrian, label: 'Walk' },
+          { minutes: port.commercial, label: 'Truck' },
+        ].filter(lane => lane.minutes !== null).length > 0 ? (
+          <div className="flex gap-3 mt-2 justify-around">
+            {port.vehicle !== null && <WaitBadge minutes={port.vehicle} label="Car" />}
+            {port.sentri !== null && <WaitBadge minutes={port.sentri} label="SENTRI" />}
+            {port.pedestrian !== null && <WaitBadge minutes={port.pedestrian} label="Walk" />}
+            {port.commercial !== null && <WaitBadge minutes={port.commercial} label="Truck" />}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 text-center mt-2 py-1">No data available — crossing may be closed</p>
+        )}
       </div>
     </Link>
   )
