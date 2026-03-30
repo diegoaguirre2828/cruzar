@@ -36,7 +36,7 @@ export async function fetchRgvWaitTimes(): Promise<PortWaitTime[]> {
   const data: CbpPort[] = await res.json()
 
   return data
-    .filter((p) => p.border === 'US-Mexico')
+    .filter((p) => p.border === 'Mexican Border')
     .map((p) => ({
       portId: p.port_number,
       portName: p.port_name,
