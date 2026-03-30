@@ -81,7 +81,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="font-bold text-gray-900 mb-2">12. Contact</h2>
-            <p>Questions? Email <strong>hello@cruza.app</strong>.</p>
+            <p>Questions? Email <strong>cruzabusiness@gmail.com</strong>.</p>
           </section>
 
         </div>

@@ -63,7 +63,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="font-bold text-gray-900 mb-2">7. Your Rights</h2>
-            <p>You may request access to, correction of, or deletion of your personal data at any time. Contact us at <strong>hello@cruza.app</strong>.</p>
+            <p>You may request access to, correction of, or deletion of your personal data at any time. Contact us at <strong>cruzabusiness@gmail.com</strong>.</p>
           </section>
 
           <section>
@@ -73,7 +73,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="font-bold text-gray-900 mb-2">9. Contact</h2>
-            <p>Questions? Email us at <strong>hello@cruza.app</strong>.</p>
+            <p>Questions? Email us at <strong>cruzabusiness@gmail.com</strong>.</p>
           </section>
 
         </div>

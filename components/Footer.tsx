@@ -14,7 +14,7 @@ export function Footer() {
           <Link href="/privacy" className="hover:text-gray-700 transition-colors">Privacy</Link>
           <Link href="/advertise" className="hover:text-gray-700 transition-colors">Advertise</Link>
           <Link href="/pricing" className="hover:text-gray-700 transition-colors">Pricing</Link>
-          <a href="mailto:hello@cruza.app" className="hover:text-gray-700 transition-colors">Contact</a>
+          <a href="mailto:cruzabusiness@gmail.com" className="hover:text-gray-700 transition-colors">Contact</a>
         </div>
         <p>© {new Date().getFullYear()} Cruza. Not affiliated with CBP.</p>
       </div>
