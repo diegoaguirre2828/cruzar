@@ -15,6 +15,8 @@ import { ReportForm } from '@/components/ReportForm'
 import { ReportsFeed } from '@/components/ReportsFeed'
 import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
 import { useAuth } from '@/lib/useAuth'
+import { useTier, canAccess } from '@/lib/useTier'
+import Link from 'next/link'
 import type { PortWaitTime, WaitTimeReading } from '@/types'
 
 interface Prediction {
@@ -44,6 +46,7 @@ function formatHour(hour: number): string {
 
 export function PortDetailClient({ port, portId }: Props) {
   const { user } = useAuth()
+  const { tier } = useTier()
   const [history, setHistory] = useState<WaitTimeReading[]>([])
   const [bestTimes, setBestTimes] = useState<BestTime[]>([])
   const [predictions, setPredictions] = useState<Prediction[]>([])
@@ -207,28 +210,38 @@ export function PortDetailClient({ port, portId }: Props) {
         </div>
       </div>
 
-      {/* AI Predictions */}
-      {predictionChartData.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">AI Prediction – Next 24 Hours</h2>
-            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Beta</span>
+      {/* AI Predictions — Pro+ only */}
+      {canAccess(tier, 'ai_predictions') ? (
+        predictionChartData.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-700">AI Prediction – Next 24 Hours</h2>
+              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Beta</span>
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={predictionChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="time" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10 }} unit=" min" width={45} />
+                <Tooltip formatter={(value) => [`${value} min`, 'Predicted']} contentStyle={{ fontSize: 12 }} />
+                <Line type="monotone" dataKey="predicted" stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 3" name="Predicted" />
+              </LineChart>
+            </ResponsiveContainer>
+            <p className="text-xs text-gray-400 mt-2">Based on historical patterns for this crossing</p>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={predictionChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="time" tick={{ fontSize: 9 }} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10 }} unit=" min" width={45} />
-              <Tooltip formatter={(value) => [`${value} min`, 'Predicted']} contentStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="predicted" stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 3" name="Predicted" />
-            </LineChart>
-          </ResponsiveContainer>
-          <p className="text-xs text-gray-400 mt-2">Based on historical patterns for this crossing</p>
+        )
+      ) : (
+        <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
+          <p className="text-sm font-semibold text-purple-800">🤖 AI Wait Predictions</p>
+          <p className="text-xs text-purple-600 mt-1 mb-3">See predicted wait times for the next 24 hours. Pro feature.</p>
+          <Link href="/pricing" className="inline-block bg-purple-600 text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-purple-700 transition-colors">
+            Upgrade to Pro →
+          </Link>
         </div>
       )}
 
-      {/* Best times today */}
-      {bestTimes.length > 0 && (
+      {/* Best times today — Pro+ only */}
+      {canAccess(tier, 'ai_predictions') && bestTimes.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">
             Best Times Today <span className="text-gray-400 font-normal">(based on history)</span>

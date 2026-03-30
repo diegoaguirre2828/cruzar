@@ -302,7 +302,19 @@ export default function DashboardPage() {
         )}
 
         {/* Route Optimizer Tab */}
-        {tab === 'route' && (
+        {tab === 'route' && tier === 'free' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center shadow-sm">
+            <Lock className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-gray-900">Route Optimizer is a Pro feature</p>
+            <p className="text-xs text-gray-400 mt-1 mb-4">Find the fastest crossing near you based on live wait times.</p>
+            <Link href="/pricing" className="inline-block bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors">
+              Upgrade to Pro — $2.99/mo
+            </Link>
+            <p className="text-xs text-gray-400 mt-3">7-day free trial, cancel anytime</p>
+          </div>
+        )}
+
+        {tab === 'route' && tier !== 'free' && (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">Find Best Crossing</h3>

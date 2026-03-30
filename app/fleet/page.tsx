@@ -28,10 +28,21 @@ export default function FleetPage() {
     setLoading(false)
   }, [])
 
+  const [tier, setTier] = useState<string>('free')
+
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
-    if (user) loadPorts()
+    if (user) {
+      loadPorts()
+      fetch('/api/profile').then(r => r.json()).then(d => setTier(d.profile?.tier || 'free'))
+    }
   }, [user, authLoading, router, loadPorts])
+
+  useEffect(() => {
+    if (!authLoading && user && tier && tier !== 'business') {
+      router.push('/pricing')
+    }
+  }, [tier, user, authLoading, router])
 
   function toggleRegion(region: string) {
     setSelectedRegions(prev =>
