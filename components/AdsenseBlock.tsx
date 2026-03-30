@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react'
 
-// Replace with your actual AdSense publisher ID when approved
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || 'ca-pub-XXXXXXXXXX'
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || ''
 
 export function AdsenseBlock({ slot }: { slot: string }) {
   useEffect(() => {
@@ -13,8 +12,7 @@ export function AdsenseBlock({ slot }: { slot: string }) {
     } catch {}
   }, [])
 
-  if (ADSENSE_CLIENT === 'ca-pub-XXXXXXXXXX') {
-    // Placeholder until AdSense is approved
+  if (!ADSENSE_CLIENT) {
     return (
       <div className="bg-gray-100 border border-dashed border-gray-300 rounded-xl p-4 text-center">
         <p className="text-xs text-gray-400">Ad space</p>
