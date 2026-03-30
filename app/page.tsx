@@ -2,7 +2,7 @@ import { PortList } from '@/components/PortList'
 import { NavBar } from '@/components/NavBar'
 
 export const metadata = {
-  title: 'Border Wait Times – How Long to Enter the US from Mexico',
+  title: 'Cruza – How Long to Enter the US from Mexico',
   description: 'Live wait times to cross from Mexico into the US at all 52 border ports. Free for commuters and freight.',
 }
 
@@ -12,7 +12,7 @@ export default function HomePage() {
       <div className="max-w-lg mx-auto px-4 pb-10">
         <div className="pt-8 pb-2 flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">🌉 Border Waits</h1>
+            <h1 className="text-2xl font-bold text-gray-900">🌉 Cruza</h1>
             <p className="text-sm text-gray-500 mt-0.5">Wait times entering the US from Mexico</p>
           </div>
           <NavBar />

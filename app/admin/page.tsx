@@ -51,7 +51,7 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto px-4 pb-10">
         <div className="pt-6 pb-4">
           <h1 className="text-xl font-bold text-gray-900">🔐 Admin Panel</h1>
-          <p className="text-xs text-gray-400">borderwaitapp.vercel.app</p>
+          <p className="text-xs text-gray-400">cruza.app</p>
         </div>
 
         {/* Tabs */}

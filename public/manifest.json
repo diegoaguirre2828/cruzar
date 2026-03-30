@@ -1,6 +1,6 @@
 {
-  "name": "Border Wait Times",
-  "short_name": "BorderWait",
+  "name": "Cruza",
+  "short_name": "Cruza",
   "description": "Live wait times to enter the US from Mexico at all 52 border ports.",
   "start_url": "/",
   "display": "standalone",

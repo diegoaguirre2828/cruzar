@@ -86,7 +86,7 @@ export default function AdvertisePage() {
           <Link href="/pricing" className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 mb-4">
             <ArrowLeft className="w-3 h-3" /> Pricing
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Advertise on Border Wait</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Advertise on Cruza</h1>
           <p className="text-gray-500 mt-1 text-sm">
             Reach thousands of daily cross-border commuters, truckers, and shoppers at the exact moment they're waiting at the border.
           </p>

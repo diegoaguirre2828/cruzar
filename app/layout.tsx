@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Border Wait Times – How Long to Enter the US from Mexico",
+  title: "Cruza – How Long to Enter the US from Mexico",
   description: "Live wait times to cross from Mexico into the US at all 52 border ports. Free for commuters and freight.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Border Wait",
+    title: "Cruza",
   },
   other: {
     "mobile-web-app-capable": "yes",
