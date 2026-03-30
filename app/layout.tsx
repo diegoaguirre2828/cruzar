@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Border Wait Times – Live US-Mexico Crossings",
-  description: "Live and predicted US-Mexico border crossing wait times. Free for commuters.",
+  title: "Border Wait Times – How Long to Enter the US from Mexico",
+  description: "Live wait times to cross from Mexico into the US at all 52 border ports. Free for commuters and freight.",
 };
 
 export default function RootLayout({
