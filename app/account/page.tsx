@@ -24,8 +24,8 @@ export default function AccountPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
-  const [profile, setProfile] = useState<Record<string, string> | null>(null)
-  const [subscription, setSubscription] = useState<Record<string, string> | null>(null)
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
+  const [subscription, setSubscription] = useState<Record<string, unknown> | null>(null)
   const [email, setEmail] = useState('')
   const [form, setForm] = useState({ display_name: '', full_name: '', company: '', bio: '' })
   const [saving, setSaving] = useState(false)
@@ -88,7 +88,7 @@ export default function AccountPage() {
     )
   }
 
-  const tier = profile?.tier || 'free'
+  const tier = String(profile?.tier || 'free')
   const tierInfo = TIER_LABELS[tier] || TIER_LABELS.free
   const isPaid = tier === 'pro' || tier === 'business'
 
@@ -118,9 +118,9 @@ export default function AccountPage() {
           <p className="text-xs text-gray-500 mb-1">{email}</p>
           {subscription && (
             <p className="text-xs text-gray-400">
-              Status: <span className="font-medium text-gray-600">{subscription.status}</span>
-              {subscription.current_period_end && (
-                <> · Renews {new Date(subscription.current_period_end).toLocaleDateString()}</>
+              Status: <span className="font-medium text-gray-600">{String(subscription.status ?? '')}</span>
+              {!!subscription.current_period_end && (
+                <> · Renews {new Date(String(subscription.current_period_end)).toLocaleDateString()}</>
               )}
             </p>
           )}
@@ -147,7 +147,7 @@ export default function AccountPage() {
         </div>
 
         {/* Points & badges */}
-        {(profile?.points > 0 || profile?.reports_count > 0) && (
+        {!!profile && (Number(profile.points) > 0 || Number(profile.reports_count) > 0) && (
           <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mb-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Community Stats</h2>
@@ -157,17 +157,17 @@ export default function AccountPage() {
             </div>
             <div className="flex gap-4 mb-3">
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{profile.points || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{Number(profile.points) || 0}</p>
                 <p className="text-xs text-gray-500">Points</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-900">{profile.reports_count || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{Number(profile.reports_count) || 0}</p>
                 <p className="text-xs text-gray-500">Reports</p>
               </div>
             </div>
-            {profile?.badges?.length > 0 && (
+            {Array.isArray(profile.badges) && profile.badges.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {profile.badges.map((b: string) => BADGES[b] && (
+                {(profile.badges as string[]).map((b) => BADGES[b] && (
                   <div key={b} className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-2.5 py-1">
                     <span>{BADGES[b].emoji}</span>
                     <span className="text-xs font-medium text-gray-700">{BADGES[b].label}</span>
@@ -238,7 +238,7 @@ export default function AccountPage() {
 
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Role</label>
-              <p className="text-sm text-gray-600">{ROLE_LABELS[profile?.role || 'other'] || ROLE_LABELS.other}</p>
+              <p className="text-sm text-gray-600">{ROLE_LABELS[String(profile?.role || 'other')] || ROLE_LABELS.other}</p>
             </div>
           </div>
 
