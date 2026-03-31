@@ -6,6 +6,7 @@ import { GuestAds } from '@/components/GuestAds'
 import { HomeReportsFeed } from '@/components/HomeReportsFeed'
 import { ActivityPulse } from '@/components/ActivityPulse'
 import { WaitingMode } from '@/components/WaitingMode'
+import { BusinessCommandWidget } from '@/components/BusinessCommandWidget'
 import { useLang } from '@/lib/LangContext'
 import Link from 'next/link'
 
@@ -28,6 +29,9 @@ export default function HomePage() {
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />{t.midMin}</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />{t.overMin}</span>
         </div>
+
+        {/* Business Command Center — visible only to business tier */}
+        <BusinessCommandWidget />
 
         {/* Geolocation — shows if user is near a crossing */}
         <WaitingMode />

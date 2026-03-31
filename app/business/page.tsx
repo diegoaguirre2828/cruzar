@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import { getWaitLevel, waitLevelDot, waitLevelColor } from '@/lib/cbp'
 import { getPortMeta } from '@/lib/portMeta'
 import {
   ArrowLeft, RefreshCw, Package, Truck, Clock, TrendingUp, TrendingDown,
   AlertTriangle, CheckCircle, Plus, X, Pencil, DollarSign, Users, Map,
-  ChevronDown, ChevronUp, Filter, Download, Link2, UserCheck, Phone
+  ChevronDown, ChevronUp, Filter, Download, Link2, UserCheck, Phone, Building2
 } from 'lucide-react'
 import type { PortWaitTime } from '@/types'
 
@@ -76,6 +77,7 @@ function formatDate(iso: string | null): string {
 export default function BusinessPortalPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [ports, setPorts] = useState<PortWaitTime[]>([])
   const [shipments, setShipments] = useState<Shipment[]>([])
@@ -83,7 +85,8 @@ export default function BusinessPortalPage() {
   const [tier, setTier] = useState<string>('')
   const [cbpUpdatedAt, setCbpUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'dispatch' | 'drivers' | 'shipments' | 'costs' | 'intel'>('drivers')
+  const initialTab = (searchParams?.get('tab') ?? 'drivers') as 'dispatch' | 'drivers' | 'shipments' | 'costs' | 'intel'
+  const [activeTab, setActiveTab] = useState<'dispatch' | 'drivers' | 'shipments' | 'costs' | 'intel'>(initialTab)
   const [statusFilter, setStatusFilter] = useState('all')
   const [showAddShipment, setShowAddShipment] = useState(false)
   const [editingShipment, setEditingShipment] = useState<Shipment | null>(null)
@@ -275,41 +278,54 @@ export default function BusinessPortalPage() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-3xl mx-auto px-4 pb-16">
-        {/* Header */}
-        <div className="pt-6 pb-4 flex items-center justify-between">
-          <div>
-            <Link href="/fleet" className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-1">
-              <ArrowLeft className="w-3 h-3" /> Fleet Center
-            </Link>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Business Portal</h1>
-            {cbpTime && <p className="text-xs text-gray-400">Live data · CBP updated {cbpTime}</p>}
+        {/* Business Header — unmistakably a separate product */}
+        <div className="bg-blue-600 dark:bg-blue-700 -mx-4 px-4 pt-10 pb-5 mb-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <Link href="/" className="flex items-center gap-1 text-xs text-blue-200 hover:text-white mb-2 transition-colors">
+                <ArrowLeft className="w-3 h-3" /> Back to Cruza
+              </Link>
+              <div className="flex items-center gap-2 mb-1">
+                <Building2 className="w-5 h-5 text-white" />
+                <h1 className="text-xl font-bold text-white">Cruza Business</h1>
+                <span className="bg-blue-500/60 text-blue-100 text-xs font-semibold px-2 py-0.5 rounded-full">PRO</span>
+              </div>
+              <p className="text-sm text-blue-200">Your fleet command center</p>
+              {cbpTime && <p className="text-xs text-blue-300 mt-0.5">CBP data updated {cbpTime}</p>}
+            </div>
+            <button
+              onClick={() => { loadPorts(); loadShipments(); loadDrivers() }}
+              className="p-2 rounded-xl bg-blue-500/40 text-blue-100 hover:bg-blue-500/60 transition-colors mt-1"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={() => { loadPorts(); loadShipments(); loadDrivers() }}
-            className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
 
-        {/* Quick stats bar */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        {/* Quick stats bar — fleet + shipments */}
+        <div className="grid grid-cols-4 gap-2 mb-5">
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 shadow-sm text-center">
-            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{activeShipments}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Crossing now</p>
+            <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+              {drivers.filter(d => ['en_route','in_line','at_bridge'].includes(d.current_status)).length}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Drivers active</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 shadow-sm text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{scheduledToday}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Today's crossings</p>
+            <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">{activeShipments}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Crossing</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 shadow-sm text-center">
+            <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{scheduledToday}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Today</p>
           </div>
           <div className={`rounded-2xl border p-3 shadow-sm text-center ${delayedShipments > 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}`}>
-            <p className={`text-2xl font-bold ${delayedShipments > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>{delayedShipments}</p>
+            <p className={`text-xl font-bold ${delayedShipments > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>{delayedShipments}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">Delayed</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-5 gap-1 overflow-x-auto">
+        <div className="flex bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-xl p-1 mb-5 gap-1 overflow-x-auto">
           {[
             { key: 'drivers',   label: '👥 Drivers' },
             { key: 'dispatch',  label: '🗺️ Dispatch' },
@@ -322,8 +338,8 @@ export default function BusinessPortalPage() {
               onClick={() => setActiveTab(t.key as typeof activeTab)}
               className={`flex-shrink-0 py-2 px-3 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
                 activeTab === t.key
-                  ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                  ? 'bg-blue-600 shadow text-white'
+                  : 'text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/20'
               }`}
             >
               {t.label}
