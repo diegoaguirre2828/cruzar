@@ -12,8 +12,10 @@ interface Props {
 }
 
 export function PortCard({ port }: Props) {
+  const allNull = port.vehicle === null && port.pedestrian === null && port.sentri === null && port.commercial === null
   const primaryLevel = getWaitLevel(port.vehicle)
-  const dot = waitLevelDot(primaryLevel)
+  // When CBP reports no data late at night, treat as low traffic (green dot)
+  const dot = allNull ? 'bg-green-500' : waitLevelDot(primaryLevel)
   const primaryWait = port.vehicle ?? port.pedestrian
   const [shared, setShared] = useState(false)
 
@@ -97,7 +99,10 @@ export function PortCard({ port }: Props) {
             {port.commercial !== null && <WaitBadge minutes={port.commercial} label="Truck" />}
           </div>
         ) : (
-          <p className="text-xs text-gray-400 text-center mt-2 py-1">No data available — crossing may be closed</p>
+          <div className="flex items-center justify-center gap-1.5 mt-2 py-1">
+            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <p className="text-xs text-green-600 dark:text-green-400 font-medium">No wait · Low traffic</p>
+          </div>
         )}
       </div>
     </Link>

@@ -20,7 +20,10 @@ const RGV_PORT_IDS = new Set([
 ])
 
 function parseWait(value: string | undefined): number | null {
-  if (!value || value === '' || value === 'N/A') return null
+  // N/A or missing means CBP has no data for this lane type (closed or not present)
+  if (value === undefined || value === null || value === 'N/A') return null
+  // Empty string means lane exists but no measurable delay — treat as 0 (no wait)
+  if (value === '') return 0
   const n = parseInt(value, 10)
   return isNaN(n) ? null : n
 }
