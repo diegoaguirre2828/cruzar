@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { useTheme } from '@/lib/ThemeContext'
-import { User, Moon, Sun, Trophy, Gift, Building2, Wrench } from 'lucide-react'
+import { User, Moon, Sun, Trophy, Gift, Building2 } from 'lucide-react'
 
 export function NavBar() {
   const { user, loading } = useAuth()
@@ -49,8 +49,8 @@ export function NavBar() {
         <Gift className="w-3.5 h-3.5" />
       </Link>
 
-      <Link href="/guide" className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800 transition-colors" title={lang === 'es' ? 'Guía fronteriza' : 'Border Guide'}>
-        <Wrench className="w-3.5 h-3.5" />
+      <Link href="/guide" className="text-xs font-semibold text-teal-600 dark:text-teal-400 hover:text-teal-800 dark:hover:text-teal-300 transition-colors px-2 py-1 rounded-lg hover:bg-teal-50 dark:hover:bg-teal-900/20">
+        {lang === 'es' ? 'Guía' : 'Guide'}
       </Link>
 
       {/* Business shortcut — very visible */}

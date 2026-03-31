@@ -8,6 +8,7 @@ import { ActivityPulse } from '@/components/ActivityPulse'
 import { WaitingMode } from '@/components/WaitingMode'
 import { BusinessCommandWidget } from '@/components/BusinessCommandWidget'
 import { ExchangeRateWidget } from '@/components/ExchangeRateWidget'
+import { BorderGuideBanner } from '@/components/BorderGuideBanner'
 import { useLang } from '@/lib/LangContext'
 import Link from 'next/link'
 
@@ -37,8 +38,11 @@ export default function HomePage() {
         {/* Geolocation — shows if user is near a crossing */}
         <WaitingMode />
 
-        {/* Exchange rate + services link */}
+        {/* Exchange rate */}
         <ExchangeRateWidget />
+
+        {/* Border Guide banner */}
+        <BorderGuideBanner />
 
         {/* Live activity pulse */}
         <ActivityPulse />
