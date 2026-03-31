@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { portId, reportType, condition, description, severity, waitMinutes, note } = body
+  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode } = body
 
   // Support both reportType and condition field names
   const type = reportType || condition || 'other'
@@ -111,9 +111,24 @@ export async function POST(req: NextRequest) {
   let newBadges: string[] = []
   if (user) {
     let pts = POINTS.report_submitted
-    if (waitMinutes) pts += POINTS.report_with_wait_time - POINTS.report_submitted // upgrade to higher tier
+    if (waitMinutes) pts += POINTS.report_with_wait_time - POINTS.report_submitted
     if (isFirstToday) pts += POINTS.first_report_of_day
+    if (waitingMode) pts += POINTS.waiting_mode_bonus
+
+    // Check if this is a founder (first 100 reporters ever)
+    const { count: totalReporters } = await db
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .gt('reports_count', 0)
+    const isFounder = (totalReporters || 0) <= 100
+
     const result = await awardPoints(user.id, pts, reportsCount)
+
+    // Grant founder badge if eligible
+    if (isFounder && !result.badges.includes('founder')) {
+      result.badges = ['founder', ...result.badges]
+      await db.from('profiles').update({ badges: result.badges }).eq('id', user.id)
+    }
     pointsEarned = pts
     newBadges = result.badges
   }

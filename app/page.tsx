@@ -4,6 +4,8 @@ import { PortList } from '@/components/PortList'
 import { NavBar } from '@/components/NavBar'
 import { GuestAds } from '@/components/GuestAds'
 import { HomeReportsFeed } from '@/components/HomeReportsFeed'
+import { ActivityPulse } from '@/components/ActivityPulse'
+import { WaitingMode } from '@/components/WaitingMode'
 import { useLang } from '@/lib/LangContext'
 import Link from 'next/link'
 
@@ -22,18 +24,18 @@ export default function HomePage() {
         </div>
 
         <div className="flex gap-4 mb-4 text-xs text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> {t.underMin}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> {t.midMin}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {t.overMin}
-          </span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" />{t.underMin}</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />{t.midMin}</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />{t.overMin}</span>
         </div>
 
-        {/* Smart Planner promo banner */}
+        {/* Geolocation — shows if user is near a crossing */}
+        <WaitingMode />
+
+        {/* Live activity pulse */}
+        <ActivityPulse />
+
+        {/* Smart Planner promo */}
         <Link href="/predict" className="flex items-center justify-between bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl px-4 py-3 mb-4 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
           <div>
             <p className="text-xs font-bold text-purple-800 dark:text-purple-300">{t.plannerBannerTitle}</p>
@@ -45,7 +47,7 @@ export default function HomePage() {
         <GuestAds />
         <PortList />
 
-        {/* Live community reports at the bottom */}
+        {/* Community reports feed */}
         <div className="mt-6">
           <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.recentReports}</h2>
           <HomeReportsFeed />

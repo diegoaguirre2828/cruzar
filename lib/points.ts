@@ -6,16 +6,18 @@ export const POINTS = {
   report_upvoted: 2,          // per upvote received
   just_crossed: 8,
   first_report_of_day: 15,    // first report at a crossing each day
+  waiting_mode_bonus: 5,      // extra points when reporting from the crossing (geolocation)
 } as const
 
 export const BADGES: Record<string, { label: string; emoji: string; threshold: number; description: string }> = {
-  first_cross:     { label: 'First Cross',     emoji: '🌉', threshold: 1,    description: 'Submitted your first report' },
-  regular:         { label: 'Regular',          emoji: '🔁', threshold: 10,   description: '10 reports submitted' },
-  veteran:         { label: 'Border Veteran',   emoji: '⭐', threshold: 50,   description: '50 reports submitted' },
-  expert:          { label: 'Crossing Expert',  emoji: '🏆', threshold: 100,  description: '100 reports submitted' },
-  legend:          { label: 'Border Legend',    emoji: '👑', threshold: 500,  description: '500 reports submitted' },
-  helpful:         { label: 'Helpful',          emoji: '👍', threshold: 25,   description: '25 upvotes received' },
-  trusted:         { label: 'Trusted Reporter', emoji: '✅', threshold: 100,  description: '100 upvotes received' },
+  founder:         { label: 'Community Founder', emoji: '🏅', threshold: 0,    description: 'One of the first 100 Cruza reporters — founding member' },
+  first_cross:     { label: 'First Cross',       emoji: '🌉', threshold: 1,    description: 'Submitted your first report' },
+  regular:         { label: 'Regular',            emoji: '🔁', threshold: 10,   description: '10 reports submitted' },
+  veteran:         { label: 'Border Veteran',     emoji: '⭐', threshold: 50,   description: '50 reports submitted' },
+  expert:          { label: 'Crossing Expert',    emoji: '🏆', threshold: 100,  description: '100 reports submitted' },
+  legend:          { label: 'Border Legend',      emoji: '👑', threshold: 500,  description: '500 reports submitted' },
+  helpful:         { label: 'Helpful',            emoji: '👍', threshold: 25,   description: '25 upvotes received' },
+  trusted:         { label: 'Trusted Reporter',   emoji: '✅', threshold: 100,  description: '100 upvotes received' },
 }
 
 export function getBadgesForProfile(reportsCount: number, totalUpvotesReceived: number): string[] {
