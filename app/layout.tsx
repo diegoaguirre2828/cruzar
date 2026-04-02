@@ -35,15 +35,15 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://cruzaapp.vercel.app/icons/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "Cruza – Border Wait Times",
+        url: "https://cruzaapp.vercel.app/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Cruza – Live US-Mexico Border Wait Times",
       },
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Cruza – Live US-Mexico Border Wait Times",
     description: "Real-time wait times at every US-Mexico border crossing.",
   },

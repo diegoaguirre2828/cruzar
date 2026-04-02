@@ -120,8 +120,8 @@ export function PortList() {
       .join('\n')
 
     const text = lang === 'es'
-      ? `🌉 Tiempos de espera en la frontera ahora mismo:\n\n${list}\n\n📱 Tiempos en vivo: cruza.app`
-      : `🌉 Border wait times right now:\n\n${list}\n\n📱 Live updates: cruza.app`
+      ? `🌉 Tiempos de espera en la frontera ahora mismo:\n\n${list}\n\n📱 Tiempos en vivo: cruzaapp.vercel.app`
+      : `🌉 Border wait times right now:\n\n${list}\n\n📱 Live updates: cruzaapp.vercel.app`
 
     if (navigator.share) {
       navigator.share({ text }).catch(() => {})
@@ -197,6 +197,27 @@ export function PortList() {
       {/* ── ENTERING MEXICO ── */}
       {direction === 'entering_mexico' && (
         <div className="space-y-4 mb-4">
+
+          {/* Insurance nudge — top of Mexico tab */}
+          <a
+            href="/insurance"
+            className="flex items-center justify-between bg-indigo-600 hover:bg-indigo-700 rounded-2xl px-4 py-3.5 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🛡️</span>
+              <div>
+                <p className="text-sm font-bold text-white">
+                  {lang === 'es' ? '¿Llevas seguro para México?' : 'Do you have Mexico auto insurance?'}
+                </p>
+                <p className="text-xs text-indigo-200">
+                  {lang === 'es' ? 'Obligatorio por ley — desde $7/día' : 'Required by law — from $7/day'}
+                </p>
+              </div>
+            </div>
+            <span className="text-white text-sm font-semibold flex-shrink-0 ml-2">
+              {lang === 'es' ? 'Ver →' : 'Get covered →'}
+            </span>
+          </a>
 
           {/* Community quick report */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 shadow-sm">
@@ -334,6 +355,29 @@ export function PortList() {
             {geoError && <p className="text-xs text-red-500 dark:text-red-400 px-1">{geoError}</p>}
           </div>
 
+          {/* Insurance banner — top of list */}
+          {!loading && filteredPorts.length > 0 && (
+            <div className="mb-3 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🛡️</span>
+                <div>
+                  <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                    {lang === 'es' ? 'Seguro de auto para México' : 'Mexico auto insurance'}
+                  </p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                    {lang === 'es' ? 'Obligatorio por ley — desde $7/día' : 'Required by law — from $7/day'}
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/insurance"
+                className="flex-shrink-0 ml-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-xl transition-colors"
+              >
+                {lang === 'es' ? 'Ver →' : 'Get covered →'}
+              </a>
+            </div>
+          )}
+
           {/* Legend + Share row */}
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-4">
@@ -405,6 +449,7 @@ export function PortList() {
           {filteredPorts.length === 0 && !loading && !nearMe && (
             <p className="text-center text-gray-600 mt-10">No port data available.</p>
           )}
+
         </>
       )}
     </div>

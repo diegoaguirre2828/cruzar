@@ -39,7 +39,7 @@ export function PortCard({ port }: Props) {
     if (port.sentri !== null) parts.push(`⚡ SENTRI: ${port.sentri} min`)
     if (port.commercial !== null) parts.push(`🚛 Truck: ${port.commercial} min`)
 
-    const text = `🌉 ${port.portName} wait times right now:\n${parts.join(' · ')}\n\ncruza.app`
+    const text = `🌉 ${port.portName} wait times right now:\n${parts.join(' · ')}\n\ncruzaapp.vercel.app`
 
     if (navigator.share) {
       navigator.share({ text }).catch(() => {})

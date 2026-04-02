@@ -14,9 +14,9 @@ const CROSSINGS = [
   { portId: '230902', name: 'Donna',               lat: 26.1649, lng: -98.0492 },
   { portId: '230701', name: 'Rio Grande City',     lat: 26.3795, lng: -98.8219 },
   { portId: '231001', name: 'Roma',                lat: 26.4079, lng: -99.0195 },
-  { portId: '535501', name: 'Brownsville Gateway', lat: 25.9320, lng: -97.4875 },
-  { portId: '535502', name: 'Brownsville Veterans',lat: 25.9253, lng: -97.5018 },
-  { portId: '535503', name: 'Los Tomates',         lat: 25.9893, lng: -97.6606 },
+  { portId: '535501', name: 'Brownsville Gateway', lat: 25.9007, lng: -97.4935 },
+  { portId: '535502', name: 'Brownsville Veterans',lat: 25.8726, lng: -97.4866 },
+  { portId: '535503', name: 'Los Tomates',         lat: 26.0416, lng: -97.7367 },
   { portId: '230401', name: 'Laredo I',            lat: 27.4994, lng: -99.5076 },
   { portId: '230402', name: 'Laredo II',           lat: 27.5628, lng: -99.5019 },
   { portId: '230403', name: 'Colombia',            lat: 27.6505, lng: -99.5539 },
@@ -113,7 +113,7 @@ export function WaitingMode({ onNearCrossing }: Props) {
     return (
       <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl px-4 py-3 text-center">
         <p className="text-sm font-bold text-green-700 dark:text-green-400">
-          ⚡ {lang === 'es' ? '¡Gracias! +10 puntos (doble)' : 'Thanks! +10 points (double)'}
+          ⚡ {lang === 'es' ? '¡Gracias por reportar!' : 'Thanks for reporting!'}
         </p>
         <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
           {lang === 'es' ? 'Estás ayudando a todos en la fila' : 'You\'re helping everyone in line right now'}
@@ -131,9 +131,8 @@ export function WaitingMode({ onNearCrossing }: Props) {
             <p className="text-sm font-bold text-blue-800 dark:text-blue-300">
               {lang === 'es' ? `¿Estás en ${nearCrossing.name}?` : `Are you at ${nearCrossing.name}?`}
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1">
-              <Zap className="w-3 h-3" />
-              {lang === 'es' ? '¡Reporta ahora y gana el DOBLE de puntos!' : 'Report now — earn DOUBLE points!'}
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+              {lang === 'es' ? 'Ayuda a todos en la fila reportando' : 'Help others in line by reporting'}
             </p>
           </div>
         </div>

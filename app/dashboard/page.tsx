@@ -7,6 +7,7 @@ import { createClient } from '@/lib/auth'
 import { useAuth } from '@/lib/useAuth'
 import { getWaitLevel, waitLevelDot } from '@/lib/cbp'
 import { WaitBadge } from '@/components/WaitBadge'
+import { useLang } from '@/lib/LangContext'
 import { Bell, Star, LogOut, ArrowLeft, Plus, Trash2, Route, Settings, Lock, Navigation, Building2, User } from 'lucide-react'
 import { PushToggle } from '@/components/PushToggle'
 import type { PortWaitTime } from '@/types'
@@ -28,6 +29,7 @@ interface AlertPref {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const { t } = useLang()
   const [ports, setPorts] = useState<PortWaitTime[]>([])
   const [saved, setSaved] = useState<SavedCrossing[]>([])
   const [alerts, setAlerts] = useState<AlertPref[]>([])
@@ -72,6 +74,16 @@ export default function DashboardPage() {
       const params = new URLSearchParams(window.location.search)
       if (params.get('upgraded') === 'true') {
         setShowUpgradeBanner(true)
+        window.history.replaceState({}, '', '/dashboard')
+      }
+      // Pre-fill alert form when coming from Smart Crossing Planner
+      const tabParam = params.get('tab')
+      const portIdParam = params.get('portId')
+      const thresholdParam = params.get('threshold')
+      if (tabParam === 'alerts') {
+        setTab('alerts')
+        if (portIdParam) setNewAlertPortId(portIdParam)
+        if (thresholdParam) setNewAlertThreshold(Number(thresholdParam))
         window.history.replaceState({}, '', '/dashboard')
       }
     }
@@ -133,9 +145,9 @@ export default function DashboardPage() {
         <div className="pt-6 pb-4 flex items-center justify-between">
           <div>
             <Link href="/" className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mb-1 transition-colors">
-              <ArrowLeft className="w-3 h-3" /> Home
+              <ArrowLeft className="w-3 h-3" /> {t.allCrossings}
             </Link>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">My Account</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.dashboardTitle}</h1>
             <p className="text-xs text-gray-400 dark:text-gray-500">{user?.email}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -143,7 +155,7 @@ export default function DashboardPage() {
               href="/account"
               className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
-              <Settings className="w-3.5 h-3.5" /> Settings
+              <Settings className="w-3.5 h-3.5" /> {t.settingsTitle}
             </Link>
             <button
               onClick={signOut}
@@ -164,7 +176,7 @@ export default function DashboardPage() {
               <Building2 className="w-5 h-5 text-white" />
               <div>
                 <p className="text-sm font-bold text-white">Cruza Business Portal</p>
-                <p className="text-xs text-blue-200">Drivers · Dispatch · Loads · Cost Calculator</p>
+                <p className="text-xs text-blue-200">{t.businessPortalDesc}</p>
               </div>
             </div>
             <span className="text-white text-lg">→</span>
@@ -183,7 +195,7 @@ export default function DashboardPage() {
           </div>
           {!isPro && (
             <Link href="/pricing" className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              Upgrade →
+              {t.upgradeLink}
             </Link>
           )}
         </div>
@@ -192,8 +204,8 @@ export default function DashboardPage() {
         {showUpgradeBanner && (
           <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 flex items-start justify-between">
             <div>
-              <p className="text-sm font-semibold text-green-800 dark:text-green-300">Welcome to Pro! 🎉</p>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">You now have access to wait time alerts and all Pro features.</p>
+              <p className="text-sm font-semibold text-green-800 dark:text-green-300">{t.welcomePro}</p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">{t.welcomeProDesc}</p>
             </div>
             <button onClick={() => setShowUpgradeBanner(false)} className="text-green-400 hover:text-green-600 text-lg leading-none">×</button>
           </div>
@@ -202,9 +214,9 @@ export default function DashboardPage() {
         {/* Tabs */}
         <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-5">
           {[
-            { key: 'crossings', label: '⭐ Saved' },
-            { key: 'alerts',    label: '🔔 Alerts' },
-            { key: 'route',     label: '🗺️ Route' },
+            { key: 'crossings', label: t.savedTab },
+            { key: 'alerts',    label: t.alertsTab },
+            { key: 'route',     label: t.routeTab },
           ].map(t => (
             <button
               key={t.key}
@@ -226,10 +238,10 @@ export default function DashboardPage() {
             {savedPorts.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center">
                 <Star className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">No saved crossings yet</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Tap ⭐ on any crossing to save it here</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{t.noSavedCrossings}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t.noSavedHint}</p>
                 <Link href="/" className="inline-block mt-4 bg-gray-900 dark:bg-gray-100 dark:text-gray-900 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors">
-                  Browse Crossings
+                  {t.browseCrossingsBtn}
                 </Link>
               </div>
             ) : (
@@ -262,14 +274,14 @@ export default function DashboardPage() {
                       rel="noopener noreferrer"
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                     >
-                      <Navigation className="w-3.5 h-3.5" /> Directions
+                      <Navigation className="w-3.5 h-3.5" /> {t.directionsBtn}
                     </a>
                     <div className="w-px bg-gray-100 dark:bg-gray-700" />
                     <button
                       onClick={() => removeSaved(s.port_id)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5" /> Remove
+                      <Trash2 className="w-3.5 h-3.5" /> {t.removeBtn}
                     </button>
                   </div>
                 </div>
@@ -282,12 +294,12 @@ export default function DashboardPage() {
         {tab === 'alerts' && tier === 'free' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center shadow-sm">
             <Lock className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Alerts are a Pro feature</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">Get notified the moment your crossing drops below your target wait time.</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.alertsProLocked}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">{t.alertsProDesc}</p>
             <Link href="/pricing" className="inline-block bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors">
-              Upgrade to Pro — $2.99/mo
+              {t.upgradeProBtn}
             </Link>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">7-day free trial, cancel anytime</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t.trialNote}</p>
           </div>
         )}
 
@@ -295,14 +307,14 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <PushToggle />
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Add Alert</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.addAlertTitle}</h3>
               <div className="space-y-3">
                 <select
                   value={newAlertPortId}
                   onChange={e => setNewAlertPortId(e.target.value)}
                   className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select a crossing...</option>
+                  <option value="">{t.selectCrossing}</option>
                   {ports.map(p => (
                     <option key={p.portId} value={p.portId}>{p.portName} – {p.crossingName}</option>
                   ))}
@@ -314,11 +326,11 @@ export default function DashboardPage() {
                 >
                   <option value="vehicle">Passenger Vehicle</option>
                   <option value="sentri">SENTRI / Ready Lane</option>
-                  <option value="pedestrian">Pedestrian</option>
-                  <option value="commercial">Commercial / Truck</option>
+                  <option value="pedestrian">{t.pedestrianLabel}</option>
+                  <option value="commercial">{t.commercialTruck}</option>
                 </select>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Notify when under</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.notifyWhenUnder}</span>
                   <input
                     type="number"
                     value={newAlertThreshold}
@@ -332,7 +344,7 @@ export default function DashboardPage() {
                   type="tel"
                   value={newAlertPhone}
                   onChange={e => setNewAlertPhone(e.target.value)}
-                  placeholder="SMS phone (optional) e.g. +15551234567"
+                  placeholder={t.smsPhonePlaceholder}
                   className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 placeholder-gray-400 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
@@ -340,13 +352,13 @@ export default function DashboardPage() {
                   disabled={!newAlertPortId}
                   className="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 dark:text-gray-900 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-40 transition-colors"
                 >
-                  <Plus className="w-4 h-4" /> Add Alert
+                  <Plus className="w-4 h-4" /> {t.addAlertBtn}
                 </button>
               </div>
             </div>
 
             {alerts.length === 0 ? (
-              <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-4">No alerts set up yet.</p>
+              <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-4">{t.noAlertsYet}</p>
             ) : (
               alerts.map(alert => {
                 const port = ports.find(p => p.portId === alert.port_id)
@@ -381,22 +393,22 @@ export default function DashboardPage() {
         {tab === 'route' && tier === 'free' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center shadow-sm">
             <Lock className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Route Optimizer is a Pro feature</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">Find the fastest crossing near you based on live wait times.</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.routeProLocked}</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">{t.routeProDesc}</p>
             <Link href="/pricing" className="inline-block bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors">
-              Upgrade to Pro — $2.99/mo
+              {t.upgradeProBtn}
             </Link>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">7-day free trial, cancel anytime</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t.trialNote}</p>
           </div>
         )}
 
         {tab === 'route' && tier !== 'free' && (
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Find Best Crossing</h3>
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.routeTab}</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Your origin city (US side)</label>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{t.originCityLabel}</label>
                   <select
                     value={origin}
                     onChange={e => setOrigin(e.target.value)}
@@ -410,7 +422,7 @@ export default function DashboardPage() {
                   disabled={routeLoading}
                   className="w-full bg-gray-900 dark:bg-gray-100 dark:text-gray-900 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-50 transition-colors"
                 >
-                  {routeLoading ? 'Finding best route...' : '🗺️ Find Best Crossing Now'}
+                  {routeLoading ? t.findingRoute : t.findBestBtn}
                 </button>
               </div>
             </div>
@@ -420,7 +432,7 @@ export default function DashboardPage() {
                 {routeResult.best && (
                   <Link href={`/port/${encodeURIComponent(routeResult.best.portId)}`}>
                     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4 hover:shadow-md transition-shadow cursor-pointer">
-                      <p className="text-xs font-semibold text-green-600 dark:text-green-400 mb-1">✅ BEST OPTION — tap to view</p>
+                      <p className="text-xs font-semibold text-green-600 dark:text-green-400 mb-1">{t.bestOption}</p>
                       <p className="font-bold text-gray-900 dark:text-gray-100">{routeResult.best.portName}</p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">{routeResult.best.crossingName}</p>
                       <p className="text-sm text-green-700 dark:text-green-400 font-medium mt-2">
@@ -434,7 +446,7 @@ export default function DashboardPage() {
                 {routeResult.alternatives?.map((alt, i) => (
                   <Link key={i} href={`/port/${encodeURIComponent(alt.portId)}`}>
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow cursor-pointer">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">Alternative #{i + 2} — tap to view</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium">{t.alternativeN(i + 2)}</p>
                       <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{alt.portName}</p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">{alt.crossingName}</p>
                       <p className="text-sm text-gray-800 dark:text-gray-200 font-medium mt-1">

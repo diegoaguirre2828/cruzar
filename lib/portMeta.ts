@@ -7,24 +7,24 @@ export interface PortMeta {
 
 export const PORT_META: Record<string, PortMeta> = {
   // ── RGV / McAllen ──────────────────────────────────────
-  '230501': { city: 'McAllen',  region: 'RGV – McAllen / Hidalgo', lat: 26.0612, lng: -98.2932 },
+  '230501': { city: 'McAllen',  region: 'RGV – McAllen / Hidalgo', lat: 26.1080, lng: -98.2708 },
   '230502': { city: 'Pharr',    region: 'RGV – McAllen / Hidalgo', lat: 26.1764, lng: -98.1836 },
-  '230503': { city: 'McAllen',  region: 'RGV – McAllen / Hidalgo', lat: 26.0694, lng: -98.3758 },
-  '230901': { city: 'Progreso', region: 'RGV – Progreso / Donna',  lat: 26.0901, lng: -97.9600 },
-  '230902': { city: 'Donna',    region: 'RGV – Progreso / Donna',  lat: 26.1698, lng: -98.0527 },
-  '230701': { city: 'Rio Grande City', region: 'RGV – Rio Grande City / Roma', lat: 26.3795, lng: -98.8199 },
-  '231001': { city: 'Roma',     region: 'RGV – Rio Grande City / Roma', lat: 26.4079, lng: -99.0158 },
+  '230503': { city: 'McAllen',  region: 'RGV – McAllen / Hidalgo', lat: 26.0432, lng: -98.3647 },
+  '230901': { city: 'Progreso', region: 'RGV – Progreso / Donna',  lat: 26.0905, lng: -97.9736 },
+  '230902': { city: 'Donna',    region: 'RGV – Progreso / Donna',  lat: 26.1649, lng: -98.0492 },
+  '230701': { city: 'Rio Grande City', region: 'RGV – Rio Grande City / Roma', lat: 26.3795, lng: -98.8219 },
+  '231001': { city: 'Roma',     region: 'RGV – Rio Grande City / Roma', lat: 26.4079, lng: -99.0195 },
   '231002': { city: 'Roma',     region: 'RGV – Rio Grande City / Roma', lat: 26.4100, lng: -99.0200 },
 
   // ── Brownsville ────────────────────────────────────────
-  '535501': { city: 'Brownsville', region: 'Brownsville', lat: 25.9306, lng: -97.4867 },
-  '535502': { city: 'Brownsville', region: 'Brownsville', lat: 25.9275, lng: -97.4932 },
-  '535503': { city: 'Brownsville', region: 'Brownsville', lat: 26.0562, lng: -97.6693 },
-  '535504': { city: 'Brownsville', region: 'Brownsville', lat: 25.9350, lng: -97.5050 },
+  '535501': { city: 'Brownsville', region: 'Brownsville', lat: 25.9007, lng: -97.4935 },
+  '535502': { city: 'Brownsville', region: 'Brownsville', lat: 25.8726, lng: -97.4866 },
+  '535503': { city: 'Brownsville', region: 'Brownsville', lat: 26.0416, lng: -97.7367 },
+  '535504': { city: 'Brownsville', region: 'Brownsville', lat: 25.9044, lng: -97.5040 },
 
   // ── Laredo ─────────────────────────────────────────────
-  '230401': { city: 'Laredo', region: 'Laredo', lat: 27.5036, lng: -99.5075 },
-  '230402': { city: 'Laredo', region: 'Laredo', lat: 27.5139, lng: -99.5019 },
+  '230401': { city: 'Laredo', region: 'Laredo', lat: 27.4994, lng: -99.5076 },
+  '230402': { city: 'Laredo', region: 'Laredo', lat: 27.5628, lng: -99.5019 },
   '230403': { city: 'Laredo', region: 'Laredo', lat: 27.6506, lng: -99.5539 },
   '230404': { city: 'Laredo', region: 'Laredo', lat: 27.5533, lng: -99.4786 },
   '230103': { city: 'Laredo', region: 'Laredo', lat: 27.5000, lng: -99.5100 },

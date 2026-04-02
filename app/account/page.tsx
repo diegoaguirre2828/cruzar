@@ -6,23 +6,25 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
 import { createClient } from '@/lib/auth'
 import { BADGES } from '@/lib/points'
+import { useLang } from '@/lib/LangContext'
 import { ArrowLeft, Save, CreditCard, LogOut, User, Building2, FileText, Trophy } from 'lucide-react'
-
-const TIER_LABELS: Record<string, { label: string; color: string }> = {
-  free:     { label: 'Free',     color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' },
-  pro:      { label: 'Pro',      color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
-  business: { label: 'Business', color: 'bg-blue-600 text-white' },
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  driver:        '🚛 Driver / Daily Commuter',
-  fleet_manager: '🏢 Fleet Manager',
-  other:         '👤 Other',
-}
 
 export default function AccountPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
+  const { t } = useLang()
+
+  const TIER_LABELS: Record<string, { label: string; color: string }> = {
+    free:     { label: 'Free',     color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' },
+    pro:      { label: 'Pro',      color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' },
+    business: { label: 'Business', color: 'bg-blue-600 text-white' },
+  }
+
+  const ROLE_LABELS: Record<string, string> = {
+    driver:        '🚛 ' + t.roleDriver.replace('🚛 ', ''),
+    fleet_manager: '🏢 ' + t.roleFleetMgr.replace('🏢 ', ''),
+    other:         '👤 Other',
+  }
 
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null)
   const [subscription, setSubscription] = useState<Record<string, unknown> | null>(null)
@@ -103,10 +105,10 @@ export default function AccountPage() {
             <Link href="/dashboard" className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.settingsTitle}</h1>
           </div>
           <button onClick={signOut} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors">
-            <LogOut className="w-3.5 h-3.5" /> Sign out
+            <LogOut className="w-3.5 h-3.5" /> {t.signOutBtn}
           </button>
         </div>
 
@@ -120,7 +122,7 @@ export default function AccountPage() {
               <Building2 className="w-5 h-5 text-white" />
               <div>
                 <p className="text-sm font-bold text-white">Cruza Business Portal</p>
-                <p className="text-xs text-blue-200">Drivers · Dispatch · Loads · Cost Calculator</p>
+                <p className="text-xs text-blue-200">{t.businessPortalDesc}</p>
               </div>
             </div>
             <span className="text-white text-lg">→</span>
@@ -130,7 +132,7 @@ export default function AccountPage() {
         {/* Subscription */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Subscription</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t.subscriptionSection}</h2>
             <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tierInfo.color}`}>
               {tierInfo.label}
             </span>
@@ -138,9 +140,9 @@ export default function AccountPage() {
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{email}</p>
           {subscription && (
             <p className="text-xs text-gray-400 dark:text-gray-500">
-              Status: <span className="font-medium text-gray-600 dark:text-gray-300">{String(subscription.status ?? '')}</span>
+              {t.statusLabel} <span className="font-medium text-gray-600 dark:text-gray-300">{String(subscription.status ?? '')}</span>
               {!!subscription.current_period_end && (
-                <> · Renews {new Date(String(subscription.current_period_end)).toLocaleDateString()}</>
+                <> · {t.renewsLabel} {new Date(String(subscription.current_period_end)).toLocaleDateString()}</>
               )}
             </p>
           )}
@@ -152,11 +154,11 @@ export default function AccountPage() {
                 className="flex items-center gap-1.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                {portalLoading ? 'Opening...' : 'Manage Billing'}
+                {portalLoading ? t.openingPortal : t.manageBilling}
               </button>
             ) : (
               <Link href="/pricing" className="flex items-center gap-1.5 text-xs font-medium bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors">
-                Upgrade to Pro →
+                {t.upgradeToPro}
               </Link>
             )}
           </div>
@@ -166,19 +168,19 @@ export default function AccountPage() {
         {!!profile && (Number(profile.points) > 0 || Number(profile.reports_count) > 0) && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Community Stats</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{t.communityStats}</h2>
               <Link href="/leaderboard" className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                <Trophy className="w-3 h-3" /> Leaderboard
+                <Trophy className="w-3 h-3" /> {t.leaderboardLink}
               </Link>
             </div>
             <div className="flex gap-4 mb-3">
               <div className="text-center">
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{Number(profile.points) || 0}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Points</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t.pointsLabel}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{Number(profile.reports_count) || 0}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Reports</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t.reportsLabel}</p>
               </div>
             </div>
             {Array.isArray(profile.badges) && profile.badges.length > 0 && (
@@ -196,12 +198,12 @@ export default function AccountPage() {
 
         {/* Profile form */}
         <form onSubmit={handleSave} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Profile</h2>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{t.profileSection}</h2>
           <div className="space-y-4">
             <div>
               <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <User className="w-3.5 h-3.5" /> Display name
-                <span className="text-gray-400 dark:text-gray-500 font-normal">(shown on your reports)</span>
+                <User className="w-3.5 h-3.5" /> {t.displayNameLabel}
+                <span className="text-gray-400 dark:text-gray-500 font-normal">{t.displayNameHint}</span>
               </label>
               <input
                 value={form.display_name}
@@ -213,18 +215,18 @@ export default function AccountPage() {
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Full name
+                {t.fullNameLabel}
               </label>
               <input
                 value={form.full_name}
                 onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
                 className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Your name"
+                placeholder={t.fullNameLabel}
               />
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <Building2 className="w-3.5 h-3.5" /> Company / Employer
+                <Building2 className="w-3.5 h-3.5" /> {t.companyLabel}
               </label>
               <input
                 value={form.company}
@@ -235,8 +237,8 @@ export default function AccountPage() {
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                <FileText className="w-3.5 h-3.5" /> Short bio
-                <span className="text-gray-400 dark:text-gray-500 font-normal">(shows on your reports)</span>
+                <FileText className="w-3.5 h-3.5" /> {t.bioLabel}
+                <span className="text-gray-400 dark:text-gray-500 font-normal">{t.bioHint}</span>
               </label>
               <textarea
                 value={form.bio}
@@ -249,7 +251,7 @@ export default function AccountPage() {
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 text-right">{form.bio.length}/120</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Role</label>
+              <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">{t.roleLabel}</label>
               <p className="text-sm text-gray-600 dark:text-gray-400">{ROLE_LABELS[String(profile?.role || 'other')] || ROLE_LABELS.other}</p>
             </div>
           </div>
@@ -259,19 +261,19 @@ export default function AccountPage() {
             className="mt-5 w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-gray-100 dark:text-gray-900 text-white text-sm font-medium py-2.5 rounded-xl hover:bg-gray-700 dark:hover:bg-gray-200 disabled:opacity-50 transition-colors"
           >
             <Save className="w-4 h-4" />
-            {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Profile'}
+            {saved ? t.profileSaved : saving ? t.savingProfile : t.saveProfile}
           </button>
         </form>
 
         {/* Account actions */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Account</h2>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.accountSection}</h2>
           <div className="space-y-2">
             <Link href="/pricing" className="block text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
-              View pricing & plans →
+              {t.viewPricingPlans}
             </Link>
             <button onClick={signOut} className="block text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors">
-              Sign out of Cruza
+              {t.signOutCruza}
             </button>
           </div>
         </div>

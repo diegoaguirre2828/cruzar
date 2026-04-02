@@ -21,7 +21,7 @@ export const PLANS = {
   },
   business: {
     name: 'Business',
-    price: 4900, // cents
+    price: 4999, // cents
     priceId: process.env.STRIPE_BUSINESS_PRICE_ID!,
     features: [
       'Everything in Pro',

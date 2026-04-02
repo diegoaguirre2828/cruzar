@@ -4,72 +4,74 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
 import { useTier } from '@/lib/useTier'
+import { useLang } from '@/lib/LangContext'
 import { Check, ArrowLeft } from 'lucide-react'
-
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    color: 'border-gray-200',
-    badge: null,
-    desc: 'Live wait times for every crossing. No credit card. No catch.',
-    features: [
-      'Live wait times — all 52 crossings',
-      'Interactive map with color-coded wait levels',
-      'Filter by city or region',
-      'Crowdsourced driver reports',
-      'Save up to 3 favorite crossings',
-    ],
-    cta: 'Get Started Free',
-    href: '/signup',
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$2.99',
-    period: '/month',
-    color: 'border-blue-500',
-    badge: 'Most Popular',
-    desc: 'Stop wasting time at the border. Get notified the moment your crossing clears up — by push, SMS, or email.',
-    features: [
-      'Everything in Free',
-      '🔔 Push + SMS + email alerts when wait drops',
-      '🤖 AI predictions — best time to cross today',
-      '🗺️ Route optimizer — fastest crossing near you right now',
-      'Unlimited saved crossings',
-      '7-day free trial · cancel anytime',
-    ],
-    cta: 'Start 7-Day Free Trial',
-    tier: 'pro',
-  },
-  {
-    id: 'business',
-    name: 'Business',
-    price: '$49',
-    period: '/month',
-    color: 'border-gray-900',
-    badge: 'For Freight & Logistics',
-    desc: 'One delayed truck costs more than this plan. Keep your fleet moving with real-time commercial lane intelligence.',
-    features: [
-      'Everything in Pro',
-      '🚛 Fleet Command Center — commercial lane focus',
-      '⚠️ Heavy delay watch list across all crossings',
-      '📥 Historical CSV exports (up to 90 days)',
-      '🔌 API access for your TMS or dispatch system',
-      '📧 Weekly border intelligence email report',
-      'Priority support via email',
-    ],
-    cta: 'Start Free Trial',
-    tier: 'business',
-  },
-]
 
 export default function PricingPage() {
   const { user } = useAuth()
   const { tier: currentTier } = useTier()
+  const { t } = useLang()
   const [loading, setLoading] = useState<string | null>(null)
+
+  const PLANS = [
+    {
+      id: 'free',
+      name: 'Free',
+      price: '$0',
+      period: t.freePeriod,
+      color: 'border-gray-200',
+      badge: null,
+      desc: 'Live wait times for every crossing. No credit card. No catch.',
+      features: [
+        'Live wait times — all 52 crossings',
+        'Interactive map with color-coded wait levels',
+        'Filter by city or region',
+        'Crowdsourced driver reports',
+        'Save up to 3 favorite crossings',
+      ],
+      cta: 'Get Started Free',
+      href: '/signup',
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: '$2.99',
+      period: '/month',
+      color: 'border-blue-500',
+      badge: t.mostPopular,
+      desc: 'Stop wasting time at the border. Get notified the moment your crossing clears up — by push, SMS, or email.',
+      features: [
+        'Everything in Free',
+        '🔔 Push + SMS + email alerts when wait drops',
+        '🔮 Historical patterns — best time to cross today',
+        '🗺️ Route optimizer — fastest crossing near you right now',
+        'Unlimited saved crossings',
+        '7-day free trial · cancel anytime',
+      ],
+      cta: 'Start 7-Day Free Trial',
+      tier: 'pro',
+    },
+    {
+      id: 'business',
+      name: 'Business',
+      price: '$49.99',
+      period: '/month',
+      color: 'border-gray-900',
+      badge: t.forFreight,
+      desc: 'One delayed truck costs more than this plan. Keep your fleet moving with real-time commercial lane intelligence.',
+      features: [
+        'Everything in Pro',
+        '🚛 Fleet Command Center — commercial lane focus',
+        '⚠️ Heavy delay watch list across all crossings',
+        '📥 Historical CSV exports (up to 90 days)',
+        '🔌 API access for your TMS or dispatch system',
+        '📧 Weekly border intelligence email report',
+        'Priority support via email',
+      ],
+      cta: 'Start Free Trial',
+      tier: 'business',
+    },
+  ]
 
   async function handleUpgrade(planTier: string) {
     if (!user) {
@@ -92,10 +94,10 @@ export default function PricingPage() {
       <div className="max-w-4xl mx-auto px-4 pb-16">
         <div className="pt-8 pb-6">
           <Link href="/" className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 mb-4">
-            <ArrowLeft className="w-3 h-3" /> Back to map
+            <ArrowLeft className="w-3 h-3" /> {t.backToMap}
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Simple, transparent pricing</h1>
-          <p className="text-gray-500 mt-2">Start free. Upgrade when you need more.</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t.pricingTitle}</h1>
+          <p className="text-gray-500 mt-2">{t.pricingSubtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -134,7 +136,7 @@ export default function PricingPage() {
 
                 {isCurrent ? (
                   <div className="w-full text-center py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-500">
-                    Current Plan
+                    {t.currentPlanLabel}
                   </div>
                 ) : plan.href ? (
                   <Link
@@ -163,7 +165,7 @@ export default function PricingPage() {
 
         {/* ROI calculator */}
         <div className="mt-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base mb-3">💡 How much is border wait time costing you?</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base mb-3">{t.roiTitle}</h3>
           <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
             <div className="flex justify-between">
               <span>Daily commuter · 30 min wasted/day</span>
@@ -185,15 +187,13 @@ export default function PricingPage() {
 
         {/* Business advertise CTA */}
         <div className="mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center">
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">Own a local business near the border?</h3>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Advertise to thousands of daily cross-border commuters. Starting at $49/month.
-          </p>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{t.advertiseCTA}</h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{t.advertiseDesc}</p>
           <Link
             href="/advertise"
             className="inline-block mt-4 bg-amber-500 text-white font-medium px-6 py-2.5 rounded-xl hover:bg-amber-600 transition-colors text-sm"
           >
-            Advertise Your Business →
+            {t.advertiseBtn}
           </Link>
         </div>
       </div>

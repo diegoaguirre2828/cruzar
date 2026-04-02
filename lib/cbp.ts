@@ -25,10 +25,13 @@ function parseLanes(value: string | undefined): number | null {
   return isNaN(n) ? null : n
 }
 
-function parseWait(value: string | undefined): number | null {
-  // N/A or missing means CBP has no data for this lane type (closed or not present)
+function parseWait(value: string | undefined, lanesOpen: string | undefined): number | null {
+  // N/A or missing means CBP has no data for this lane type
   if (value === undefined || value === null || value === 'N/A') return null
-  // Empty string means lane exists but no measurable delay — treat as 0 (no wait)
+  // If 0 lanes are open, the crossing is closed — show as null, not 0-minute wait
+  const lanes = parseInt(lanesOpen ?? '', 10)
+  if (!isNaN(lanes) && lanes === 0) return null
+  // Empty string means lane exists but no measurable delay
   if (value === '') return 0
   const n = parseInt(value, 10)
   return isNaN(n) ? null : n
@@ -51,10 +54,10 @@ export async function fetchRgvWaitTimes(): Promise<PortWaitTime[]> {
       portName: p.port_name,
       crossingName: p.crossing_name,
       city: p.port_name,
-      vehicle: parseWait(p.passenger_vehicle_lanes?.standard_lanes?.delay_minutes),
-      sentri: parseWait(p.passenger_vehicle_lanes?.nexus_sentri_lanes?.delay_minutes),
-      pedestrian: parseWait(p.pedestrian_lanes?.standard_lanes?.delay_minutes),
-      commercial: parseWait(p.commercial_vehicle_lanes?.standard_lanes?.delay_minutes),
+      vehicle: parseWait(p.passenger_vehicle_lanes?.standard_lanes?.delay_minutes, p.passenger_vehicle_lanes?.standard_lanes?.lanes_open),
+      sentri: parseWait(p.passenger_vehicle_lanes?.nexus_sentri_lanes?.delay_minutes, p.passenger_vehicle_lanes?.nexus_sentri_lanes?.lanes_open),
+      pedestrian: parseWait(p.pedestrian_lanes?.standard_lanes?.delay_minutes, p.pedestrian_lanes?.standard_lanes?.lanes_open),
+      commercial: parseWait(p.commercial_vehicle_lanes?.standard_lanes?.delay_minutes, p.commercial_vehicle_lanes?.standard_lanes?.lanes_open),
       vehicleLanesOpen: parseLanes(p.passenger_vehicle_lanes?.standard_lanes?.lanes_open),
       sentriLanesOpen: parseLanes(p.passenger_vehicle_lanes?.nexus_sentri_lanes?.lanes_open),
       pedestrianLanesOpen: parseLanes(p.pedestrian_lanes?.standard_lanes?.lanes_open),

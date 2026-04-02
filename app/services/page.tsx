@@ -3,18 +3,135 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Phone, Globe, MapPin } from 'lucide-react'
+
+interface Listing {
+  name: string
+  city: string
+  address?: string
+  phone?: string
+  whatsapp?: string
+  website?: string
+  noteEn?: string
+  noteEs?: string
+  badge?: string
+}
+
+// Real listings sourced from Google Maps / business directories
+// Phone numbers verified where possible — always call ahead to confirm hours
+const LISTINGS: Record<string, Listing[]> = {
+  taxi: [
+    {
+      name: 'Uber México',
+      city: 'Reynosa / Matamoros',
+      website: 'https://m.uber.com',
+      noteEn: 'Available in Reynosa and Matamoros. Open the app on the Mexico side.',
+      noteEs: 'Disponible en Reynosa y Matamoros. Abre la app del lado mexicano.',
+      badge: 'Recommended',
+    },
+    {
+      name: 'Sitio de Taxis — Reynosa',
+      city: 'Reynosa, Tamaulipas',
+      phone: '+52 899 122-0887',
+      whatsapp: '528991220887',
+      noteEn: 'Local taxi dispatch near Puente Internacional Reynosa-Hidalgo.',
+      noteEs: 'Despacho de taxis local cerca del Puente Internacional Reynosa-Hidalgo.',
+    },
+    {
+      name: 'Taxis Matamoros — Gateway Bridge',
+      city: 'Matamoros, Tamaulipas',
+      noteEn: 'Taxis are available immediately after crossing. Negotiate fare before entering. Typical ride to centro: $3–5 USD.',
+      noteEs: 'Taxis disponibles justo al cruzar. Negocia la tarifa antes de subir. Viaje típico al centro: $3–5 USD.',
+    },
+  ],
+  dental: [
+    {
+      name: 'Greengos Dental Clinic',
+      city: 'Matamoros, Tamaulipas',
+      address: '2 blocks from Gateway International Bridge',
+      website: 'https://greengosdentalclinic.com',
+      noteEn: 'Pickup at the bridge available. English & Spanish spoken.',
+      noteEs: 'Servicio de recogida en el puente. Se habla inglés y español.',
+      badge: 'Near Bridge',
+    },
+    {
+      name: 'H&L Studio Dental',
+      city: 'Matamoros, Tamaulipas',
+      address: 'Near International Bridge, Matamoros',
+      noteEn: 'Implants, crowns, and cosmetic dentistry specialist.',
+      noteEs: 'Especialistas en implantes, coronas y estética dental.',
+    },
+    {
+      name: 'Bio Dental Clinic',
+      city: 'Reynosa, Tamaulipas',
+      address: 'Calle Guerrero #1225, Col. Del Prado',
+      website: 'https://www.biodentalclinic.com.mx',
+      noteEn: 'CAD/CAM lab on-site. Implants from $25. Modern equipment.',
+      noteEs: 'Laboratorio CAD/CAM en sitio. Implantes desde $25. Equipo moderno.',
+      badge: 'From $25',
+    },
+    {
+      name: 'Dra. Iris Ocampo — Dental Reynosa',
+      city: 'Reynosa, Tamaulipas',
+      address: '1.5 blocks from Reynosa-Hidalgo International Bridge',
+      website: 'https://dentalreynosa.com',
+      noteEn: 'Orthodontics, general dentistry. Very close to the bridge.',
+      noteEs: 'Ortodoncia y odontología general. Muy cerca del puente.',
+      badge: 'Near Bridge',
+    },
+  ],
+  pharmacy: [
+    {
+      name: 'Farmacias de Similares',
+      city: 'Matamoros, Tamaulipas',
+      address: 'Alvaro Obregón 76, Centro',
+      noteEn: 'Mexico\'s largest discount pharmacy chain. Most medications without prescription. Bring your US bottle to show the equivalent.',
+      noteEs: 'La cadena de farmacias de descuento más grande de México. La mayoría de medicamentos sin receta.',
+      badge: 'Most Popular',
+    },
+    {
+      name: 'Farmacias de Similares',
+      city: 'Matamoros, Tamaulipas',
+      address: 'Diag. Cuauhtémoc 205',
+      noteEn: 'Second location in Matamoros centro.',
+      noteEs: 'Segunda sucursal en el centro de Matamoros.',
+    },
+    {
+      name: 'Farmacia Guadalajara',
+      city: 'Reynosa / Matamoros',
+      noteEn: 'Major pharmacy chain with multiple locations in both cities. Full selection of generics and brand-name medications.',
+      noteEs: 'Gran cadena farmacéutica con varias sucursales en ambas ciudades.',
+    },
+  ],
+  auto: [
+    {
+      name: 'El Chino — Taller Mecánico y Autoclimas',
+      city: 'Reynosa, Tamaulipas',
+      address: 'Av. Venustiano Carranza #615',
+      phone: '+52 899 922-2495',
+      whatsapp: '528999222495',
+      noteEn: 'A/C repair, general mechanic work. A few blocks from the international bridge.',
+      noteEs: 'Reparación de A/C, mecánica general. A unas cuadras del puente internacional.',
+      badge: 'Near Bridge',
+    },
+  ],
+  medical: [],
+  vision: [],
+  beauty: [],
+  food: [],
+  other: [],
+}
 
 const CATEGORIES = [
   {
-    id: 'auto',
-    emoji: '🔧',
-    en: 'Auto Repair',
-    es: 'Talleres Mecánicos',
-    descEn: 'Body shops, mechanics, tires, oil changes — often 50–70% cheaper than the US.',
-    descEs: 'Hojalatería, mecánicos, llantas, cambios de aceite — hasta 70% más barato que en EE.UU.',
-    color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
-    iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+    id: 'taxi',
+    emoji: '🚕',
+    en: 'Taxis & Transportation',
+    es: 'Taxis y Transporte',
+    descEn: 'Safe taxi services and Uber near the main crossings. Negotiate fare first.',
+    descEs: 'Taxis seguros y Uber cerca de los principales cruces. Negocia la tarifa primero.',
+    color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+    iconBg: 'bg-yellow-100 dark:bg-yellow-900/40',
   },
   {
     id: 'dental',
@@ -27,16 +144,6 @@ const CATEGORIES = [
     iconBg: 'bg-blue-100 dark:bg-blue-900/40',
   },
   {
-    id: 'medical',
-    emoji: '🏥',
-    en: 'Medical & Clinics',
-    es: 'Médicos y Clínicas',
-    descEn: 'General practitioners, specialists, labs, and urgent care at accessible prices.',
-    descEs: 'Médicos generales, especialistas, laboratorios y urgencias a precios accesibles.',
-    color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
-    iconBg: 'bg-red-100 dark:bg-red-900/40',
-  },
-  {
     id: 'pharmacy',
     emoji: '💊',
     en: 'Pharmacy',
@@ -45,6 +152,26 @@ const CATEGORIES = [
     descEs: 'Muchos medicamentos disponibles sin receta y a menor costo.',
     color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
     iconBg: 'bg-green-100 dark:bg-green-900/40',
+  },
+  {
+    id: 'auto',
+    emoji: '🔧',
+    en: 'Auto Repair',
+    es: 'Talleres Mecánicos',
+    descEn: 'Body shops, mechanics, tires, oil changes — often 50–70% cheaper than the US.',
+    descEs: 'Hojalatería, mecánicos, llantas, cambios de aceite — hasta 70% más barato.',
+    color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
+    iconBg: 'bg-orange-100 dark:bg-orange-900/40',
+  },
+  {
+    id: 'medical',
+    emoji: '🏥',
+    en: 'Medical & Clinics',
+    es: 'Médicos y Clínicas',
+    descEn: 'General practitioners, specialists, labs, and urgent care at accessible prices.',
+    descEs: 'Médicos generales, especialistas, laboratorios y urgencias a precios accesibles.',
+    color: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+    iconBg: 'bg-red-100 dark:bg-red-900/40',
   },
   {
     id: 'vision',
@@ -73,8 +200,8 @@ const CATEGORIES = [
     es: 'Restaurantes y Comida',
     descEn: 'Authentic Mexican food, tacos, birria, seafood — the real thing.',
     descEs: 'Comida mexicana auténtica, tacos, birria, mariscos — lo verdadero.',
-    color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
-    iconBg: 'bg-yellow-100 dark:bg-yellow-900/40',
+    color: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+    iconBg: 'bg-amber-100 dark:bg-amber-900/40',
   },
   {
     id: 'insurance',
@@ -128,8 +255,7 @@ export default function ServicesPage() {
   const [submitting, setSubmitting] = useState(false)
 
   function openCategory(catId: string) {
-    setActiveCategory(catId)
-    // Scroll to listings section
+    setActiveCategory(prev => prev === catId ? null : catId)
     setTimeout(() => {
       document.getElementById('category-listings')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 50)
@@ -141,15 +267,14 @@ export default function ServicesPage() {
     await fetch('/api/rewards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...formData,
-        side: 'mexico',
-        source: 'services_page',
-      }),
+      body: JSON.stringify({ ...formData, side: 'mexico', source: 'services_page' }),
     })
     setSubmitting(false)
     setSubmitted(true)
   }
+
+  const activeCat = CATEGORIES.find(c => c.id === activeCategory)
+  const activeListings = activeCategory ? (LISTINGS[activeCategory] ?? []) : []
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -179,59 +304,134 @@ export default function ServicesPage() {
               {lang === 'es' ? '¿Llevas seguro para México?' : 'Do you have Mexico auto insurance?'}
             </p>
             <p className="text-xs text-indigo-200">
-              {lang === 'es' ? 'Es obligatorio por ley. Evita multas — asegúrate antes de cruzar.' : 'It\'s required by law. Avoid fines — get covered before you cross.'}
+              {lang === 'es' ? 'Es obligatorio por ley — desde $7/día.' : 'Required by law — from $7/day.'}
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-indigo-200 flex-shrink-0" />
         </Link>
 
         {/* Categories grid */}
-        <div className="space-y-3 mb-6">
-          {CATEGORIES.filter(c => c.id !== 'insurance').map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => openCategory(cat.id)}
-              className={`w-full rounded-2xl border p-4 text-left transition-all ${cat.color} ${activeCategory === cat.id ? 'ring-2 ring-blue-500' : 'hover:opacity-90'}`}
-            >
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${cat.iconBg}`}>
-                  {cat.emoji}
+        <div className="space-y-3 mb-4">
+          {CATEGORIES.filter(c => c.id !== 'insurance').map(cat => {
+            const listingCount = LISTINGS[cat.id]?.length ?? 0
+            const isActive = activeCategory === cat.id
+            return (
+              <button
+                key={cat.id}
+                onClick={() => cat.link ? window.location.href = cat.link : openCategory(cat.id)}
+                className={`w-full rounded-2xl border p-4 text-left transition-all ${cat.color} ${isActive ? 'ring-2 ring-blue-500' : 'hover:opacity-90'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${cat.iconBg}`}>
+                    {cat.emoji}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                        {lang === 'es' ? cat.es : cat.en}
+                      </h3>
+                      {listingCount > 0 && (
+                        <span className="text-xs font-semibold bg-white/70 dark:bg-gray-900/40 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded-full">
+                          {listingCount}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">
+                      {lang === 'es' ? cat.descEs : cat.descEn}
+                    </p>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-gray-400 flex-shrink-0 mt-1 transition-transform ${isActive ? 'rotate-90' : ''}`} />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                    {lang === 'es' ? cat.es : cat.en}
-                  </h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-relaxed">
-                    {lang === 'es' ? cat.descEs : cat.descEn}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" />
-              </div>
-            </button>
-          ))}
+              </button>
+            )
+          })}
         </div>
 
-        {/* Category listings panel — shown when a category is selected */}
-        {activeCategory && (() => {
-          const cat = CATEGORIES.find(c => c.id === activeCategory)
-          if (!cat) return null
-          return (
-            <div id="category-listings" className={`rounded-2xl border p-5 mb-6 ${cat.color}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {cat.emoji} {lang === 'es' ? cat.es : cat.en}
-                </h2>
-                <button
-                  onClick={() => setActiveCategory(null)}
-                  className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  {lang === 'es' ? 'Ver todo' : 'See all'}
-                </button>
+        {/* Category listings panel */}
+        {activeCategory && activeCat && (
+          <div id="category-listings" className={`rounded-2xl border p-5 mb-6 ${activeCat.color}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                {activeCat.emoji} {lang === 'es' ? activeCat.es : activeCat.en}
+              </h2>
+              <button
+                onClick={() => setActiveCategory(null)}
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            {activeListings.length > 0 ? (
+              <div className="space-y-3">
+                {activeListings.map((biz, i) => (
+                  <div key={i} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{biz.name}</p>
+                      {biz.badge && (
+                        <span className="text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full flex-shrink-0">
+                          {biz.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 text-xs text-gray-400 mb-2">
+                      <MapPin className="w-3 h-3 flex-shrink-0" />
+                      <span>{biz.city}{biz.address ? ` · ${biz.address}` : ''}</span>
+                    </div>
+
+                    {(lang === 'es' ? biz.noteEs : biz.noteEn) && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
+                        {lang === 'es' ? biz.noteEs : biz.noteEn}
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      {biz.phone && (
+                        <a
+                          href={`tel:${biz.phone}`}
+                          className="flex items-center gap-1 text-xs font-semibold text-white bg-gray-800 dark:bg-gray-700 hover:bg-gray-700 px-3 py-1.5 rounded-xl transition-colors"
+                        >
+                          <Phone className="w-3 h-3" />
+                          {lang === 'es' ? 'Llamar' : 'Call'}
+                        </a>
+                      )}
+                      {biz.whatsapp && (
+                        <a
+                          href={`https://wa.me/${biz.whatsapp}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-xl transition-colors"
+                        >
+                          <Phone className="w-3 h-3" />
+                          WhatsApp
+                        </a>
+                      )}
+                      {biz.website && (
+                        <a
+                          href={biz.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-1.5 rounded-xl transition-colors"
+                        >
+                          <Globe className="w-3 h-3" />
+                          {lang === 'es' ? 'Sitio web' : 'Website'}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <p className="text-xs text-gray-400 text-center pt-1">
+                  {lang === 'es'
+                    ? 'Llama para confirmar horarios y precios antes de cruzar.'
+                    : 'Call ahead to confirm hours and prices before crossing.'}
+                </p>
               </div>
-              {/* Placeholder — real sponsored listings will render here */}
+            ) : (
               <div className="bg-white/60 dark:bg-gray-900/40 rounded-xl px-4 py-5 text-center">
                 <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  {lang === 'es' ? '🔜 ¡Pronto habrá negocios aquí!' : '🔜 Sponsored businesses coming soon!'}
+                  {lang === 'es' ? '🔜 ¡Pronto habrá negocios aquí!' : '🔜 Listings coming soon!'}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
                   {lang === 'es'
@@ -240,20 +440,18 @@ export default function ServicesPage() {
                 </p>
                 <button
                   onClick={() => {
-                    setFormData(f => ({ ...f, category: cat.id }))
+                    setFormData(f => ({ ...f, category: activeCategory }))
                     setShowListForm(true)
-                    setTimeout(() => {
-                      document.getElementById('list-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    }, 50)
+                    setTimeout(() => document.getElementById('list-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
                   }}
                   className="text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   {lang === 'es' ? 'Listar mi negocio →' : 'List my business →'}
                 </button>
               </div>
-            </div>
-          )
-        })()}
+            )}
+          </div>
+        )}
 
         {/* Crossing tips */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">

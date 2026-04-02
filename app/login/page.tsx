@@ -6,15 +6,16 @@ import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
 import { PhoneButton } from '@/components/PhoneButton'
+import { useLang } from '@/lib/LangContext'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t } = useLang()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Redirect already-authenticated users away from login page
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
@@ -41,16 +42,16 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900">🌉 Cruza</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+          <p className="text-sm text-gray-500 mt-1">{t.loginSubtitle}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-          <GoogleButton label="Continue with Google" />
-          <PhoneButton label="Continue with Phone" />
+          <GoogleButton label={t.continueWithGoogle} />
+          <PhoneButton label={t.continueWithPhone} />
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400">or</span>
+            <span className="text-xs text-gray-400">o</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
@@ -61,7 +62,7 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{t.emailLabel}</label>
               <input
                 type="email"
                 value={email}
@@ -73,9 +74,9 @@ export default function LoginPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-medium text-gray-700">Password</label>
+                <label className="block text-xs font-medium text-gray-700">{t.passwordLabel}</label>
                 <Link href="/reset-password" className="text-xs text-blue-600 hover:underline">
-                  Forgot password?
+                  {t.forgotPassword}
                 </Link>
               </div>
               <input
@@ -92,19 +93,19 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-gray-900 text-white text-sm font-medium py-3 rounded-xl hover:bg-gray-700 transition-colors disabled:opacity-50"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? t.signingIn : t.signInBtn}
             </button>
           </form>
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-4">
-          No account?{' '}
+          {t.noAccount}{' '}
           <Link href="/signup" className="text-blue-600 font-medium hover:underline">
-            Sign up free
+            {t.signUpFreeLink}
           </Link>
         </p>
         <p className="text-center mt-2">
-          <Link href="/" className="text-xs text-gray-400 hover:underline">← Back to map</Link>
+          <Link href="/" className="text-xs text-gray-400 hover:underline">{t.backToMap}</Link>
         </p>
       </div>
     </main>

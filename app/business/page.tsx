@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -168,6 +168,38 @@ function BusinessPortalPage() {
     navigator.clipboard.writeText(url)
     setCopiedToken(token)
     setTimeout(() => setCopiedToken(null), 2500)
+  }
+
+  // Auto-refresh drivers + ports every 30s when on drivers or dispatch tab
+  const refreshInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  useEffect(() => {
+    if (activeTab === 'drivers' || activeTab === 'dispatch') {
+      refreshInterval.current = setInterval(() => {
+        loadDrivers()
+        loadPorts()
+      }, 30000)
+    }
+    return () => {
+      if (refreshInterval.current) clearInterval(refreshInterval.current)
+    }
+  }, [activeTab, loadDrivers, loadPorts])
+
+  // Flag drivers who haven't checked in for 2+ hours while actively at bridge
+  function isSilent(driver: Driver): boolean {
+    if (!['in_line', 'at_bridge'].includes(driver.current_status)) return false
+    if (!driver.last_checkin_at) return true
+    const diffMs = Date.now() - new Date(driver.last_checkin_at).getTime()
+    return diffMs > 2 * 60 * 60 * 1000 // 2 hours
+  }
+
+  function whatsappLink(driver: Driver): string {
+    const checkinUrl = `${window.location.origin}/driver/${driver.checkin_token}`
+    const msg = encodeURIComponent(`Hi ${driver.name}, please tap this link to update your border status: ${checkinUrl}`)
+    if (driver.phone) {
+      const digits = driver.phone.replace(/\D/g, '')
+      return `https://wa.me/${digits}?text=${msg}`
+    }
+    return `https://wa.me/?text=${msg}`
   }
 
   function timeAgo(iso: string | null): string {
@@ -457,9 +489,10 @@ function BusinessPortalPage() {
                       ? ports.find(p => p.portId === driver.current_port_id)?.commercial
                       : null
                     const isCopied = copiedToken === driver.checkin_token
+                    const silent = isSilent(driver)
 
                     return (
-                      <div key={driver.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                      <div key={driver.id} className={`bg-white dark:bg-gray-800 rounded-2xl border p-4 shadow-sm ${silent ? 'border-orange-300 dark:border-orange-700' : 'border-gray-200 dark:border-gray-700'}`}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-3">
                             <span className="text-xl mt-0.5">{statusCfg.emoji}</span>
@@ -469,6 +502,11 @@ function BusinessPortalPage() {
                                 <span className={`text-xs font-medium ${statusCfg.color}`}>
                                   {statusCfg.label} · {statusCfg.labelEs}
                                 </span>
+                                {silent && (
+                                  <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 px-2 py-0.5 rounded-full">
+                                    ⚠️ No check-in 2h+
+                                  </span>
+                                )}
                               </div>
                               {driver.carrier && <p className="text-xs text-gray-400">{driver.carrier}</p>}
                               {driver.phone && (
@@ -490,6 +528,16 @@ function BusinessPortalPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            <a
+                              href={whatsappLink(driver)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
+                              title="Send check-in link via WhatsApp"
+                            >
+                              <Phone className="w-3 h-3" />
+                              WA
+                            </a>
                             <button
                               onClick={() => copyCheckinLink(driver.checkin_token)}
                               className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border transition-colors ${
@@ -751,6 +799,12 @@ function BusinessPortalPage() {
                 {shipments.map(s => {
                   const config = STATUS_CONFIG[s.status] || STATUS_CONFIG.scheduled
                   const portData = s.port_id ? ports.find(p => p.portId === s.port_id) : null
+                  // ETA = expected crossing time + current truck wait at that port
+                  const etaMs = (() => {
+                    if (!s.expected_crossing_at || !portData?.commercial) return null
+                    return new Date(s.expected_crossing_at).getTime() + portData.commercial * 60 * 1000
+                  })()
+                  const etaStr = etaMs ? new Date(etaMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : null
                   return (
                     <div key={s.id} className={`rounded-2xl border p-4 shadow-sm ${config.bg} ${s.status === 'delayed' ? 'border-red-200 dark:border-red-800' : 'border-gray-200 dark:border-gray-700'}`}>
                       <div className="flex items-start justify-between gap-3">
@@ -784,9 +838,20 @@ function BusinessPortalPage() {
                                 </span>
                               )}
                               {portData && (
-                                <span className="text-xs text-gray-400">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                  (portData.commercial ?? portData.vehicle ?? 999) < 20
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                    : (portData.commercial ?? portData.vehicle ?? 999) < 45
+                                    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                    : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                }`}>
                                   <Truck className="w-3 h-3 inline mr-0.5" />
                                   {portData.portName}: {portData.commercial ?? portData.vehicle ?? '—'}m
+                                </span>
+                              )}
+                              {etaStr && (
+                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                  🏁 Est. cleared: {etaStr}
                                 </span>
                               )}
                             </div>
