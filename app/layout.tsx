@@ -18,6 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.cruzar.app'),
   title: "Cruzar – Live US-Mexico Border Wait Times",
   description: "Live wait times to cross from Mexico into the US at all 52 border ports. Free for commuters and freight.",
   manifest: "/manifest.json",
