@@ -20,7 +20,7 @@ jobs:
           node-version: '20'
 
       - name: Install video-generator dependencies
-        run: cd video-generator && npm ci
+        run: cd video-generator && npm install
 
       - name: Verify Remotion installed
         run: ls video-generator/node_modules/@remotion/
