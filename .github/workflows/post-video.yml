@@ -6,14 +6,11 @@ on:
     - cron: '30 16 * * *'  # 11:30am CDT
     - cron: '30 20 * * *'  # 3:30pm CDT
     - cron: '30 0 * * *'   # 7:00pm CDT
-  workflow_dispatch:        # allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   render-and-post:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: video-generator
 
     steps:
       - uses: actions/checkout@v4
@@ -22,8 +19,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install video-generator dependencies
+        run: cd video-generator && npm ci
+
+      - name: Verify Remotion installed
+        run: ls video-generator/node_modules/@remotion/
 
       - name: Install Chrome
         run: |
@@ -35,4 +35,4 @@ jobs:
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
           FACEBOOK_PAGE_TOKEN: ${{ secrets.FACEBOOK_PAGE_TOKEN }}
           PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
-        run: node render.mjs
+        run: cd video-generator && node render.mjs
