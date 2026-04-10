@@ -1,0 +1,35 @@
+name: Post Border Wait Time Video
+
+on:
+  schedule:
+    - cron: '30 10 * * *'  # 5:30am CDT (summer UTC-5)
+    - cron: '30 16 * * *'  # 11:30am CDT
+    - cron: '30 20 * * *'  # 3:30pm CDT
+    - cron: '30 0 * * *'   # 7:00pm CDT
+  workflow_dispatch:        # allows manual trigger from GitHub Actions tab
+
+jobs:
+  render-and-post:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: video-generator
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Chrome for Remotion
+        run: npx remotion browser ensure
+
+      - name: Render video and post to Facebook
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_TOKEN: ${{ secrets.FACEBOOK_PAGE_TOKEN }}
+        run: node render.mjs
