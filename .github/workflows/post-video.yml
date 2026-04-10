@@ -25,11 +25,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Chrome for Remotion
-        run: npx remotion browser ensure
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
 
       - name: Render video and post to Facebook
         env:
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
           FACEBOOK_PAGE_TOKEN: ${{ secrets.FACEBOOK_PAGE_TOKEN }}
+          PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
         run: node render.mjs

@@ -71,6 +71,7 @@ async function main() {
     codec: 'h264',
     outputLocation: outputPath,
     inputProps: { crossings },
+    browserExecutable: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     onProgress: ({ progress }) => {
       process.stdout.write(`\r   ${Math.round(progress * 100)}% complete`);
     },
