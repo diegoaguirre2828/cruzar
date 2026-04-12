@@ -95,6 +95,15 @@ Rules:
 - A single post may describe MULTIPLE lanes or crossings. Emit one observation per lane+crossing.
   "B&M 20 min, nada de fila en sentri" → [{vehicle, 20}, {sentri, 0}]
   "Hidalgo lleno pero pharr fluido"   → [{hidalgo vehicle, 60}, {pharr vehicle, 5}]
+- Q&A PATTERN: the text may be a question followed by one or more replies. If the ORIGINAL
+  POST is a question ("alguien sabe la fila en Hidalgo?"), use the REPLIES as the source of
+  truth. Replies come after the post text and often begin with a short answer like "30 min",
+  "fluido", "1 hora". Example input:
+    "Alguien sabe la fila en Hidalgo?
+     Reply: ahorita 45 min, rayos x a todos
+     Reply: yo crucé fluido hace rato"
+  → Emit [{port: Hidalgo, vehicle, 45}] — the most recent substantive answer wins.
+  Don't average contradictory replies; trust the one with the most specific number.
 - Spanish slang: "fluido"/"fluidito"/"sin fila"/"rapido"/"nada de fila" ≈ 5 min.
   "mucha fila"/"lleno" (no number) ≈ 60 min. "1 hora"=60, "hora y media"=90, "2 horas"=120.
 - "rayos x", "inspección", "retén" → set has_inspection=true. "choque", "accidente" → has_accident=true.

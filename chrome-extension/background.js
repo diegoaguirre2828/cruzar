@@ -7,25 +7,40 @@
 const DEFAULT_ENDPOINT = 'https://cruzar.app/api/ingest/fb-post'
 
 chrome.runtime.onInstalled.addListener(() => {
-  // Right-click selected text → send text only
-  chrome.contextMenus.create({
-    id: 'cruzar-ingest-selection',
-    title: '📥 Enviar a Cruzar',
-    contexts: ['selection'],
-    documentUrlPatterns: [
-      'https://*.facebook.com/*',
-      'https://m.facebook.com/*',
-    ],
-  })
-  // Right-click on an image → send image (Claude vision will read the queue)
-  chrome.contextMenus.create({
-    id: 'cruzar-ingest-image',
-    title: '📸 Enviar foto a Cruzar',
-    contexts: ['image'],
-    documentUrlPatterns: [
-      'https://*.facebook.com/*',
-      'https://m.facebook.com/*',
-    ],
+  // Remove any stale items first (during dev the IDs can conflict)
+  chrome.contextMenus.removeAll(() => {
+    // 1. Right-click selected text → send only the selection (fastest, for one-liners)
+    chrome.contextMenus.create({
+      id: 'cruzar-ingest-selection',
+      title: '📥 Enviar selección a Cruzar',
+      contexts: ['selection'],
+      documentUrlPatterns: [
+        'https://*.facebook.com/*',
+        'https://m.facebook.com/*',
+      ],
+    })
+    // 2. Right-click anywhere on a post → grab the whole post + its comments
+    //    via the content script. Best for Q&A threads where the reply has
+    //    the wait time, not the post.
+    chrome.contextMenus.create({
+      id: 'cruzar-ingest-article',
+      title: '📥 Enviar post + comentarios',
+      contexts: ['page', 'selection', 'link'],
+      documentUrlPatterns: [
+        'https://*.facebook.com/*',
+        'https://m.facebook.com/*',
+      ],
+    })
+    // 3. Right-click on an image → send image (Claude vision reads the queue)
+    chrome.contextMenus.create({
+      id: 'cruzar-ingest-image',
+      title: '📸 Enviar foto a Cruzar',
+      contexts: ['image'],
+      documentUrlPatterns: [
+        'https://*.facebook.com/*',
+        'https://m.facebook.com/*',
+      ],
+    })
   })
 })
 
@@ -57,6 +72,51 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (!selectionText) { notify('No text selected', 'error'); return }
     await postToIngest(url, secret, {
       text: selectionText,
+      group_name: groupName,
+      posted_at: new Date().toISOString(),
+    })
+    return
+  }
+
+  if (info.menuItemId === 'cruzar-ingest-article') {
+    // Ask the content script (already loaded on this tab) to walk up from the
+    // element the user right-clicked to the enclosing post article, and return
+    // its innerText — which includes post body + all visible comments.
+    let articleText = ''
+    try {
+      const [{ result }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => (window.__cruzarExtractArticle ? window.__cruzarExtractArticle() : { ok: false, reason: 'content-script-missing' }),
+      })
+      if (result?.ok) {
+        articleText = result.text || ''
+      } else {
+        const reason = result?.reason || 'unknown'
+        notify(
+          reason === 'content-script-missing'
+            ? 'Content script not loaded — reload the FB tab'
+            : reason === 'no-target'
+              ? 'Right-click directly on the post first'
+              : reason === 'no-article'
+                ? 'Couldn\'t find the post container — try right-clicking on the post text'
+                : 'No article text found',
+          'error',
+        )
+        return
+      }
+    } catch (err) {
+      notify(`Article extract failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
+      return
+    }
+
+    // FB articles can be huge once "See more comments" is expanded. Cap at
+    // 6k chars so the LLM call stays cheap and the payload doesn't bloat.
+    if (articleText.length > 6000) {
+      articleText = articleText.slice(0, 6000) + '\n…'
+    }
+
+    await postToIngest(url, secret, {
+      text: articleText,
       group_name: groupName,
       posted_at: new Date().toISOString(),
     })
