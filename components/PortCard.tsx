@@ -130,6 +130,32 @@ export function PortCard({ port, signal }: Props) {
           </div>
         )}
 
+        {(port.source || port.reportCount) && primaryWait !== null && (
+          <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500 ml-4">
+            {(() => {
+              const parts: string[] = []
+              if (port.source === 'community')
+                parts.push(lang === 'es' ? `según ${port.reportCount} reportes` : `from ${port.reportCount} reports`)
+              else if (port.source === 'consensus')
+                parts.push(
+                  lang === 'es'
+                    ? `consenso · CBP + ${port.reportCount ? `${port.reportCount} reportes` : 'tráfico'}`
+                    : `consensus · CBP + ${port.reportCount ? `${port.reportCount} reports` : 'traffic'}`
+                )
+              else if (port.source === 'traffic')
+                parts.push(lang === 'es' ? 'estimado por tráfico' : 'traffic-estimated')
+              else parts.push(lang === 'es' ? 'según CBP' : 'per CBP')
+
+              if (port.lastReportMinAgo != null && port.lastReportMinAgo <= 30)
+                parts.push(lang === 'es' ? `último reporte hace ${port.lastReportMinAgo} min` : `last report ${port.lastReportMinAgo} min ago`)
+              else if (port.cbpStaleMin != null && port.cbpStaleMin > 25)
+                parts.push(lang === 'es' ? `CBP hace ${port.cbpStaleMin} min` : `CBP ${port.cbpStaleMin} min ago`)
+
+              return parts.join(' · ')
+            })()}
+          </p>
+        )}
+
         {signal && (
           <div className={`mt-2 px-2 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 ${
             signal.type === 'accident' ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' :

@@ -46,6 +46,14 @@ export interface PortWaitTime {
   pedestrianClosed: boolean
   commercialClosed: boolean
   recordedAt: string | null
+  // Provenance — added so the UI can show users where the headline number comes from
+  source?: 'cbp' | 'community' | 'consensus' | 'traffic'
+  cbpVehicle?: number | null
+  communityVehicle?: number | null
+  trafficVehicle?: number | null
+  reportCount?: number
+  lastReportMinAgo?: number | null
+  cbpStaleMin?: number | null
 }
 
 export interface WaitTimeReading {

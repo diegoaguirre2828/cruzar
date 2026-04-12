@@ -61,7 +61,14 @@ function getBestWait(lanes: any): { wait: number | null; isClosed: boolean; noDa
     hasOpenLanes = true
 
     const delay = lane.delay_minutes
-    if (opStatus === 'no delay' || opStatus === 'Update Pending' || delay === '0') {
+
+    if (opStatus === 'Update Pending') {
+      // CBP sensor is offline / hasn't reported — DO NOT treat as 0.
+      // Leave wait unknown so consumers can fall back to community reports.
+      continue
+    }
+
+    if (opStatus === 'no delay' || delay === '0') {
       waits.push(0)
     } else if (delay && delay !== '') {
       const n = parseInt(delay, 10)
