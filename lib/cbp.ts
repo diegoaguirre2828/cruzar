@@ -3,6 +3,52 @@ import type { CbpPort, PortWaitTime } from '@/types'
 
 const CBP_API_URL = 'https://bwt.cbp.gov/api/bwtnew'
 
+// CBP reports `date`/`time` in the PORT's local timezone, with DST applied
+// even to ports in Arizona (which doesn't observe DST). No timezone field is
+// included in the API response, so we infer the offset from the port name.
+// Offsets are for April (DST active). When DST ends in November, these are
+// off by 1 hour until we teach this map about standard time — acceptable
+// tradeoff vs hardcoding the full tz database.
+function portUtcOffsetHours(portName: string): number {
+  const name = portName.toLowerCase()
+  // Pacific DST: California ports
+  if (
+    name.includes('san ysidro') || name.includes('otay') || name.includes('tecate') ||
+    name.includes('calexico')   || name.includes('andrade')
+  ) return -7
+  // Mountain DST: New Mexico + Arizona + El Paso (westernmost TX)
+  if (
+    name.includes('el paso')   || name.includes('santa teresa') || name.includes('columbus') ||
+    name.includes('antelope')  || name.includes('douglas')      || name.includes('naco')     ||
+    name.includes('nogales')   || name.includes('sasabe')       || name.includes('lukeville') ||
+    name.includes('san luis')
+  ) return -6
+  // Everything else on the Mexican border → Central DST (TX south/east of El Paso)
+  return -5
+}
+
+function parseCbpLocalDateTime(
+  date: string | undefined,
+  time: string | undefined,
+  portName: string,
+): string | null {
+  if (!date || !time) return null
+  // date comes as "M/D/YYYY" or "MM/DD/YYYY", time as "HH:MM:SS"
+  const dateParts = date.split('/').map((s) => parseInt(s, 10))
+  const timeParts = time.split(':').map((s) => parseInt(s, 10))
+  if (dateParts.length !== 3 || timeParts.length < 2) return null
+  const [m, d, y] = dateParts
+  const [hh, mi, ss = 0] = timeParts
+  if ([m, d, y, hh, mi, ss].some((n) => Number.isNaN(n))) return null
+
+  const offset = portUtcOffsetHours(portName)
+  const sign = offset < 0 ? '-' : '+'
+  const abs = Math.abs(offset)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  // ISO 8601 with explicit offset — Date() will parse this correctly on any server
+  return `${y}-${pad(m)}-${pad(d)}T${pad(hh)}:${pad(mi)}:${pad(ss)}${sign}${pad(abs)}:00`
+}
+
 // RGV port numbers from CBP API
 const RGV_PORT_IDS = new Set([
   '240401', // Hidalgo
@@ -130,7 +176,7 @@ export const fetchRgvWaitTimes = cache(async function fetchRgvWaitTimes(): Promi
         vehicleClosed: vehicleResult.isClosed,
         pedestrianClosed: pedestrianResult.isClosed,
         commercialClosed: commercialResult.isClosed,
-        recordedAt: p.date && p.time ? `${p.date} ${p.time}` : null,
+        recordedAt: parseCbpLocalDateTime(p.date, p.time, p.port_name),
       }
     })
 })

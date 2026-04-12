@@ -8,12 +8,15 @@ export const dynamic = 'force-dynamic'
 
 const REPORT_FRESH_MIN = 30
 const CBP_STALE_MIN = 25
-const CBP_VERY_STALE_MIN = 60
+// "Very stale" = older than this, we stop showing the number entirely and
+// just ask for a community report. Below this, we still show stale CBP with
+// a loud staleness badge — bad data beats no data when the user can see it's old.
+const CBP_VERY_STALE_MIN = 180
 const DIVERGE_THRESHOLD_MIN = 15
 // HERE traffic API doesn't reliably detect stationary border queues —
 // cars parked at an inspection booth aren't seen as "congestion" on a road.
 // So a sub-10min traffic estimate on its own is not trustworthy and we'd
-// rather show nothing (and prompt a community report) than a confident "<1 min".
+// rather fall back to stale CBP than show a confident "<1 min".
 const TRAFFIC_ONLY_TRUST_FLOOR_MIN = 10
 
 interface RecentReport {
@@ -116,9 +119,9 @@ export async function GET() {
         if (trafficVehicle != null) numerics.push(trafficVehicle)
 
         if (numerics.length === 0) {
-          // CBP is either stale or missing, HERE gave nothing.
-          // Don't show a stale CBP number as if it were current — users
-          // see the big green badge and miss the tiny "X min ago" label.
+          // No fresh CBP, no HERE. Fall back to stale CBP if it's not
+          // ancient — the card will show a loud "hace Xh" badge and a
+          // "report now" CTA, so honesty is preserved.
           if (cbpVehicle != null && !cbpIsVeryStale) {
             chosen = cbpVehicle
             source = 'cbp'
@@ -128,11 +131,16 @@ export async function GET() {
           }
         } else if (numerics.length === 1) {
           const only = numerics[0]
-          // Traffic-only estimate below the trust floor = refuse to answer.
-          // HERE doesn't detect stopped cars waiting at a border booth.
+          // Traffic-only estimate below the trust floor is noise (HERE can't
+          // see stopped queues). Prefer stale CBP over a low HERE estimate.
           if (usableCbp == null && only < TRAFFIC_ONLY_TRUST_FLOOR_MIN) {
-            chosen = null
-            source = 'traffic'
+            if (cbpVehicle != null && !cbpIsVeryStale) {
+              chosen = cbpVehicle
+              source = 'cbp'
+            } else {
+              chosen = null
+              source = 'traffic'
+            }
           } else {
             chosen = only
             source = usableCbp != null ? 'cbp' : 'traffic'
@@ -156,20 +164,9 @@ export async function GET() {
         chosen = Math.max(chosen, 30)
       }
 
-      // CBP is the only source for pedestrian / sentri / commercial lanes
-      // (HERE doesn't distinguish lane types). If CBP is very stale and we
-      // have no community confirmation, those numbers are untrustworthy too.
-      const suppressStaleLanes = cbpIsVeryStale && reportCount === 0
-      const outPedestrian  = suppressStaleLanes ? null : p.pedestrian
-      const outSentri      = suppressStaleLanes ? null : p.sentri
-      const outCommercial  = suppressStaleLanes ? null : p.commercial
-
       return {
         ...p,
         vehicle: chosen,
-        pedestrian: outPedestrian,
-        sentri: outSentri,
-        commercial: outCommercial,
         source,
         cbpVehicle,
         communityVehicle,
