@@ -1,27 +1,50 @@
 {
-  "name": "Cruzar",
+  "name": "Cruzar – Live Border Wait Times",
   "short_name": "Cruzar",
-  "description": "Live wait times to enter the US from Mexico at all 52 border ports.",
+  "description": "Live US-Mexico border crossing wait times. Free for commuters, truckers, and freight operators.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#111827",
-  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "lang": "es-MX",
+  "dir": "ltr",
+  "categories": ["travel", "navigation", "utilities"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["travel", "navigation", "utilities"],
-  "lang": "en-US",
+  "shortcuts": [
+    {
+      "name": "Near Me",
+      "short_name": "Near Me",
+      "description": "Find the nearest border crossing",
+      "url": "/?nearme=1",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "screenshots": []
 }

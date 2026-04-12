@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   // Get owner business name
   const { data: owner } = await db
     .from('profiles')
-    .select('full_name, company_name')
+    .select('full_name, company')
     .eq('id', driver.owner_id)
     .single()
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       current_status: driver.current_status,
       current_port_id: driver.current_port_id,
       last_checkin_at: driver.last_checkin_at,
-      company: owner?.company_name || owner?.full_name || null,
+      company: owner?.company || owner?.full_name || null,
       dispatcher_phone: driver.dispatcher_phone || null,
     }
   })

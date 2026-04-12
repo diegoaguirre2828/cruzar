@@ -12,7 +12,7 @@ import { ArrowLeft, Save, CreditCard, LogOut, User, Building2, FileText, Trophy 
 export default function AccountPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
-  const { t } = useLang()
+  const { t, lang } = useLang()
 
   const TIER_LABELS: Record<string, { label: string; color: string }> = {
     free:     { label: 'Free',     color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' },
@@ -33,6 +33,7 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [portalError, setPortalError] = useState('')
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -68,11 +69,12 @@ export default function AccountPage() {
 
   async function handlePortal() {
     setPortalLoading(true)
+    setPortalError('')
     const res = await fetch('/api/stripe/portal', { method: 'POST' })
     const { url, error } = await res.json()
     if (url) window.location.href = url
     else {
-      alert(error || 'Could not open billing portal')
+      setPortalError(error || (lang === 'es' ? 'No se pudo abrir el portal. Intenta de nuevo.' : 'Could not open billing portal. Try again.'))
       setPortalLoading(false)
     }
   }
@@ -162,6 +164,9 @@ export default function AccountPage() {
               </Link>
             )}
           </div>
+          {portalError && (
+            <p className="text-xs text-red-500 mt-2">{portalError}</p>
+          )}
         </div>
 
         {/* Points & badges */}
@@ -275,6 +280,14 @@ export default function AccountPage() {
             <button onClick={signOut} className="block text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors">
               {t.signOutCruza}
             </button>
+            <div className="flex gap-3 pt-1">
+              <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                {lang === 'es' ? 'Privacidad' : 'Privacy'}
+              </Link>
+              <Link href="/terms" className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                {lang === 'es' ? 'Términos' : 'Terms'}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

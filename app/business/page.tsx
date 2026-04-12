@@ -1408,6 +1408,25 @@ function BusinessPortalPage() {
               )
             })}
 
+            {/* Data Export */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-4">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Export Historical Data</h3>
+              <p className="text-xs text-gray-400 mb-3">Download wait time readings as CSV for your own analysis or reporting.</p>
+              <div className="flex flex-wrap gap-2">
+                {[7, 30, 90].map(days => (
+                  <a
+                    key={days}
+                    href={`/api/export?days=${days}`}
+                    download
+                    className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-3 py-2 rounded-xl transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Last {days} days
+                  </a>
+                ))}
+              </div>
+            </div>
+
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-5 text-center">
               <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Need a custom data feed?</p>
               <p className="text-xs text-gray-400 mb-3">We can integrate live border data directly into your TMS, ERP, or dispatch system via API.</p>

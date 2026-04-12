@@ -5,6 +5,8 @@ import { LangProvider } from "@/lib/LangContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
 import { Footer } from "@/components/Footer";
 import { BottomNav } from "@/components/BottomNav";
+import { PWASetup } from "@/components/PWASetup";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.cruzar.app'),
+  metadataBase: new URL('https://cruzar.app'),
   title: "Cruzar – Live US-Mexico Border Wait Times",
   description: "Live wait times to cross from Mexico into the US at all 52 border ports. Free for commuters and freight.",
   manifest: "/manifest.json",
@@ -64,9 +66,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
-        <meta name="theme-color" content="#111827" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Cruzar" />
+        <meta name="theme-color" content="#0f172a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="google-adsense-account" content="ca-pub-8997191973110385" />
       </head>
@@ -79,8 +84,10 @@ export default function RootLayout({
             </div>
             <Footer />
             <BottomNav />
+            <PWASetup />
           </LangProvider>
         </ThemeProvider>
+        <Analytics />
         {process.env.NEXT_PUBLIC_ADSENSE_CLIENT && (
           <Script
             async

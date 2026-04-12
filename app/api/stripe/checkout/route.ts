@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
 
   const stripe = getStripe()
-  const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://www.cruzar.app'
+  const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://cruzar.app'
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',

@@ -8,16 +8,19 @@ interface LangCtx { lang: Lang; t: T; toggle: () => void }
 const Ctx = createContext<LangCtx>({ lang: 'en', t: translations.en, toggle: () => {} })
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>('en')
+  const [lang, setLang] = useState<Lang>('es')
 
   useEffect(() => {
     const saved = localStorage.getItem('cruzar_lang') as Lang | null
     if (saved === 'es' || saved === 'en') {
       setLang(saved)
     } else {
-      // Auto-detect: default to Spanish if browser language is Spanish
-      const browserLang = navigator.language || (navigator.languages?.[0] ?? 'en')
-      if (browserLang.toLowerCase().startsWith('es')) {
+      // Default to Spanish — primary audience is border crossers who speak Spanish
+      // Only switch to English if browser is explicitly set to English (not Spanish or anything else)
+      const browserLang = navigator.language || (navigator.languages?.[0] ?? 'es')
+      if (browserLang.toLowerCase().startsWith('en')) {
+        setLang('en')
+      } else {
         setLang('es')
       }
     }

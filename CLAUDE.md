@@ -373,7 +373,7 @@ Crossing coordinates are defined in TWO places — keep them in sync:
 ## 13. Marketing System
 
 ### Video Generator
-- **Run:** `cd /c/Users/dnawa/border-wait-app/video-generator && node render.mjs`
+- **Run:** `cd /c/Users/dnawa/cruzar/video-generator && node render.mjs`
 - Fetches live data → renders 10-second animated vertical (1080x1920) MP4
 - Shows 8 featured crossings with animated wait time numbers
 - Color-coded green/yellow/red bars
@@ -451,7 +451,7 @@ OWNER_EMAIL=                       (set)
 
 ### Standard Deploy Command
 ```bash
-cd /c/Users/dnawa/border-wait-app
+cd /c/Users/dnawa/cruzar
 npm run build   # verify clean build first
 vercel deploy --prod
 ```
@@ -590,7 +590,7 @@ For context on future projects (full details in memory):
 ## 20. File Structure Reference
 
 ```
-border-wait-app/
+cruzar/
 ├── app/
 │   ├── page.tsx                    # Homepage — port list + map
 │   ├── port/[portId]/              # Individual port detail page

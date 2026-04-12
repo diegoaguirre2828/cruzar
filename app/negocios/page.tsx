@@ -403,6 +403,23 @@ export default function NegociosPage() {
           <Plus className="w-4 h-4" />
           {t.addBusiness}
         </button>
+
+        {/* Advertise CTA */}
+        <Link href="/advertise" className="block">
+          <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-bold text-white">
+                {lang === 'es' ? '📣 ¿Tienes un negocio cerca del puente?' : '📣 Do you have a business near the bridge?'}
+              </p>
+              <p className="text-xs text-yellow-100 mt-0.5">
+                {lang === 'es' ? 'Llega a miles de personas que cruzan diario' : 'Reach thousands of daily border crossers'}
+              </p>
+            </div>
+            <span className="text-white text-sm font-bold flex-shrink-0 ml-3">
+              {lang === 'es' ? 'Ver →' : 'See →'}
+            </span>
+          </div>
+        </Link>
       </div>
 
       {claimTarget && (

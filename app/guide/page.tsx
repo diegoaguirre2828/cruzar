@@ -97,6 +97,89 @@ export default function GuidePage() {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>
         </div>
 
+        {/* How to Use Cruzar */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 mb-5">
+          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-4">
+            {lang === 'es' ? '📱 Cómo usar Cruzar' : '📱 How to Use Cruzar'}
+          </h2>
+
+          {/* Color legend */}
+          <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            {lang === 'es' ? 'Colores de espera' : 'Wait colors'}
+          </p>
+          <div className="space-y-2 mb-5">
+            <div className="flex items-center gap-3">
+              <span className="w-4 h-4 rounded-full bg-green-500 flex-shrink-0" />
+              <span className="text-base font-semibold text-gray-800 dark:text-gray-200">
+                {lang === 'es' ? 'Verde — Sin espera o menos de 20 min' : 'Green — No wait or under 20 min'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-4 h-4 rounded-full bg-yellow-400 flex-shrink-0" />
+              <span className="text-base font-semibold text-gray-800 dark:text-gray-200">
+                {lang === 'es' ? 'Amarillo — Espera moderada (20–45 min)' : 'Yellow — Moderate wait (20–45 min)'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-4 h-4 rounded-full bg-red-500 flex-shrink-0" />
+              <span className="text-base font-semibold text-gray-800 dark:text-gray-200">
+                {lang === 'es' ? 'Rojo — Espera larga (más de 45 min)' : 'Red — Long wait (over 45 min)'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-4 h-4 rounded-full bg-gray-400 flex-shrink-0" />
+              <span className="text-base font-semibold text-gray-800 dark:text-gray-200">
+                {lang === 'es' ? 'Gris — Cerrado o sin datos' : 'Gray — Closed or no data'}
+              </span>
+            </div>
+          </div>
+
+          {/* Lane types */}
+          <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            {lang === 'es' ? 'Tipos de carril' : 'Lane types'}
+          </p>
+          <div className="space-y-2 mb-5">
+            {[
+              { icon: '🚗', en: 'Car — Standard vehicle lane', es: 'Auto — Carril estándar para vehículos' },
+              { icon: '🚶', en: 'Walk — Pedestrian lane', es: 'Caminando — Carril peatonal' },
+              { icon: '⚡', en: 'SENTRI — Trusted Traveler fast lane', es: 'SENTRI — Carril rápido para viajeros de confianza' },
+              { icon: '🚛', en: 'Truck — Commercial vehicle lane', es: 'Camión — Carril para vehículos comerciales' },
+            ].map(lane => (
+              <div key={lane.en} className="flex items-center gap-3">
+                <span className="text-xl flex-shrink-0">{lane.icon}</span>
+                <span className="text-base text-gray-700 dark:text-gray-300">{lang === 'es' ? lane.es : lane.en}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Quick tips */}
+          <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            {lang === 'es' ? 'Consejos rápidos' : 'Quick tips'}
+          </p>
+          <div className="space-y-2">
+            {[
+              {
+                en: '📍  Tap "Near Me" on the main screen to see crossings closest to you.',
+                es: '📍  Toca "Cerca de mí" para ver los cruces más cercanos a ti.',
+              },
+              {
+                en: '📣  Tap any crossing → Report to share your real wait time and earn points.',
+                es: '📣  Toca un cruce → Reportar para compartir tu espera y ganar puntos.',
+              },
+              {
+                en: '🔔  Upgrade to Pro to get alerts when a crossing drops below your target wait.',
+                es: '🔔  Sube a Pro para recibir alertas cuando la espera baje de tu límite.',
+              },
+              {
+                en: '🔄  Data refreshes automatically every 5 minutes.',
+                es: '🔄  Los datos se actualizan automáticamente cada 5 minutos.',
+              },
+            ].map((tip, i) => (
+              <p key={i} className="text-base text-gray-700 dark:text-gray-300 leading-relaxed">{lang === 'es' ? tip.es : tip.en}</p>
+            ))}
+          </div>
+        </div>
+
         {/* Guide cards */}
         <div className="space-y-3 mb-6">
           {GUIDES.map(guide => (

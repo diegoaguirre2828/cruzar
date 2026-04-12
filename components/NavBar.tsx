@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { useTheme } from '@/lib/ThemeContext'
-import { Settings, Moon, Sun, Building2 } from 'lucide-react'
+import { Settings, Moon, Sun, Building2, MessageCircle } from 'lucide-react'
 
 export function NavBar() {
   const { user, loading } = useAuth()
@@ -44,6 +44,15 @@ export function NavBar() {
         {lang === 'en' ? 'ES' : 'EN'}
       </button>
 
+      <Link
+        href="/chat"
+        className="hidden md:flex items-center gap-1 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 px-2.5 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        title={lang === 'es' ? 'Asistente Fronterizo' : 'Border Assistant'}
+      >
+        <MessageCircle className="w-3.5 h-3.5" />
+        {lang === 'es' ? 'Ayuda' : 'Help'}
+      </Link>
+
       {isBusiness && (
         <Link
           href="/business"
@@ -59,9 +68,9 @@ export function NavBar() {
         <>
           {points > 0 && (
             <Link
-              href="/rewards"
+              href="/leaderboard"
               className="flex items-center gap-1 text-xs font-bold text-yellow-300 bg-gray-900 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 px-3 py-1.5 rounded-xl transition-colors"
-              title="Points & Rewards"
+              title="Points & Leaderboard"
             >
               🏆 {points} pts
             </Link>

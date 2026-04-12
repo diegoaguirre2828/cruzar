@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getServiceClient } from '@/lib/supabase'
 
+const FOUNDER_LIMIT = 50
+
 export async function GET() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -16,6 +18,19 @@ export async function GET() {
   const db = getServiceClient()
   const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single()
   const { data: sub } = await db.from('subscriptions').select('tier, status, current_period_end').eq('user_id', user.id).single()
+
+  // Award founder badge if under the limit and not already awarded
+  if (profile && !profile.badges?.includes('founder')) {
+    const { count } = await db
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .contains('badges', ['founder'])
+    if ((count ?? 0) < FOUNDER_LIMIT) {
+      const updatedBadges = [...(profile.badges || []), 'founder']
+      await db.from('profiles').update({ badges: updatedBadges }).eq('id', user.id)
+      profile.badges = updatedBadges
+    }
+  }
 
   return NextResponse.json({ profile, subscription: sub, email: user.email })
 }

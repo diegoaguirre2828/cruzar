@@ -3,6 +3,20 @@ import { getServiceClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
+const negociosRateLimit = new Map<string, { count: number; resetAt: number }>()
+
+function checkNegociosRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = negociosRateLimit.get(ip)
+  if (!entry || now > entry.resetAt) {
+    negociosRateLimit.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 })
+    return true
+  }
+  if (entry.count >= 5) return false
+  entry.count++
+  return true
+}
+
 export async function GET(req: NextRequest) {
   const category = req.nextUrl.searchParams.get('category')
   const portId = req.nextUrl.searchParams.get('portId')
@@ -30,6 +44,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+  if (!checkNegociosRateLimit(ip)) {
+    return NextResponse.json({ error: 'Too many submissions. Try again later.' }, { status: 429 })
+  }
+
   const body = await req.json()
   const { name, description, address, category, phone, whatsapp, port_ids, submitted_by_email, hours, notes_es } = body
 
@@ -41,19 +60,24 @@ export async function POST(req: NextRequest) {
     cafe: '☕', gas: '⛽', tire: '🔧', taxi: '🚕', other: '🏪',
   }
 
+  const VALID_CATEGORIES = ['exchange', 'dental', 'pharmacy', 'restaurant', 'cafe', 'gas', 'tire', 'taxi', 'other']
+  if (!VALID_CATEGORIES.includes(category)) {
+    return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
+  }
+
   const db = getServiceClient()
   const { data, error } = await db.from('rewards_businesses').insert({
-    name: name.trim(),
-    description: description?.trim() || null,
-    address: address?.trim() || null,
-    category: category || 'other',
+    name: name.trim().slice(0, 200),
+    description: description?.trim().slice(0, 500) || null,
+    address: address?.trim().slice(0, 300) || null,
+    category,
     logo_emoji: EMOJI_MAP[category] || '🏪',
-    phone: phone?.trim() || null,
-    whatsapp: whatsapp?.trim() || null,
-    port_ids: port_ids || [],
-    submitted_by_email: submitted_by_email?.trim() || null,
-    hours: hours?.trim() || null,
-    notes_es: notes_es?.trim() || null,
+    phone: phone?.trim().slice(0, 50) || null,
+    whatsapp: whatsapp?.trim().slice(0, 50) || null,
+    port_ids: Array.isArray(port_ids) ? port_ids.slice(0, 10) : [],
+    submitted_by_email: submitted_by_email?.trim().slice(0, 200) || null,
+    hours: hours?.trim().slice(0, 300) || null,
+    notes_es: notes_es?.trim().slice(0, 500) || null,
     approved: true,   // free listings go live immediately
     claimed: false,
     listing_tier: 'free',

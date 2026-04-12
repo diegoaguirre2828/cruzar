@@ -105,8 +105,8 @@ export async function GET(req: NextRequest) {
 
     const lines = crossings.map(c => {
       if (c.isClosed) return `  ⚫ ${c.name}: Cerrado`
-      if (c.noData) return `  ⚪ ${c.name}: Sin datos`
-      return `  ${emoji(c.level)} ${c.name}: ${c.wait} min`
+      if (c.noData || c.wait === null) return `  ⚪ ${c.name}: Sin datos`
+      return `  ${emoji(c.level)} ${c.name}: ${c.wait === 0 ? '<1' : c.wait} min`
     })
     const fastest = crossings.find(c => c.level === 'low' && !c.isClosed && !c.noData)
 
@@ -129,42 +129,6 @@ export async function GET(req: NextRequest) {
   const dateStr = now.toLocaleDateString('es-MX', {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Chicago',
   })
-
-  // Post to Facebook Page
-  if (process.env.FACEBOOK_PAGE_ID && process.env.FACEBOOK_PAGE_TOKEN) {
-    // Build one clean post combining all active regions
-    const now2 = new Date()
-    const timeStrCST = now2.toLocaleTimeString('es-MX', {
-      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago',
-    })
-    const dateStrFB = now2.toLocaleDateString('es-MX', {
-      weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Chicago',
-    })
-
-    const fbPost = `🌉 TIEMPOS DE ESPERA — ${timeStrCST.toUpperCase()}
-${dateStrFB.charAt(0).toUpperCase() + dateStrFB.slice(1)}
-
-${regionBlocks.join('\n\n─────────────────\n\n')}
-
-📱 Tiempos en vivo → cruzar.app
-Reporta tu tiempo y ayuda a todos en la fila 🙌
-
-#border #frontera #cruzar #espera #tiemposdeespera`
-
-    const fbRes = await fetch(`https://graph.facebook.com/v19.0/${process.env.FACEBOOK_PAGE_ID}/feed`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: fbPost,
-        access_token: process.env.FACEBOOK_PAGE_TOKEN,
-      }),
-    })
-    const fbData = await fbRes.json()
-    console.log('Facebook API response:', JSON.stringify(fbData))
-    if (!fbRes.ok) {
-      return NextResponse.json({ success: false, fbError: fbData })
-    }
-  }
 
   if (process.env.RESEND_API_KEY && process.env.OWNER_EMAIL) {
     await fetch('https://api.resend.com/emails', {

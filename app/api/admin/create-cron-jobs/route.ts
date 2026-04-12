@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export const maxDuration = 30
 
-const BASE_URL = 'https://www.cruzar.app/api/cron/generate-all-posts'
+const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
+
+const BASE_URL = 'https://cruzar.app/api/cron/generate-all-posts'
 
 // 4 jobs only — one per peak time (CST/CDT = UTC-5 in summer)
 // All regions handled in a single request each time
@@ -14,6 +18,17 @@ const CRON_JOBS = [
 ]
 
 export async function POST(req: NextRequest) {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll() } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.email !== ADMIN_EMAIL) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { cronApiKey } = await req.json()
   if (!cronApiKey) {
     return NextResponse.json({ error: 'Missing cronApiKey' }, { status: 400 })

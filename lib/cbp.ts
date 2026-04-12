@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import type { CbpPort, PortWaitTime } from '@/types'
 
 const CBP_API_URL = 'https://bwt.cbp.gov/api/bwtnew'
@@ -60,7 +61,7 @@ function getBestWait(lanes: any): { wait: number | null; isClosed: boolean; noDa
     hasOpenLanes = true
 
     const delay = lane.delay_minutes
-    if (opStatus === 'no delay' || delay === '0') {
+    if (opStatus === 'no delay' || opStatus === 'Update Pending' || delay === '0') {
       waits.push(0)
     } else if (delay && delay !== '') {
       const n = parseInt(delay, 10)
@@ -74,7 +75,7 @@ function getBestWait(lanes: any): { wait: number | null; isClosed: boolean; noDa
   return { wait: Math.min(...waits), isClosed: false, noData: false }
 }
 
-export async function fetchRgvWaitTimes(): Promise<PortWaitTime[]> {
+export const fetchRgvWaitTimes = cache(async function fetchRgvWaitTimes(): Promise<PortWaitTime[]> {
   const res = await fetch(CBP_API_URL, {
     next: { revalidate: 0 },
     headers: { Accept: 'application/json' },
@@ -119,10 +120,13 @@ export async function fetchRgvWaitTimes(): Promise<PortWaitTime[]> {
         commercialLanesOpen: parseLanes(cvl?.standard_lanes?.lanes_open),
         isClosed,
         noData,
-        recordedAt: p.date_time,
+        vehicleClosed: vehicleResult.isClosed,
+        pedestrianClosed: pedestrianResult.isClosed,
+        commercialClosed: commercialResult.isClosed,
+        recordedAt: p.date && p.time ? `${p.date} ${p.time}` : null,
       }
     })
-}
+})
 
 export function getWaitLevel(minutes: number | null): 'low' | 'medium' | 'high' | 'closed' | 'unknown' {
   if (minutes === null) return 'unknown'

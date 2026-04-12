@@ -21,7 +21,7 @@ import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
 import { useAuth } from '@/lib/useAuth'
 import { useTier, canAccess } from '@/lib/useTier'
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
+import { Bell, Share2, Check } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
 import type { PortWaitTime, WaitTimeReading } from '@/types'
 
@@ -68,6 +68,9 @@ export function PortDetailClient({ port, portId }: Props) {
   const [alertSaving, setAlertSaving] = useState(false)
   type CommunitySignal = { type: 'accident' | 'inspection' | 'worse' | 'better'; count: number }
   const [communitySignal, setCommunitySignal] = useState<CommunitySignal | null>(null)
+  const [shareCopied, setShareCopied] = useState(false)
+  const [showJustCrossed, setShowJustCrossed] = useState(false)
+  const [lastCrossed, setLastCrossed] = useState<{ minutesAgo: number; waited: number | null } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -93,7 +96,7 @@ export function PortDetailClient({ port, portId }: Props) {
         if (reportsRes.ok) {
           const { reports } = await reportsRes.json()
           const cutoff = Date.now() - 30 * 60 * 1000
-          const recent: { report_type: string; created_at: string }[] = (reports || [])
+          const recent: { report_type: string; created_at: string; wait_minutes?: number }[] = (reports || [])
             .filter((r: { created_at: string }) => new Date(r.created_at).getTime() > cutoff)
 
           const accidents   = recent.filter(r => r.report_type === 'accident').length
@@ -111,6 +114,13 @@ export function PortDetailClient({ port, portId }: Props) {
           } else if (clears >= 3 && clears > delays * 2) {
             setCommunitySignal({ type: 'better', count: clears })
           }
+
+          // Last crossed — most recent report with wait_minutes
+          const crossed = (reports || []).find((r: { wait_minutes?: number; created_at: string }) => r.wait_minutes != null)
+          if (crossed) {
+            const minutesAgo = Math.round((Date.now() - new Date(crossed.created_at).getTime()) / 60000)
+            if (minutesAgo <= 60) setLastCrossed({ minutesAgo, waited: crossed.wait_minutes })
+          }
         }
       } finally {
         setLoadingHistory(false)
@@ -118,6 +128,36 @@ export function PortDetailClient({ port, portId }: Props) {
     }
     load()
   }, [portId])
+
+  // Capture ?ref= from URL and store for use on signup/report
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref')
+    if (ref && ref.length > 10) {
+      localStorage.setItem('cruzar_ref', ref)
+      localStorage.setItem('cruzar_ref_port', portId)
+      localStorage.setItem('cruzar_ref_ts', String(Date.now()))
+    }
+  }, [portId])
+
+  async function handleShare() {
+    const url = user
+      ? `https://cruzar.app/port/${portId}?ref=${user.id}`
+      : `https://cruzar.app/port/${portId}`
+    const text = es
+      ? `Tiempos de espera en vivo en ${port.portName} — cruzar.app`
+      : `Live wait times at ${port.portName} — cruzar.app`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: port.portName, text, url })
+      } catch { /* cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      setShareCopied(true)
+      setTimeout(() => setShareCopied(false), 2500)
+    }
+  }
 
   const chartData = history.map((r) => ({
     time: new Date(r.recorded_at).toLocaleTimeString('en-US', {
@@ -263,8 +303,29 @@ export function PortDetailClient({ port, portId }: Props) {
       <JustCrossedPrompt
         portId={portId}
         portName={port.portName}
-        onSubmitted={() => setReportRefresh(r => r + 1)}
+        onSubmitted={() => { setReportRefresh(r => r + 1); setShowJustCrossed(false) }}
+        forceShow={showJustCrossed}
+        onDismiss={() => setShowJustCrossed(false)}
       />
+
+      {/* Last crossed banner */}
+      {lastCrossed && !showJustCrossed && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-green-800 dark:text-green-300">
+            ✅ {es
+              ? `Alguien cruzó hace ${lastCrossed.minutesAgo} min${lastCrossed.waited ? ` · esperó ${lastCrossed.waited} min` : ''}`
+              : `Someone crossed ${lastCrossed.minutesAgo} min ago${lastCrossed.waited ? ` · waited ${lastCrossed.waited} min` : ''}`}
+          </p>
+        </div>
+      )}
+
+      {/* Just crossed button */}
+      <button
+        onClick={() => setShowJustCrossed(true)}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-green-500 text-green-600 dark:text-green-400 text-sm font-bold hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors active:scale-95"
+      >
+        ✅ {es ? 'Acabo de cruzar — reportar' : 'Just crossed — report it'}
+      </button>
       {/* Save button */}
       {user && (
         <button
@@ -273,19 +334,34 @@ export function PortDetailClient({ port, portId }: Props) {
           className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
             saved
               ? 'bg-yellow-50 border-yellow-300 text-yellow-700'
-              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
           {saved ? '⭐ Saved to Dashboard' : '☆ Save to Dashboard'}
         </button>
       )}
 
+      {/* Share button — always visible, ref link if logged in */}
+      <button
+        onClick={handleShare}
+        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+          shareCopied
+            ? 'bg-green-50 border-green-300 text-green-700'
+            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
+      >
+        {shareCopied
+          ? <><Check className="w-4 h-4" /> {es ? '¡Enlace copiado!' : 'Link copied!'}</>
+          : <><Share2 className="w-4 h-4" /> {es ? 'Compartir este puente' : 'Share this crossing'}{user ? ` · ${es ? '+10 pts si reportan' : '+10 pts if they report'}` : ''}</>
+        }
+      </button>
+
       {/* Alert nudge after saving */}
       {showAlertNudge && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold text-blue-800">🔔 Get notified when it drops</p>
-            <p className="text-xs text-blue-600 mt-0.5">Upgrade to Pro to set a wait time alert for this crossing.</p>
+            <p className="text-sm font-semibold text-blue-800">{es ? '🔔 Avísame cuando baje' : '🔔 Get notified when it drops'}</p>
+            <p className="text-xs text-blue-600 mt-0.5">{es ? 'Activa Pro para recibir alertas cuando baje la espera.' : 'Upgrade to Pro to set a wait time alert for this crossing.'}</p>
           </div>
           <div className="flex items-center gap-2 ml-3 flex-shrink-0">
             <Link href="/pricing" className="text-xs font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-xl hover:bg-blue-700 transition-colors">
@@ -297,9 +373,9 @@ export function PortDetailClient({ port, portId }: Props) {
       )}
 
       {/* Current wait times */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
             {es ? 'Tiempos de espera' : 'Current Wait Times'}
           </h2>
           {avgVehicleWait !== null && !loadingHistory && (
@@ -684,9 +760,9 @@ export function PortDetailClient({ port, portId }: Props) {
           const nowWait = predictionChartData[0]?.predicted as number | null
           const waitColor = nowWait == null ? '#6b7280' : nowWait <= 20 ? '#22c55e' : nowWait <= 45 ? '#f59e0b' : '#ef4444'
           return (
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-700">Historical Patterns – Next 24 Hours</h2>
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{es ? 'Patrones históricos — próximas 24 horas' : 'Historical Patterns – Next 24 Hours'}</h2>
                 <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Beta</span>
               </div>
 
@@ -694,8 +770,8 @@ export function PortDetailClient({ port, portId }: Props) {
               {nowWait != null && (
                 <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl" style={{ backgroundColor: `${waitColor}18`, border: `1px solid ${waitColor}40` }}>
                   <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: waitColor }} />
-                  <span className="text-xs font-medium text-gray-700">
-                    Estimated wait now: <span className="font-bold" style={{ color: waitColor }}>{nowWait} min</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    {es ? 'Espera estimada ahora: ' : 'Estimated wait now: '}<span className="font-bold" style={{ color: waitColor }}>{nowWait} min</span>
                   </span>
                 </div>
               )}
@@ -721,18 +797,18 @@ export function PortDetailClient({ port, portId }: Props) {
         })()
       ) : (
         <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-center">
-          <p className="text-sm font-semibold text-purple-800">🤖 AI Wait Predictions</p>
-          <p className="text-xs text-purple-600 mt-1 mb-3">See predicted wait times for the next 24 hours. Pro feature.</p>
+          <p className="text-sm font-semibold text-purple-800">{es ? '📊 Patrones históricos de espera' : '📊 Historical Wait Patterns'}</p>
+          <p className="text-xs text-purple-600 mt-1 mb-3">{es ? 'Ve los tiempos estimados para las próximas 24 horas. Función Pro.' : 'See estimated wait times for the next 24 hours. Pro feature.'}</p>
           <Link href="/pricing" className="inline-block bg-purple-600 text-white text-xs font-medium px-4 py-2 rounded-full hover:bg-purple-700 transition-colors">
-            Upgrade to Pro →
+            {es ? 'Actualizar a Pro →' : 'Upgrade to Pro →'}
           </Link>
         </div>
       )}
 
       {/* Best times today — Pro+ only */}
       {canAccess(tier, 'ai_predictions') && bestTimes.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             {es ? 'Mejores horarios hoy' : 'Best Times Today'} <span className="text-gray-400 font-normal">{es ? '(basado en historial)' : '(based on history)'}</span>
           </h2>
 
@@ -770,33 +846,35 @@ export function PortDetailClient({ port, portId }: Props) {
       )}
 
       {/* Driver reports feed */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Driver Reports</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{es ? 'Reportes de usuarios' : 'Driver Reports'}</h2>
         <ReportsFeed portId={portId} refresh={reportRefresh} />
       </div>
 
       {/* Submit report */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Submit a Report</h2>
-        <ReportForm portId={portId} onSubmitted={() => setReportRefresh(r => r + 1)} />
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{es ? 'Enviar un reporte' : 'Submit a Report'}</h2>
+        <ReportForm portId={portId} onSubmitted={() => setReportRefresh(r => r + 1)} port={port} />
       </div>
 
-      {/* Guest alert CTA */}
+      {/* Guest alert CTA — make this crossing the hook */}
       {!user && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center">
-          <p className="text-sm font-semibold text-blue-800">
-            {es ? '🔔 Avísame cuando baje la espera' : '🔔 Get notified when wait drops'}
-          </p>
-          <p className="text-xs text-blue-600 mt-1">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 text-center shadow-sm">
+          <p className="text-base font-bold text-white">
             {es
-              ? 'Crea una cuenta gratis — luego activa alertas con Pro por $2.99/mes.'
-              : 'Create a free account — then get Pro alerts for $2.99/mo.'}
+              ? `🔔 Avísame cuando ${port?.portName || 'este puente'} baje de 30 min`
+              : `🔔 Ping me when ${port?.portName || 'this crossing'} drops below 30 min`}
+          </p>
+          <p className="text-xs text-blue-100 mt-1">
+            {es
+              ? 'Tu primera alerta es gratis · sin spam · cancela cuando quieras'
+              : 'Your first alert is free · no spam · cancel anytime'}
           </p>
           <a
             href="/signup"
-            className="inline-block mt-3 bg-blue-600 text-white text-sm font-medium px-5 py-2 rounded-full hover:bg-blue-700 transition-colors"
+            className="inline-block mt-3 bg-white text-blue-700 text-sm font-bold px-6 py-2.5 rounded-full hover:bg-blue-50 transition-colors"
           >
-            {es ? 'Crear cuenta gratis →' : 'Create free account →'}
+            {es ? 'Activar mi alerta gratis →' : 'Turn on my free alert →'}
           </a>
         </div>
       )}

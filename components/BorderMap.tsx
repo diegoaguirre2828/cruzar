@@ -76,7 +76,7 @@ export function BorderMap({ ports, selectedRegion, onPortClick }: Props) {
         const wait = port.vehicle ?? port.pedestrian
 
         const marker = L.circleMarker([meta.lat, meta.lng], {
-          radius: 12,
+          radius: 22,
           fillColor: color,
           color: '#fff',
           weight: 2,

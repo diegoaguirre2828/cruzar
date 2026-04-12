@@ -3,6 +3,7 @@ export interface PortMeta {
   region: string
   lat: number
   lng: number
+  localName?: string   // local/common name shown alongside the official CBP name
 }
 
 export const PORT_META: Record<string, PortMeta> = {
@@ -18,7 +19,7 @@ export const PORT_META: Record<string, PortMeta> = {
 
   // ── Brownsville (RGV) ──────────────────────────────────
   '535501': { city: 'Brownsville', region: 'RGV – Brownsville', lat: 25.9007, lng: -97.4935 },
-  '535502': { city: 'Brownsville', region: 'RGV – Brownsville', lat: 25.8726, lng: -97.4866 },
+  '535502': { city: 'Brownsville', region: 'RGV – Brownsville', lat: 25.8726, lng: -97.4866, localName: 'Los Tomates' },
   '535503': { city: 'Brownsville', region: 'RGV – Brownsville', lat: 26.0416, lng: -97.7367 },
   '535504': { city: 'Brownsville', region: 'RGV – Brownsville', lat: 25.9044, lng: -97.5040 },
 
@@ -37,12 +38,14 @@ export const PORT_META: Record<string, PortMeta> = {
   '230201': { city: 'Del Rio', region: 'Del Rio', lat: 29.3627, lng: -100.8974 },
 
   // ── El Paso ────────────────────────────────────────────
+  '202401': { city: 'El Paso', region: 'El Paso', lat: 31.7588, lng: -106.4869 },  // Paso Del Norte (CBP ID)
   '240201': { city: 'El Paso', region: 'El Paso', lat: 31.7619, lng: -106.4850 },
   '240202': { city: 'El Paso', region: 'El Paso', lat: 31.7588, lng: -106.4869 },
   '240203': { city: 'El Paso', region: 'El Paso', lat: 31.6938, lng: -106.3353 },
   '240204': { city: 'El Paso', region: 'El Paso', lat: 31.7550, lng: -106.4780 },
   '240207': { city: 'El Paso', region: 'El Paso', lat: 31.7600, lng: -106.4830 },
   '240215': { city: 'El Paso', region: 'El Paso', lat: 31.7650, lng: -106.4900 },
+  '240221': { city: 'El Paso', region: 'El Paso', lat: 31.7619, lng: -106.4850 },
   '240401': { city: 'Tornillo', region: 'El Paso', lat: 31.4336, lng: -106.0728 },
   '240301': { city: 'Presidio', region: 'El Paso', lat: 29.5602, lng: -104.3718 },
   '240801': { city: 'Santa Teresa', region: 'El Paso', lat: 31.8742, lng: -106.6717 },
@@ -79,7 +82,7 @@ export const PORT_META: Record<string, PortMeta> = {
   // ── Andrade / Columbus ─────────────────────────────────
   '250201': { city: 'Andrade',  region: 'Other', lat: 32.7202, lng: -114.7277 },
   '240601': { city: 'Columbus', region: 'Other', lat: 31.8280, lng: -107.6408 },
-  '240501': { city: 'Fort Hancock', region: 'El Paso', lat: 31.1120, lng: -105.8490 },
+  'l24501': { city: 'Fort Hancock', region: 'El Paso', lat: 31.1120, lng: -105.8490 },
 }
 
 export const ALL_REGIONS = [

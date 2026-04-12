@@ -1,20 +1,27 @@
 import { bundle } from '@remotion/bundler';
 import { renderMedia, selectComposition } from '@remotion/renderer';
-import { mkdir, readFile } from 'fs/promises';
+import { mkdir } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { config } from 'dotenv';
+config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const FEATURED = [
-  { portId: '230501', name: 'Hidalgo / McAllen'    },
-  { portId: '230502', name: 'Pharr–Reynosa'         },
-  { portId: '230503', name: 'Anzaldúas'             },
-  { portId: '230901', name: 'Progreso'              },
-  { portId: '230902', name: 'Donna'                 },
-  { portId: '535501', name: 'Brownsville Gateway'   },
-  { portId: '535502', name: 'Brownsville Veterans'  },
-  { portId: '535503', name: 'Los Tomates'           },
+  // McAllen / Hidalgo (top 2)
+  { portId: '230501', name: 'Hidalgo · McAllen'     },
+  { portId: '230502', name: 'Pharr · Reynosa'        },
+  // Brownsville / Matamoros (top 2)
+  { portId: '535501', name: 'Gateway · Brownsville'  },
+  { portId: '535502', name: 'Veterans · Brownsville' },
+  // Laredo / Nuevo Laredo (top 2)
+  { portId: '230401', name: 'Laredo I'               },
+  { portId: '230402', name: 'Laredo II'              },
+  // Eagle Pass / Piedras Negras
+  { portId: '230301', name: 'Eagle Pass'             },
+  // El Paso / Juárez
+  { portId: '240201', name: 'El Paso · Juárez'       },
 ];
 
 function getLevel(wait) {
@@ -111,39 +118,6 @@ Reporta tu tiempo y ayuda a todos en la fila 🙌
   console.log('\n━━━━━━━━━ COPIA ESTE TEXTO ━━━━━━━━━\n');
   console.log(caption);
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-  // 4. Upload to Facebook Page
-  const pageId = process.env.FACEBOOK_PAGE_ID;
-  const pageToken = process.env.FACEBOOK_PAGE_TOKEN;
-
-  if (pageId && pageToken) {
-    console.log('📤 Uploading video to Facebook Page...');
-    try {
-      const videoBuffer = await readFile(outputPath);
-      const formData = new FormData();
-      formData.append('access_token', pageToken);
-      formData.append('description', caption);
-      formData.append('source', new Blob([videoBuffer], { type: 'video/mp4' }), 'cruzar-waittimes.mp4');
-
-      const fbRes = await fetch(`https://graph-video.facebook.com/v19.0/${pageId}/videos`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const fbData = await fbRes.json();
-      if (fbData.id) {
-        console.log('✅ Posted to Facebook! Video ID:', fbData.id);
-      } else {
-        console.error('❌ Facebook error:', JSON.stringify(fbData));
-        process.exit(1);
-      }
-    } catch (err) {
-      console.error('❌ Upload failed:', err.message);
-      process.exit(1);
-    }
-  } else {
-    console.log('ℹ️  No Facebook credentials — skipping upload (set FACEBOOK_PAGE_ID and FACEBOOK_PAGE_TOKEN)');
-  }
 }
 
 main().catch((err) => {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { PortCard } from './PortCard'
+import type { PortSignal } from './PortCard'
 import { BorderMap } from './BorderMap'
 import type { PortWaitTime } from '@/types'
 import { RefreshCw, Map, List, Navigation, X, Share2, Check } from 'lucide-react'
@@ -75,22 +76,60 @@ export function PortList() {
 
   // Share
   const [shareLabel, setShareLabel] = useState<'idle' | 'copied'>('idle')
+  const [showShareToast, setShowShareToast] = useState(false)
 
   // Mexico quick report
   const [mexPortId, setMexPortId] = useState(MEX_CROSSINGS[0].portId)
   const [mexSubmitting, setMexSubmitting] = useState(false)
   const [mexSubmitted, setMexSubmitted] = useState(false)
+  const [signals, setSignals] = useState<Record<string, PortSignal>>({})
 
   const fetchPorts = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true)
     try {
-      const res = await fetch('/api/ports', { cache: 'no-store' })
-      if (!res.ok) throw new Error('Failed to load')
-      const data = await res.json()
+      const [portsRes, reportsRes] = await Promise.all([
+        fetch('/api/ports', { cache: 'no-store' }),
+        fetch('/api/reports/recent?limit=100', { cache: 'no-store' }),
+      ])
+      if (!portsRes.ok) throw new Error('Failed to load')
+      const data = await portsRes.json()
       setPorts(data.ports)
       setFetchedAt(data.fetchedAt)
       setCbpUpdatedAt(data.cbpUpdatedAt ?? null)
       setError(null)
+
+      if (reportsRes.ok) {
+        const { reports } = await reportsRes.json()
+        const cutoff = Date.now() - 30 * 60 * 1000
+        const recent = (reports || []).filter((r: { created_at: string }) => new Date(r.created_at).getTime() > cutoff)
+        const signalMap: Record<string, PortSignal> = {}
+
+        // Group by port
+        const byPort: Record<string, typeof recent> = {}
+        for (const r of recent) {
+          if (!byPort[r.port_id]) byPort[r.port_id] = []
+          byPort[r.port_id].push(r)
+        }
+
+        for (const [portId, portReports] of Object.entries(byPort)) {
+          const accidents = portReports.filter((r: { report_type: string }) => r.report_type === 'accident').length
+          const delays    = portReports.filter((r: { report_type: string }) => r.report_type === 'delay').length
+          const clears    = portReports.filter((r: { report_type: string }) => r.report_type === 'clear').length
+          const crossed   = portReports.find((r: { wait_minutes?: number; created_at: string }) => r.wait_minutes != null)
+
+          if (accidents >= 1) {
+            signalMap[portId] = { type: 'accident', count: accidents }
+          } else if (delays >= 2) {
+            signalMap[portId] = { type: 'delay', count: delays }
+          } else if (clears >= 2) {
+            signalMap[portId] = { type: 'clear', count: clears }
+          } else if (crossed) {
+            const minutesAgo = Math.round((Date.now() - new Date(crossed.created_at).getTime()) / 60000)
+            signalMap[portId] = { type: 'crossed', minutesAgo, waited: crossed.wait_minutes }
+          }
+        }
+        setSignals(signalMap)
+      }
     } catch {
       setError('Could not load wait times. Showing cached data.')
     } finally {
@@ -135,19 +174,25 @@ export function PortList() {
 
   function handleShare() {
     const list = (selectedRegion === 'All' ? ports : ports.filter(p => getPortMeta(p.portId).region === selectedRegion))
-      .filter(p => p.vehicle !== null)
-      .slice(0, 10)
-      .map(p => `🚗 ${p.portName}: ${p.vehicle === 0 ? '<1' : p.vehicle} min`)
+      .filter(p => p.vehicle !== null && p.vehicle > 0)
+      .slice(0, 8)
+      .map(p => {
+        const lvl = !p.vehicle || p.vehicle <= 20 ? '🟢' : p.vehicle <= 45 ? '🟡' : '🔴'
+        return `${lvl} ${p.portName}: ${p.vehicle} min`
+      })
       .join('\n')
 
+    const url = 'https://cruzar.app'
     const text = lang === 'es'
-      ? `🌉 Tiempos de espera en la frontera ahora mismo:\n\n${list}\n\n📱 Tiempos en vivo: cruzar.app`
-      : `🌉 Border wait times right now:\n\n${list}\n\n📱 Live updates: cruzar.app`
+      ? `🌉 Tiempos en los puentes ahorita:\n\n${list}\n\n📱 En vivo: ${url}`
+      : `🌉 Border wait times right now:\n\n${list}\n\n📱 Live: ${url}`
 
     if (navigator.share) {
-      navigator.share({ text }).catch(() => {})
+      navigator.share({ title: 'Cruzar – Tiempos de espera', text, url }).catch(() => {})
     } else {
       navigator.clipboard.writeText(text).catch(() => {})
+      setShowShareToast(true)
+      setTimeout(() => setShowShareToast(false), 3000)
     }
     setShareLabel('copied')
     setTimeout(() => setShareLabel('idle'), 2500)
@@ -158,7 +203,7 @@ export function PortList() {
     await fetch('/api/reports', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ portId: mexPortId, condition, direction: 'mexico' }),
+      body: JSON.stringify({ portId: mexPortId, condition, direction: 'mexico', ref: typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null }),
     }).catch(() => {})
     setMexSubmitting(false)
     setMexSubmitted(true)
@@ -184,7 +229,7 @@ export function PortList() {
 
   const timeAgo = fetchedAt ? Math.round((Date.now() - new Date(fetchedAt).getTime()) / 1000 / 60) : null
   const cbpTime = cbpUpdatedAt
-    ? new Date(cbpUpdatedAt).toLocaleTimeString(lang === 'es' ? 'es-MX' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    ? new Date(cbpUpdatedAt).toLocaleTimeString(lang === 'es' ? 'es-MX' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
     : null
 
   if (loading) {
@@ -308,7 +353,7 @@ export function PortList() {
               {error ? (
                 <span className="text-amber-500">{error}</span>
               ) : cbpTime ? (
-                <span>CBP {lang === 'es' ? 'actualizado' : 'as of'} {cbpTime}</span>
+                <span>CBP {lang === 'es' ? 'actualizado' : 'as of'} {cbpTime} · {lang === 'es' ? 'cada 15 min' : 'every 15 min'}</span>
               ) : timeAgo !== null ? (
                 <span>{timeAgo === 0 ? t.updatedJustNow : t.updatedAgo(timeAgo)}</span>
               ) : null}
@@ -399,6 +444,16 @@ export function PortList() {
             </div>
           )}
 
+          {/* Desktop share toast */}
+          {showShareToast && (
+            <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-blue-800 font-medium">
+              <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              {lang === 'es'
+                ? '¡Texto copiado! Pégalo en tu grupo de Facebook.'
+                : 'Text copied! Paste it into your Facebook group post.'}
+            </div>
+          )}
+
           {/* Legend + Share row */}
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-4">
@@ -444,7 +499,7 @@ export function PortList() {
                   <p className="text-xs text-gray-400 dark:text-gray-500 px-1 mb-1 font-medium">
                     {distLabel(dist, lang)} · {getPortMeta(port.portId).city}
                   </p>
-                  <PortCard port={port} />
+                  <PortCard port={port} signal={signals[port.portId]} />
                 </div>
               ))}
             </div>

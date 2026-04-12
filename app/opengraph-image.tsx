@@ -1,19 +1,48 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
+export const revalidate = 900 // regenerate every 15 min
 export const alt = 'Cruzar – Live US-Mexico Border Wait Times'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-export default function OGImage() {
-  const crossings = [
-    { name: 'Hidalgo / McAllen',     wait: 12, level: 'low' },
-    { name: 'Pharr–Reynosa',         wait: 28, level: 'medium' },
-    { name: 'Laredo I (Gateway)',     wait: 51, level: 'high' },
-    { name: 'Gateway International', wait: 8,  level: 'low' },
-    { name: 'Anzaldúas',             wait: 19, level: 'low' },
-    { name: 'Laredo II (World Trade)',wait: 34, level: 'medium' },
-  ]
+const FEATURED = ['230501', '230502', '230503', '230901', '535501', '230401']
+const PORT_NAMES: Record<string, string> = {
+  '230501': 'Hidalgo / McAllen',
+  '230502': 'Pharr–Reynosa',
+  '230503': 'Anzaldúas',
+  '230901': 'Progreso',
+  '535501': 'Brownsville Gateway',
+  '230401': 'Laredo I',
+}
+
+export default async function OGImage() {
+  let crossings: { name: string; wait: number; level: string }[] = []
+  try {
+    const res = await fetch('https://cruzar.app/api/ports', { cache: 'no-store' })
+    const { ports } = await res.json()
+    crossings = FEATURED
+      .map(id => {
+        const p = ports?.find((x: { portId: string; vehicle: number | null }) => x.portId === id)
+        const wait = p?.vehicle ?? null
+        const level = !wait || wait <= 0 ? 'low' : wait <= 20 ? 'low' : wait <= 45 ? 'medium' : 'high'
+        return { name: PORT_NAMES[id] || id, wait: wait ?? 0, level }
+      })
+      .filter(c => c.wait > 0)
+  } catch {
+    crossings = [
+      { name: 'Hidalgo / McAllen', wait: 12, level: 'low' },
+      { name: 'Pharr–Reynosa', wait: 28, level: 'medium' },
+      { name: 'Anzaldúas', wait: 8, level: 'low' },
+      { name: 'Progreso', wait: 45, level: 'medium' },
+      { name: 'Brownsville Gateway', wait: 15, level: 'low' },
+      { name: 'Laredo I', wait: 55, level: 'high' },
+    ]
+  }
+
+  const now = new Date().toLocaleTimeString('es-MX', {
+    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago',
+  })
 
   const dotColor = (level: string) =>
     level === 'low' ? '#22c55e' : level === 'medium' ? '#f59e0b' : '#ef4444'
@@ -40,11 +69,9 @@ export default function OGImage() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
           <div style={{ fontSize: 52 }}>🌉</div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ color: '#ffffff', fontSize: 52, fontWeight: 800, letterSpacing: -1 }}>
-              Cruzar
-            </span>
-          </div>
+          <span style={{ color: '#ffffff', fontSize: 52, fontWeight: 800, letterSpacing: -1 }}>
+            Cruzar
+          </span>
           <div style={{
             marginLeft: 12,
             background: '#22c55e',
@@ -58,12 +85,12 @@ export default function OGImage() {
             gap: 6,
           }}>
             <div style={{ width: 8, height: 8, background: '#fff', borderRadius: '50%' }} />
-            LIVE
+            EN VIVO · {now.toUpperCase()}
           </div>
         </div>
 
-        <div style={{ color: '#94a3b8', fontSize: 24, marginBottom: 44, fontWeight: 400 }}>
-          Real-time US–Mexico border wait times · Free for everyone
+        <div style={{ color: '#94a3b8', fontSize: 22, marginBottom: 40, fontWeight: 400 }}>
+          Tiempos de espera US–México en tiempo real · Gratis para todos
         </div>
 
         {/* Crossing cards grid */}
@@ -128,7 +155,7 @@ export default function OGImage() {
             cruzar.app
           </span>
           <div style={{ display: 'flex', gap: 20 }}>
-            {['52 crossings', 'Updated every 15 min', 'Free forever'].map(tag => (
+            {['52 puentes', 'Cada 15 min', 'Gratis'].map(tag => (
               <div
                 key={tag}
                 style={{

@@ -5,7 +5,26 @@ import { getServiceClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
+const exchangeRateLimit = new Map<string, { count: number; resetAt: number }>()
+
+function checkExchangeRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = exchangeRateLimit.get(ip)
+  if (!entry || now > entry.resetAt) {
+    exchangeRateLimit.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 })
+    return true
+  }
+  if (entry.count >= 10) return false
+  entry.count++
+  return true
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+  if (!checkExchangeRateLimit(ip)) {
+    return NextResponse.json({ error: 'Too many reports. Try again later.' }, { status: 429 })
+  }
+
   const body = await req.json()
   const { house_name, sell_rate, buy_rate, port_id, city } = body
 
@@ -34,11 +53,11 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await db.from('exchange_rate_reports').insert({
     user_id: userId,
-    house_name: house_name.trim(),
+    house_name: house_name.trim().slice(0, 200),
     sell_rate: sell,
     buy_rate: buy_rate ? parseFloat(buy_rate) : null,
-    port_id: port_id || null,
-    city: city?.trim() || null,
+    port_id: port_id?.slice(0, 20) || null,
+    city: city?.trim().slice(0, 100) || null,
   }).select('id').single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

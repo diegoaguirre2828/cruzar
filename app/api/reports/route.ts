@@ -55,19 +55,50 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ reports: data })
 }
 
+// Rate limit: 10 reports/hour for guests, 30 for authenticated users
+const reportRateLimit = new Map<string, { count: number; resetAt: number }>()
+
+function checkReportRateLimit(key: string, max: number): boolean {
+  const now = Date.now()
+  const entry = reportRateLimit.get(key)
+  if (!entry || now > entry.resetAt) {
+    reportRateLimit.set(key, { count: 1, resetAt: now + 60 * 60 * 1000 })
+    return true
+  }
+  if (entry.count >= max) return false
+  entry.count++
+  return true
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode } = body
+  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode, ref } = body
 
   // Support both reportType and condition field names
   const type = reportType || condition || 'other'
   if (!portId) return NextResponse.json({ error: 'portId required' }, { status: 400 })
 
-  const validTypes = ['delay', 'accident', 'inspection', 'clear', 'other', 'fast', 'normal', 'slow']
+  const validTypes = [
+    'delay', 'accident', 'inspection', 'clear', 'other',
+    'fast', 'normal', 'slow',
+    'weather_fog', 'weather_rain', 'weather_wind', 'weather_dust',
+    'officer_k9', 'officer_secondary',
+    'road_construction', 'road_hazard',
+    'reckless_driver',
+  ]
   const mappedType = type === 'fast' ? 'clear' : type === 'slow' ? 'delay' : type === 'normal' ? 'other' : type
-  if (!validTypes.includes(type)) return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
+  if (!validTypes.includes(type) && !validTypes.includes(mappedType)) return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
 
   const user = await getUser()
+
+  // Rate limit by user ID (authenticated) or IP (guest)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+  const rateLimitKey = user ? `user:${user.id}` : `ip:${ip}`
+  const rateLimitMax = user ? 30 : 10
+  if (!checkReportRateLimit(rateLimitKey, rateLimitMax)) {
+    return NextResponse.json({ error: 'Too many reports. Try again later.' }, { status: 429 })
+  }
+
   const db = getServiceClient()
 
   // Check if this is the first report at this port today (bonus points)
@@ -131,6 +162,41 @@ export async function POST(req: NextRequest) {
     }
     pointsEarned = pts
     newBadges = result.badges
+  }
+
+  // Award referral points if a valid ref was provided and user is logged in
+  if (user && ref && typeof ref === 'string' && ref.length > 10 && ref !== user.id) {
+    try {
+      const { data: existing } = await db
+        .from('referral_events')
+        .select('id')
+        .eq('referrer_id', ref)
+        .eq('referred_user_id', user.id)
+        .eq('event_type', 'report')
+        .maybeSingle()
+
+      if (!existing) {
+        const { data: referrerProfile } = await db
+          .from('profiles')
+          .select('points')
+          .eq('id', ref)
+          .maybeSingle()
+
+        if (referrerProfile) {
+          await db.from('profiles').update({
+            points: (referrerProfile.points || 0) + POINTS.referral_report,
+          }).eq('id', ref)
+
+          await db.from('referral_events').insert({
+            referrer_id: ref,
+            referred_user_id: user.id,
+            event_type: 'report',
+            port_id: portId,
+            points_awarded: POINTS.referral_report,
+          })
+        }
+      }
+    } catch { /* non-critical — don't fail the report */ }
   }
 
   return NextResponse.json({ success: true, id: inserted?.id, pointsEarned, newBadges })

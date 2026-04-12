@@ -40,8 +40,13 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-bold text-gray-900 mb-2">5. Driver Reports</h2>
-            <p>By submitting a report, you grant Cruzar a non-exclusive license to display it publicly within the app. Do not submit false, misleading, or harmful reports. We reserve the right to remove any report.</p>
+            <h2 className="font-bold text-gray-900 mb-2">5. Community Reports</h2>
+            <p>Reports submitted by users are unverified and community-generated. Cruzar does not guarantee their accuracy. Do not make time-sensitive or safety-critical decisions based solely on community reports. By submitting a report, you grant Cruzar a perpetual, non-exclusive license to display, aggregate, and analyze it. Do not submit false, misleading, or harmful reports. We reserve the right to remove any report without notice.</p>
+          </section>
+
+          <section>
+            <h2 className="font-bold text-gray-900 mb-2">5a. AI Assistant</h2>
+            <p>The Cruzar AI assistant provides general informational responses about border crossing procedures. It is not a licensed immigration attorney and its responses do not constitute legal advice. Do not rely on AI responses for immigration decisions. Always verify information with official sources such as cbp.gov or a licensed immigration attorney. Cruzar is not liable for any consequences arising from reliance on AI-generated responses.</p>
           </section>
 
           <section>
@@ -55,32 +60,43 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-bold text-gray-900 mb-2">8. Prohibited Use</h2>
+            <h2 className="font-bold text-gray-900 mb-2">8. Data & Analytics</h2>
+            <p>Cruzar collects anonymized, aggregated crossing pattern data including wait time trends, traffic volume by time of day, and community-reported conditions. This data does not identify individual users. We may use, analyze, and license this aggregated data to third parties including logistics companies, research institutions, and government agencies. No personally identifiable information is included in any data shared with third parties.</p>
+          </section>
+
+          <section>
+            <h2 className="font-bold text-gray-900 mb-2">9. Government & Legal Requests</h2>
+            <p>Cruzar will comply with lawful government requests, court orders, and subpoenas. We will notify affected users of such requests to the extent permitted by law. We minimize the personal data we retain to limit exposure in such cases.</p>
+          </section>
+
+          <section>
+            <h2 className="font-bold text-gray-900 mb-2">10. Prohibited Use</h2>
             <ul className="list-disc pl-4 space-y-1">
-              <li>Scraping or automated access without permission</li>
-              <li>Submitting false crossing reports</li>
-              <li>Using the app for any illegal purpose</li>
+              <li>Scraping or automated access without written permission</li>
+              <li>Submitting false or misleading crossing reports</li>
+              <li>Using the app to facilitate any illegal activity</li>
               <li>Attempting to reverse-engineer or compromise the app</li>
+              <li>Using the AI assistant to seek advice on evading border regulations</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="font-bold text-gray-900 mb-2">9. Termination</h2>
+            <h2 className="font-bold text-gray-900 mb-2">11. Termination</h2>
             <p>We may suspend or terminate accounts that violate these terms. You may delete your account at any time.</p>
           </section>
 
           <section>
-            <h2 className="font-bold text-gray-900 mb-2">10. Limitation of Liability</h2>
+            <h2 className="font-bold text-gray-900 mb-2">12. Limitation of Liability</h2>
             <p>Cruzar is provided "as is." We make no warranties about uptime, accuracy, or fitness for any particular purpose. Our liability to you shall not exceed the amount you paid us in the last 3 months.</p>
           </section>
 
           <section>
-            <h2 className="font-bold text-gray-900 mb-2">11. Governing Law</h2>
+            <h2 className="font-bold text-gray-900 mb-2">13. Governing Law</h2>
             <p>These terms are governed by the laws of the State of Texas, USA.</p>
           </section>
 
           <section>
-            <h2 className="font-bold text-gray-900 mb-2">12. Contact</h2>
+            <h2 className="font-bold text-gray-900 mb-2">14. Contact</h2>
             <p>Questions? Email <strong>cruzabusiness@gmail.com</strong>.</p>
           </section>
 

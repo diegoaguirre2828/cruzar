@@ -2,9 +2,12 @@
 
 import { Bell, BellOff } from 'lucide-react'
 import { usePushNotifications } from '@/lib/usePushNotifications'
+import { useLang } from '@/lib/LangContext'
 
 export function PushToggle() {
   const { supported, subscribed, loading, subscribe, unsubscribe } = usePushNotifications()
+  const { lang } = useLang()
+  const es = lang === 'es'
 
   if (!supported) return null
 
@@ -18,10 +21,14 @@ export function PushToggle() {
         </div>
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {subscribed ? 'Push notifications on' : 'Push notifications off'}
+            {subscribed
+              ? (es ? 'Notificaciones activas' : 'Push notifications on')
+              : (es ? 'Notificaciones desactivadas' : 'Push notifications off')}
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            {subscribed ? 'Alerts will appear even when app is closed' : 'Get alerts without opening the app'}
+            {subscribed
+              ? (es ? 'Las alertas llegan aunque la app esté cerrada' : 'Alerts will appear even when app is closed')
+              : (es ? 'Recibe alertas sin abrir la app' : 'Get alerts without opening the app')}
           </p>
         </div>
       </div>
@@ -34,7 +41,7 @@ export function PushToggle() {
             : 'bg-blue-600 text-white hover:bg-blue-700'
         }`}
       >
-        {loading ? '...' : subscribed ? 'Turn off' : 'Enable'}
+        {loading ? '...' : subscribed ? (es ? 'Desactivar' : 'Turn off') : (es ? 'Activar' : 'Enable')}
       </button>
     </div>
   )

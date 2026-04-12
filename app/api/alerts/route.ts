@@ -38,8 +38,20 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const tier = await getUserTier(user.id)
-  if (!['pro', 'business'].includes(tier)) {
-    return NextResponse.json({ error: 'Pro subscription required' }, { status: 403 })
+  if (!['free', 'pro', 'business'].includes(tier)) {
+    return NextResponse.json({ error: 'Account required' }, { status: 403 })
+  }
+
+  // Free tier: max 1 alert
+  if (tier === 'free') {
+    const db = getServiceClient()
+    const { count } = await db
+      .from('alert_preferences')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+    if ((count ?? 0) >= 1) {
+      return NextResponse.json({ error: 'free_limit' }, { status: 403 })
+    }
   }
 
   const { portId, laneType, thresholdMinutes } = await req.json()

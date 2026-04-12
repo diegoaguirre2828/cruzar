@@ -143,6 +143,18 @@ export async function GET(req: NextRequest) {
       const user = userMap[alert.user_id]
       if (!user) continue
 
+      // Claim the alert atomically BEFORE sending — prevents double-fire
+      // if two cron instances run at the same time
+      const now = new Date().toISOString()
+      const { data: claimed } = await supabase
+        .from('alert_preferences')
+        .update({ last_triggered_at: now })
+        .eq('id', alert.id)
+        .or(`last_triggered_at.is.null,last_triggered_at.lt.${oneHourAgo}`)
+        .select('id')
+
+      if (!claimed?.length) continue // another instance already claimed it
+
       const results = await Promise.allSettled([
         user.email ? sendEmail(user.email, reading.port_name, alert.port_id, wait, alert.threshold_minutes) : null,
         sendPush(alert.user_id, reading.port_name, alert.port_id, wait),
@@ -151,11 +163,6 @@ export async function GET(req: NextRequest) {
       results.forEach((r, i) => {
         if (r.status === 'rejected') console.error(`Alert send failed [${['email','push','sms'][i]}] user=${alert.user_id}:`, r.reason)
       })
-
-      await supabase
-        .from('alert_preferences')
-        .update({ last_triggered_at: new Date().toISOString() })
-        .eq('id', alert.id)
 
       sent++
     }

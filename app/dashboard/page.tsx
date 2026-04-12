@@ -10,6 +10,7 @@ import { WaitBadge } from '@/components/WaitBadge'
 import { useLang } from '@/lib/LangContext'
 import { Bell, Star, LogOut, ArrowLeft, Plus, Trash2, Route, Settings, Lock, Navigation, Building2, User } from 'lucide-react'
 import { PushToggle } from '@/components/PushToggle'
+import { usePushNotifications } from '@/lib/usePushNotifications'
 import type { PortWaitTime } from '@/types'
 
 interface SavedCrossing {
@@ -29,7 +30,8 @@ interface AlertPref {
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const es = lang === 'es'
   const [ports, setPorts] = useState<PortWaitTime[]>([])
   const [saved, setSaved] = useState<SavedCrossing[]>([])
   const [alerts, setAlerts] = useState<AlertPref[]>([])
@@ -46,7 +48,9 @@ export default function DashboardPage() {
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [tier, setTier] = useState<string>('free')
+  const [badges, setBadges] = useState<string[]>([])
   const [showUpgradeBanner, setShowUpgradeBanner] = useState(false)
+  const [alertLimitHit, setAlertLimitHit] = useState(false)
 
   const loadData = useCallback(async () => {
     const [portsRes, savedRes, alertsRes, profileRes] = await Promise.all([
@@ -61,6 +65,7 @@ export default function DashboardPage() {
     if (profileRes.ok) {
       const { profile } = await profileRes.json()
       setTier(profile?.tier || 'free')
+      setBadges(profile?.badges || [])
     }
   }, [])
 
@@ -96,11 +101,16 @@ export default function DashboardPage() {
 
   async function addAlert() {
     if (!newAlertPortId) return
-    await fetch('/api/alerts', {
+    const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ portId: newAlertPortId, laneType: newAlertLane, thresholdMinutes: newAlertThreshold, phone: newAlertPhone || null }),
     })
+    if (!res.ok) {
+      const data = await res.json()
+      if (data.error === 'free_limit') { setAlertLimitHit(true); return }
+    }
+    setAlertLimitHit(false)
     loadData()
   }
 
@@ -128,6 +138,7 @@ export default function DashboardPage() {
 
   const isBusiness = tier === 'business'
   const isPro = tier === 'pro' || isBusiness
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe } = usePushNotifications()
 
   if (authLoading) return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
@@ -193,6 +204,11 @@ export default function DashboardPage() {
             <User className="w-3 h-3" />
             {isBusiness ? 'Business' : isPro ? 'Pro' : 'Free'} Plan
           </div>
+          {badges.includes('founder') && (
+            <div className="flex items-center gap-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold px-3 py-1.5 rounded-full" title="One of the first 50 Cruzar members — this badge can never be earned again">
+              🏅 Fundador
+            </div>
+          )}
           {!isPro && (
             <Link href="/pricing" className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">
               {t.upgradeLink}
@@ -253,16 +269,16 @@ export default function DashboardPage() {
                         <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{port?.portName ?? s.port_id}</p>
                         {s.label && <p className="text-xs text-gray-400 dark:text-gray-500">{s.label}</p>}
                       </div>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">View →</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{es ? 'Ver →' : 'View →'}</span>
                     </div>
                     {port && (
                       <div className="flex gap-3 justify-around">
-                        {port.vehicle !== null && <WaitBadge minutes={port.vehicle} label="Car" />}
+                        {port.vehicle !== null && <WaitBadge minutes={port.vehicle} label={es ? 'Auto' : 'Car'} />}
                         {port.sentri !== null && <WaitBadge minutes={port.sentri} label="SENTRI" />}
-                        {port.pedestrian !== null && <WaitBadge minutes={port.pedestrian} label="Walk" />}
-                        {port.commercial !== null && <WaitBadge minutes={port.commercial} label="Truck" />}
+                        {port.pedestrian !== null && <WaitBadge minutes={port.pedestrian} label={es ? 'A pie' : 'Walk'} />}
+                        {port.commercial !== null && <WaitBadge minutes={port.commercial} label={es ? 'Camión' : 'Truck'} />}
                         {port.vehicle === null && port.sentri === null && port.pedestrian === null && port.commercial === null && (
-                          <p className="text-xs text-green-600 dark:text-green-400 py-1">No wait · Low traffic</p>
+                          <p className="text-xs text-green-600 dark:text-green-400 py-1">{es ? 'Sin espera · Poco tráfico' : 'No wait · Low traffic'}</p>
                         )}
                       </div>
                     )}
@@ -291,28 +307,83 @@ export default function DashboardPage() {
         )}
 
         {/* Alerts Tab */}
-        {tab === 'alerts' && tier === 'free' && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center shadow-sm">
-            <Lock className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t.alertsProLocked}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">{t.alertsProDesc}</p>
-            <Link href="/pricing" className="inline-block bg-blue-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors">
-              {t.upgradeProBtn}
-            </Link>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">{t.trialNote}</p>
-          </div>
-        )}
-
-        {tab === 'alerts' && tier !== 'free' && (
+        {tab === 'alerts' && (
           <div className="space-y-4">
-            <PushToggle />
+            {tier === 'free' && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-4 py-3 flex items-center justify-between">
+                <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  🔔 {es ? 'Plan gratis incluye 1 alerta' : 'Free plan includes 1 alert'}
+                </p>
+                <Link href="/pricing" className="text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap ml-3">
+                  {es ? 'Ilimitadas →' : 'Unlimited →'}
+                </Link>
+              </div>
+            )}
+            {alertLimitHit && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                  {es ? '1 alerta gratis usada' : 'Free alert used'}
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 mb-2">
+                  {es ? 'Sube a Pro para alertas en todos tus puentes.' : 'Upgrade to Pro to monitor all your crossings.'}
+                </p>
+                <Link href="/pricing" className="inline-block bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl">
+                  {es ? 'Ver Pro →' : 'See Pro →'}
+                </Link>
+              </div>
+            )}
+
+            {/* Step 1 — Enable push */}
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.addAlertTitle}</h3>
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
+                {es ? 'Paso 1 — Activar notificaciones' : 'Step 1 — Enable notifications'}
+              </p>
+              {pushSupported ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-xl ${pushSubscribed ? 'bg-green-50 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                      <Bell className={`w-4 h-4 ${pushSubscribed ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        {pushSubscribed
+                          ? (es ? '✅ Notificaciones activadas' : '✅ Notifications enabled')
+                          : (es ? 'Activa notificaciones en este teléfono' : 'Enable on this phone')}
+                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        {pushSubscribed
+                          ? (es ? 'Te avisaremos en este dispositivo' : "We'll alert you on this device")
+                          : (es ? 'Sin esto, no recibirás alertas' : 'Required to receive alerts')}
+                      </p>
+                    </div>
+                  </div>
+                  {!pushSubscribed && (
+                    <button
+                      onClick={pushSubscribe}
+                      disabled={pushLoading}
+                      className="text-xs font-bold px-3 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                    >
+                      {pushLoading ? '...' : (es ? 'Activar' : 'Enable')}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  {es ? 'Este navegador no soporta notificaciones push. Usa Chrome o Safari en iOS.' : 'This browser does not support push. Use Chrome or Safari on iOS.'}
+                </p>
+              )}
+            </div>
+
+            {/* Step 2 — Set alert */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+              <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
+                {es ? 'Paso 2 — Cuándo avisarte' : 'Step 2 — When to alert you'}
+              </p>
               <div className="space-y-3">
                 <select
                   value={newAlertPortId}
                   onChange={e => setNewAlertPortId(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">{t.selectCrossing}</option>
                   {ports.map(p => (
@@ -322,7 +393,7 @@ export default function DashboardPage() {
                 <select
                   value={newAlertLane}
                   onChange={e => setNewAlertLane(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="vehicle">Passenger Vehicle</option>
                   <option value="sentri">SENTRI / Ready Lane</option>
@@ -340,13 +411,6 @@ export default function DashboardPage() {
                   />
                   <span className="text-sm text-gray-600 dark:text-gray-400">min</span>
                 </div>
-                <input
-                  type="tel"
-                  value={newAlertPhone}
-                  onChange={e => setNewAlertPhone(e.target.value)}
-                  placeholder={t.smsPhonePlaceholder}
-                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 placeholder-gray-400 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
                 <button
                   onClick={addAlert}
                   disabled={!newAlertPortId}
@@ -354,6 +418,11 @@ export default function DashboardPage() {
                 >
                   <Plus className="w-4 h-4" /> {t.addAlertBtn}
                 </button>
+                <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+                  {es
+                    ? '📱 Te mandamos una notificación en este teléfono + correo'
+                    : '📱 We\'ll send a push notification to this phone + email'}
+                </p>
               </div>
             </div>
 
@@ -375,8 +444,8 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                        Alert when {alert.lane_type} &lt; {alert.threshold_minutes} min
-                        {wait !== null && ` · Now: ${wait} min`}
+                        {es ? `Alerta cuando ${alert.lane_type} < ${alert.threshold_minutes} min` : `Alert when ${alert.lane_type} < ${alert.threshold_minutes} min`}
+                        {wait !== null && (es ? ` · Ahora: ${wait} min` : ` · Now: ${wait} min`)}
                       </p>
                     </div>
                     <button onClick={() => removeAlert(alert.id)} className="text-gray-300 dark:text-gray-600 hover:text-red-400 transition-colors">

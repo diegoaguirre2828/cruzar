@@ -84,6 +84,15 @@ export function WaitingMode({ onNearCrossing }: Props) {
 
   async function quickReport(cond: string) {
     if (!nearCrossing) return
+
+    // Spam limit: max 1 report per bridge per 30 min
+    const spamKey = `report_${nearCrossing.portId}`
+    const lastReport = localStorage.getItem(spamKey)
+    if (lastReport && Date.now() - parseInt(lastReport) < 30 * 60 * 1000) {
+      dismiss()
+      return
+    }
+
     setCondition(cond)
     setSubmitting(true)
     await fetch('/api/reports', {
@@ -92,13 +101,15 @@ export function WaitingMode({ onNearCrossing }: Props) {
       body: JSON.stringify({
         portId: nearCrossing.portId,
         condition: cond,
-        waitingMode: true,  // signals double points
+        waitingMode: true,
+        ref: typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null,
       }),
     })
+    localStorage.setItem(spamKey, Date.now().toString())
     setSubmitting(false)
     setSubmitted(true)
     sessionStorage.setItem(`waiting_dismissed_${new Date().toDateString()}`, '1')
-    setTimeout(() => { setNearCrossing(null); setSubmitted(false) }, 3000)
+    setTimeout(() => { setNearCrossing(null); setSubmitted(false) }, 6000)
   }
 
   function dismiss() {
@@ -110,14 +121,28 @@ export function WaitingMode({ onNearCrossing }: Props) {
   if (dismissed || !nearCrossing) return null
 
   if (submitted) {
+    const shareText = lang === 'es'
+      ? `${nearCrossing?.name} está ${condition === 'fast' ? 'rápido 🟢' : condition === 'slow' ? 'lento 🔴' : 'normal 🟡'} ahorita. checen cruzar.app pa ver todos los puentes en vivo`
+      : `${nearCrossing?.name} is ${condition === 'fast' ? 'moving fast 🟢' : condition === 'slow' ? 'slow 🔴' : 'normal 🟡'} right now. check cruzar.app for all live wait times`
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
+
     return (
-      <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl px-4 py-3 text-center">
-        <p className="text-sm font-bold text-green-700 dark:text-green-400">
+      <div className="mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-4">
+        <p className="text-sm font-bold text-green-700 dark:text-green-400 text-center mb-1">
           ⚡ {lang === 'es' ? '¡Gracias por reportar!' : 'Thanks for reporting!'}
         </p>
-        <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
-          {lang === 'es' ? 'Estás ayudando a todos en la fila' : 'You\'re helping everyone in line right now'}
+        <p className="text-xs text-green-600 dark:text-green-500 text-center mb-3">
+          {lang === 'es' ? 'Avísale a tu familia y amigos' : 'Let your family and friends know'}
         </p>
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold active:scale-95 transition-transform"
+        >
+          <span>📲</span>
+          {lang === 'es' ? 'Compartir por WhatsApp' : 'Share on WhatsApp'}
+        </a>
       </div>
     )
   }
@@ -150,7 +175,7 @@ export function WaitingMode({ onNearCrossing }: Props) {
             key={cond}
             onClick={() => quickReport(cond)}
             disabled={submitting}
-            className="flex flex-col items-center gap-1 py-2.5 rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-40 active:scale-95"
+            className="flex flex-col items-center gap-1 py-3.5 rounded-xl bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-40 active:scale-95"
           >
             <span className="text-lg">{emoji}</span>
             <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">{label}</span>

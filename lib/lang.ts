@@ -193,6 +193,20 @@ export const translations = {
     alertNudge: '🔔 Get alerts when wait drops',
     tryProFree: 'Try Pro Free for 7 Days',
     upgradeForAlerts: 'Upgrade to Pro for $2.99/mo',
+    // Leaderboard
+    leaderboardTitle: 'Community Leaderboard',
+    leaderboardSubtitle: 'Top contributors helping crossers save time',
+    leaderboardBadges: 'Badges',
+    leaderboardHowToEarn: 'How to earn points',
+    leaderboardNoReports: 'No reports yet.',
+    leaderboardBeFirst: 'Be the first to report and top the board!',
+    leaderboardReports: (n: number) => `${n} reports submitted`,
+    leaderboardBottom: 'Submit a crossing report to start earning points →',
+    leaderboardViewCrossings: 'View crossings',
+    // Pro upsell banner
+    proUpsellTitle: '🔔 Get alerts when wait times drop',
+    proUpsellSub: 'Pro users get instant notifications — $2.99/mo',
+    proUpsellBtn: 'Try Pro free →',
   },
   es: {
     appName: 'Cruzar',
@@ -384,6 +398,20 @@ export const translations = {
     alertNudge: '🔔 Recibe alertas cuando baje la espera',
     tryProFree: 'Prueba Pro Gratis 7 Días',
     upgradeForAlerts: 'Actualiza a Pro por $2.99/mes',
+    // Leaderboard
+    leaderboardTitle: 'Tabla de Líderes',
+    leaderboardSubtitle: 'Los que más ayudan a la comunidad cruzante',
+    leaderboardBadges: 'Insignias',
+    leaderboardHowToEarn: 'Cómo ganar puntos',
+    leaderboardNoReports: 'Sin reportes todavía.',
+    leaderboardBeFirst: '¡Sé el primero en reportar y encabeza la tabla!',
+    leaderboardReports: (n: number) => `${n} reportes enviados`,
+    leaderboardBottom: 'Envía un reporte para empezar a ganar puntos →',
+    leaderboardViewCrossings: 'Ver cruces',
+    // Pro upsell banner
+    proUpsellTitle: '🔔 Recibe alertas cuando baje la espera',
+    proUpsellSub: 'Los usuarios Pro reciben notificaciones al instante — $2.99/mes',
+    proUpsellBtn: 'Prueba Pro gratis →',
   },
 }
 

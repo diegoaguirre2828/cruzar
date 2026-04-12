@@ -9,7 +9,7 @@ export async function GET() {
 
   const { data, error } = await db
     .from('crossing_reports')
-    .select('port_id, report_type, condition, wait_minutes, created_at')
+    .select('port_id, report_type, wait_minutes, created_at')
     .gte('created_at', since30)
     .order('created_at', { ascending: false })
 
@@ -29,7 +29,7 @@ export async function GET() {
     }
     portMap[r.port_id].count++
     if (r.wait_minutes) portMap[r.port_id].waitMinutes.push(r.wait_minutes)
-    portMap[r.port_id].types.push(r.report_type || r.condition || 'other')
+    portMap[r.port_id].types.push(r.report_type || 'other')
   }
 
   const pulse = Object.entries(portMap)

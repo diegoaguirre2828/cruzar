@@ -3,11 +3,26 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, Check, ExternalLink, RefreshCw } from 'lucide-react'
 
 const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
 
 type RegionKey = 'rgv' | 'brownsville' | 'laredo' | 'eagle_pass' | 'el_paso' | 'san_luis' | 'other'
+
+const REPLY_PORTS: { portId: string; name: string; regionKey: RegionKey }[] = [
+  { portId: '230501', name: 'Puente Hidalgo (McAllen)',       regionKey: 'rgv' },
+  { portId: '230502', name: 'Puente Pharr–Reynosa',           regionKey: 'rgv' },
+  { portId: '230503', name: 'Puente Anzaldúas',               regionKey: 'rgv' },
+  { portId: '230901', name: 'Puente Progreso',                regionKey: 'rgv' },
+  { portId: '230902', name: 'Puente Donna / Los Indios',      regionKey: 'rgv' },
+  { portId: '535501', name: 'Puente Gateway (Brownsville)',   regionKey: 'brownsville' },
+  { portId: '535502', name: 'Puente Veterans (Brownsville)',  regionKey: 'brownsville' },
+  { portId: '535503', name: 'Puente Los Tomates',             regionKey: 'brownsville' },
+  { portId: '230401', name: 'Puente Laredo I (Internacional)',regionKey: 'laredo' },
+  { portId: '230402', name: 'Puente Laredo II (World Trade)', regionKey: 'laredo' },
+  { portId: '230301', name: 'Puente Eagle Pass / Piedras Negras', regionKey: 'eagle_pass' },
+  { portId: '240201', name: 'Puente El Paso / Juárez',        regionKey: 'el_paso' },
+]
 
 const REGIONS: { key: RegionKey; label: string; emoji: string }[] = [
   { key: 'rgv',         label: 'RGV / McAllen / Reynosa',         emoji: '🌵' },
@@ -64,12 +79,38 @@ interface Subscription {
 export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<'groups' | 'post' | 'cron' | 'advertisers' | 'subs'>('groups')
+  const [tab, setTab] = useState<'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast'>('groups')
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
   const [subs, setSubs] = useState<Subscription[]>([])
+  const [stats, setStats] = useState<{
+    users: { total: number; new7: number; new30: number; active7: number; active30: number; byTier: Record<string, number> }
+    reports: { total: number; last7: number; last30: number; recent: { id: string; port_id: string; report_type: string; condition: string; wait_minutes: number | null; created_at: string }[] }
+    recentUsers: { id: string; email: string; tier: string; created_at: string }[]
+  } | null>(null)
+  const [revenue, setRevenue] = useState<{
+    mrr: number; activeSubscriptions: number; proCount: number; businessCount: number
+    recentCharges: { id: string; amount: number; email: string; created: number; description: string }[]
+  } | null>(null)
+  const [blastTitle, setBlastTitle] = useState('')
+  const [blastBody, setBlastBody] = useState('')
+  const [blastUrl, setBlastUrl] = useState('')
+  const [blastSending, setBlastSending] = useState(false)
+  const [blastResult, setBlastResult] = useState<{ sent: number; failed: number; total: number } | null>(null)
   const [caption, setCaption] = useState('')
+  const [pageCaption, setPageCaption] = useState('')
   const [loadingPost, setLoadingPost] = useState(false)
+  const [posting, setPosting] = useState(false)
+  const [postResult, setPostResult] = useState<{ fbPostId?: string; fbError?: string; tone?: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copiedPage, setCopiedPage] = useState(false)
+  const [replyPortId, setReplyPortId] = useState('230501')
+  const [replyTopic, setReplyTopic] = useState<'wait' | 'exchange' | 'documents' | 'sentri' | 'insurance' | 'fmm' | 'best_time' | 'secondary' | 'items'>('wait')
+  const [replyText, setReplyText] = useState('')
+  const [replyWait, setReplyWait] = useState<number | null>(null)
+  const [replyVariant, setReplyVariant] = useState(-1)
+  const [replyLang, setReplyLang] = useState<'es' | 'en'>('es')
+  const [loadingReply, setLoadingReply] = useState(false)
+  const [replyCopied, setReplyCopied] = useState(false)
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string>('all')
   const [cronApiKey, setCronApiKey] = useState('')
@@ -91,6 +132,8 @@ export default function AdminPage() {
     if (!user || user.email !== ADMIN_EMAIL) return
     fetch('/api/admin/advertisers').then(r => r.json()).then(d => setAdvertisers(d.advertisers || []))
     fetch('/api/admin/subscriptions').then(r => r.json()).then(d => setSubs(d.subscriptions || []))
+    fetch('/api/admin/stats').then(r => r.json()).then(d => { if (d.users) setStats(d) })
+    fetch('/api/admin/revenue').then(r => r.json()).then(d => { if (d.mrr !== undefined) setRevenue(d) })
   }, [user])
 
   function togglePosted(name: string) {
@@ -108,15 +151,39 @@ export default function AdminPage() {
 
   async function generatePost(region = selectedRegion) {
     setLoadingPost(true)
+    setCaption('')
+    setPageCaption('')
     try {
-      const regionParam = region !== 'all' ? `&region=${region}` : ''
-      const res = await fetch(`/api/admin/generate-post?email=false${regionParam}`)
+      const res = await fetch(`/api/admin/generate-post?region=${region}`)
       const data = await res.json()
-      setCaption(data.caption || '')
+      setCaption(data.groupCaption || data.caption || '')
+      setPageCaption(data.pageCaption || '')
     } catch {
       setCaption('Error fetching post. Try again.')
     } finally {
       setLoadingPost(false)
+    }
+  }
+
+  async function postToPageNow(region = selectedRegion) {
+    setPosting(true)
+    setPostResult(null)
+    setCaption('')
+    setPageCaption('')
+    try {
+      const res = await fetch('/api/admin/generate-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ region }),
+      })
+      const data = await res.json()
+      setCaption(data.groupCaption || data.caption || '')
+      setPageCaption(data.pageCaption || '')
+      setPostResult({ fbPostId: data.fbPostId, fbError: data.fbError, tone: data.tone })
+    } catch {
+      setPostResult({ fbError: 'Request failed. Try again.' })
+    } finally {
+      setPosting(false)
     }
   }
 
@@ -145,6 +212,13 @@ export default function AdminPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function copyPageCaption() {
+    navigator.clipboard.writeText(pageCaption)
+    setCopiedPage(true)
+    setTimeout(() => setCopiedPage(false), 2000)
+  }
+
+
   if (loading) return null
 
   return (
@@ -157,12 +231,15 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-          {(['groups', 'post', 'cron', 'advertisers', 'subs'] as const).map(t => (
+          {(['stats', 'blast', 'groups', 'post', 'reply', 'cron', 'advertisers', 'subs'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors capitalize ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
-              {t === 'groups' ? `📣 Groups (${FACEBOOK_GROUPS.length})` :
-               t === 'post' ? '✍️ Posts' :
-               t === 'cron' ? '⏰ Cron Jobs' :
+              {t === 'stats'       ? '📊 Stats' :
+               t === 'blast'       ? '📣 Blast' :
+               t === 'groups'      ? `Groups (${FACEBOOK_GROUPS.length})` :
+               t === 'post'        ? '✍️ Posts' :
+               t === 'reply'       ? '💬 Reply' :
+               t === 'cron'        ? '⏰ Cron' :
                t === 'advertisers' ? `Ads (${advertisers.length})` :
                `Subs (${subs.length})`}
             </button>
@@ -240,88 +317,260 @@ export default function AdminPage() {
 
         {/* Post Generator */}
         {tab === 'post' && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Generate Live Post</p>
-                <p className="text-xs text-gray-500">Pulls live wait times right now and formats a ready-to-paste caption</p>
-              </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Facebook Posts</p>
+              <p className="text-xs text-gray-500 mt-0.5">Posts to your Page automatically. Generates a group caption to copy-paste.</p>
             </div>
+
             {/* Region selector */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {[{ key: 'all', label: '🌎 All Regions' }, ...REGIONS.map(r => ({ key: r.key, label: `${r.emoji} ${r.label}` }))].map(r => (
+            <div className="flex flex-wrap gap-2">
+              {[{ key: 'rgv', label: '🌵 RGV' }, { key: 'all', label: '🌎 All Regions' }].map(r => (
                 <button
                   key={r.key}
-                  onClick={() => { setSelectedRegion(r.key); setCaption('') }}
+                  onClick={() => { setSelectedRegion(r.key); setCaption(''); setPageCaption(''); setPostResult(null) }}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${selectedRegion === r.key ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
                 >
                   {r.label}
                 </button>
               ))}
             </div>
+
+            {/* Main action — Post to Page */}
             <button
-              onClick={() => generatePost(selectedRegion)}
-              disabled={loadingPost}
-              className="w-full bg-gray-900 text-white font-medium py-3 rounded-xl text-sm hover:bg-gray-700 transition-colors disabled:opacity-50 mb-4"
+              onClick={() => postToPageNow(selectedRegion)}
+              disabled={posting}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loadingPost ? 'Fetching live data...' : '⚡ Generate Post Now'}
+              {posting ? 'Posting...' : '🚀 Post to Facebook Page Now'}
             </button>
+
+            {/* Post result */}
+            {postResult && (
+              <div className={`rounded-xl px-4 py-3 text-sm font-medium ${postResult.fbPostId ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                {postResult.fbPostId
+                  ? `✅ Posted to Facebook Page — tone: ${postResult.tone || 'auto'}`
+                  : `❌ Facebook error: ${postResult.fbError}`}
+              </div>
+            )}
+
+            {/* Page caption preview */}
+            {pageCaption && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">📄 Page Post (auto-posted above)</p>
+                </div>
+                <textarea
+                  readOnly
+                  value={pageCaption}
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                  className="w-full px-4 py-3 text-sm text-gray-600 whitespace-pre-wrap leading-relaxed resize-none focus:outline-none font-mono bg-gray-50"
+                  rows={Math.min(pageCaption.split('\n').length + 1, 18)}
+                />
+                <div className="px-4 pb-3">
+                  <button
+                    onClick={copyPageCaption}
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs transition-colors ${copiedPage ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    {copiedPage ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy page caption</>}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Group caption */}
             {caption && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <p className="text-xs font-semibold text-gray-700">Ready to copy</p>
-                  <button onClick={copyCaption} className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900">
-                    {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">💬 Group Caption (paste manually in groups)</p>
+                </div>
+                <textarea
+                  readOnly
+                  value={caption}
+                  onClick={e => (e.target as HTMLTextAreaElement).select()}
+                  className="w-full px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed resize-none focus:outline-none font-mono bg-white"
+                  rows={Math.min(caption.split('\n').length + 1, 18)}
+                />
+                <div className="px-4 pb-3">
+                  <button
+                    onClick={copyCaption}
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm transition-colors ${copied ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-gray-700'}`}
+                  >
+                    {copied ? <><Check className="w-4 h-4" /> Copied!</> : <><Copy className="w-4 h-4" /> Copy group caption</>}
                   </button>
                 </div>
-                <pre className="px-4 py-4 text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{caption}</pre>
               </div>
             )}
-            {/* Cron setup per region */}
-            {(() => {
-              // Peak times in local time → UTC during daylight saving (summer) and standard (winter)
-              const CRON_DATA: Record<string, { tz: string; localTimes: string[]; summerUTC: string[]; winterUTC: string[] }> = {
-                all:         { tz: 'CST/CDT', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['10:30','16:30','20:30','00:00'], winterUTC: ['11:30','17:30','21:30','01:00'] },
-                rgv:         { tz: 'CST/CDT', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['10:30','16:30','20:30','00:00'], winterUTC: ['11:30','17:30','21:30','01:00'] },
-                brownsville: { tz: 'CST/CDT', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['10:30','16:30','20:30','00:00'], winterUTC: ['11:30','17:30','21:30','01:00'] },
-                laredo:      { tz: 'CST/CDT', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['10:30','16:30','20:30','00:00'], winterUTC: ['11:30','17:30','21:30','01:00'] },
-                eagle_pass:  { tz: 'CST/CDT', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['10:30','16:30','20:30','00:00'], winterUTC: ['11:30','17:30','21:30','01:00'] },
-                el_paso:     { tz: 'MST/MDT', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['11:30','17:30','21:30','01:00'], winterUTC: ['12:30','18:30','22:30','02:00'] },
-                san_luis:    { tz: 'MST (no DST)', localTimes: ['5:30am','11:30am','3:30pm','7:00pm'], summerUTC: ['12:30','18:30','22:30','02:00'], winterUTC: ['12:30','18:30','22:30','02:00'] },
-              }
-              const data = CRON_DATA[selectedRegion] || CRON_DATA.all
-              const regionParam = selectedRegion !== 'all' ? `&region=${selectedRegion}` : ''
-              const baseUrl = `https://www.cruzar.app/api/generate-post?secret=YOUR_SECRET${regionParam}`
-              return (
-                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-blue-800 mb-1">
-                    📧 Auto-email cron setup
-                    {selectedRegion !== 'all' && <span className="ml-1 font-normal text-blue-600">— {REGIONS.find(r => r.key === selectedRegion)?.label}</span>}
-                  </p>
-                  <p className="text-xs text-blue-700 mb-2">
-                    Add these 4 jobs to cron-job.org · Timezone: <strong>{data.tz}</strong>
-                    {selectedRegion === 'el_paso' && <span className="ml-1 text-orange-600">(1 hr behind Texas)</span>}
-                  </p>
-                  <div className="space-y-1">
-                    {data.localTimes.map((local, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="text-xs text-blue-700 w-16 flex-shrink-0">{local}</span>
-                        <code className="flex-1 text-xs bg-blue-100 rounded px-2 py-1 text-blue-900 break-all">
-                          {baseUrl} — UTC {data.summerUTC[i]} (summer) / {data.winterUTC[i]} (winter)
-                        </code>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-blue-500 mt-2">⚠️ Cron-job.org runs in UTC — times shift by ±1hr in March & November when clocks change.</p>
-                </div>
-              )
-            })()}
+
+            {/* Preview only — no posting */}
+            <button
+              onClick={() => generatePost(selectedRegion)}
+              disabled={loadingPost}
+              className="w-full border border-gray-300 text-gray-600 font-medium py-2.5 rounded-xl text-xs hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {loadingPost ? 'Generating preview...' : '👁 Preview captions without posting'}
+            </button>
           </div>
         )}
 
+        {/* Reply Generator */}
+        {tab === 'reply' && (() => {
+          const TOPICS = [
+            { key: 'wait' as const,      label: 'Fila en puente',         emoji: '🚗', needsBridge: true },
+            { key: 'exchange' as const,  label: 'Tipo de cambio',         emoji: '💵' },
+            { key: 'documents' as const, label: 'Documentos pa cruzar',   emoji: '📄' },
+            { key: 'sentri' as const,    label: 'SENTRI / Global Entry',  emoji: '⭐' },
+            { key: 'insurance' as const, label: 'Seguro de auto México',  emoji: '🛡️' },
+            { key: 'fmm' as const,       label: 'FMM / Permiso turista',  emoji: '📋' },
+            { key: 'best_time' as const, label: 'Mejor hora pa cruzar',   emoji: '⏰' },
+            { key: 'secondary' as const, label: 'Qué es secundaria',      emoji: '🔍' },
+            { key: 'items' as const,     label: 'Qué puedo traer',        emoji: '🛃' },
+          ]
+
+          const selectedTopic = TOPICS.find(t => t.key === replyTopic)!
+
+          async function generateTopicReply(variant = -1) {
+            setLoadingReply(true)
+            setReplyText('')
+            setReplyWait(null)
+            try {
+              const variantParam = variant >= 0 ? `&variant=${variant}` : ''
+              const portParam = replyTopic === 'wait' ? `&portId=${replyPortId}` : ''
+              const res = await fetch(`/api/admin/generate-reply?type=${replyTopic}&lang=${replyLang}${portParam}${variantParam}`)
+              const data = await res.json()
+              setReplyText(data.reply || '')
+              setReplyWait(data.wait ?? null)
+              setReplyVariant(data.variant ?? -1)
+            } catch {
+              setReplyText('Error cargando. Intenta de nuevo.')
+            } finally {
+              setLoadingReply(false)
+            }
+          }
+
+          return (
+            <div>
+              <div className="mb-4">
+                <p className="text-sm font-semibold text-gray-900">Respuestas para Grupos de Facebook</p>
+                <p className="text-xs text-gray-500">Selecciona de qué están preguntando y genera una respuesta casual con datos en vivo.</p>
+              </div>
+
+              {/* Language toggle */}
+              <div className="flex gap-2 mb-4">
+                {(['es', 'en'] as const).map(l => (
+                  <button
+                    key={l}
+                    onClick={() => { setReplyLang(l); setReplyText(''); setReplyWait(null) }}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${replyLang === l ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                  >
+                    {l === 'es' ? '🇲🇽 Español' : '🇺🇸 English'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Topic selector */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-4">
+                <label className="text-xs font-semibold text-gray-600 block mb-3">¿De qué están preguntando?</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TOPICS.map(t => (
+                    <button
+                      key={t.key}
+                      onClick={() => { setReplyTopic(t.key); setReplyText(''); setReplyWait(null) }}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-semibold border text-left transition-colors ${replyTopic === t.key ? 'bg-gray-900 text-white border-gray-900' : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-400'}`}
+                    >
+                      {t.emoji} {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bridge picker — only shows when topic is "wait" */}
+              {selectedTopic.needsBridge && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-4">
+                  <label className="text-xs font-semibold text-gray-600 block mb-3">¿Cuál puente?</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {REPLY_PORTS.map(p => (
+                      <button
+                        key={p.portId}
+                        onClick={() => { setReplyPortId(p.portId); setReplyText(''); setReplyWait(null) }}
+                        className={`px-3 py-2.5 rounded-xl text-xs font-semibold border text-left transition-colors ${replyPortId === p.portId ? 'bg-gray-900 text-white border-gray-900' : 'bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-400'}`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => generateTopicReply()}
+                disabled={loadingReply}
+                className="w-full bg-gray-900 text-white font-medium py-3 rounded-xl text-sm hover:bg-gray-700 transition-colors disabled:opacity-50 mb-4"
+              >
+                {loadingReply ? 'Generando...' : `⚡ Generar Respuesta — ${selectedTopic.emoji} ${selectedTopic.label}`}
+              </button>
+
+              {replyText && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-700">✅ Listo para pegar en Facebook</p>
+                      {replyWait !== null && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${replyWait <= 20 ? 'bg-green-100 text-green-700' : replyWait <= 45 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                          {replyWait} min
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => generateTopicReply((replyVariant + 1) % 6)}
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                      title="Otra variante"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Otra
+                    </button>
+                  </div>
+                  <textarea
+                    readOnly
+                    value={replyText}
+                    onClick={e => (e.target as HTMLTextAreaElement).select()}
+                    className="w-full px-4 py-4 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed resize-none focus:outline-none bg-white"
+                    rows={Math.min(replyText.split('\n').length + 2, 10)}
+                  />
+                  <div className="px-4 pb-4">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(replyText)
+                        setReplyCopied(true)
+                        setTimeout(() => setReplyCopied(false), 2000)
+                      }}
+                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-colors ${
+                        replyCopied ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-gray-700'
+                      }`}
+                    >
+                      {replyCopied
+                        ? <><Check className="w-4 h-4" /> ¡Copiado!</>
+                        : <><Copy className="w-4 h-4" /> Copiar respuesta</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-xs font-semibold text-blue-800 mb-1">💡 Cómo usar</p>
+                <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                  <li>Ves un post en el grupo — selecciona el tema arriba</li>
+                  <li>Si es sobre fila, selecciona el puente específico</li>
+                  <li>Toca "Generar Respuesta" y cópiala</li>
+                  <li>Pégala como comentario — toca "Otra" para otra variante</li>
+                </ol>
+              </div>
+            </div>
+          )
+        })()}
+
         {tab === 'cron' && (() => {
           const SECRET_PLACEHOLDER = 'YOUR_CRON_SECRET'
-          const BASE = 'https://www.cruzar.app/api/generate-post'
+          const BASE = 'https://cruzar.app/api/generate-post'
 
           const CRON_REGIONS = [
             {
@@ -517,6 +766,225 @@ export default function AdminPage() {
                 <p className="text-xs text-gray-400 mt-2">{new Date(a.created_at).toLocaleDateString()}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'stats' && (
+          <div className="space-y-5">
+            {/* Revenue */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Revenue</p>
+              {!revenue ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { label: 'MRR', value: `$${(revenue.mrr / 100).toFixed(2)}` },
+                      { label: 'Active Subs', value: revenue.activeSubscriptions },
+                      { label: 'Pro', value: revenue.proCount },
+                      { label: 'Business', value: revenue.businessCount },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm text-center">
+                        <p className="text-2xl font-bold text-gray-900">{value}</p>
+                        <p className="text-xs text-gray-500 mt-1">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {revenue.recentCharges.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                      <p className="text-xs font-semibold text-gray-700 px-4 py-3 border-b border-gray-100">Recent Charges</p>
+                      <div className="divide-y divide-gray-100">
+                        {revenue.recentCharges.map(c => (
+                          <div key={c.id} className="px-4 py-2.5 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">${(c.amount / 100).toFixed(2)}</p>
+                              <p className="text-xs text-gray-400">{c.email || 'Unknown'}</p>
+                            </div>
+                            <p className="text-xs text-gray-400">{new Date(c.created * 1000).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Users */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Users</p>
+              {!stats ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { label: 'Total', value: stats.users.total },
+                      { label: 'New (7d)', value: stats.users.new7 },
+                      { label: 'New (30d)', value: stats.users.new30 },
+                      { label: 'Active (7d)', value: stats.users.active7 },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm text-center">
+                        <p className="text-2xl font-bold text-gray-900">{value}</p>
+                        <p className="text-xs text-gray-500 mt-1">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tiers */}
+                  <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+                    <p className="text-xs font-semibold text-gray-700 mb-3">By tier</p>
+                    <div className="space-y-2">
+                      {(['business', 'pro', 'free', 'guest'] as const).map(tier => {
+                        const count = stats.users.byTier[tier] ?? 0
+                        const max = stats.users.total || 1
+                        const pct = Math.round((count / max) * 100)
+                        const colors: Record<string, string> = { business: 'bg-purple-500', pro: 'bg-blue-500', free: 'bg-green-500', guest: 'bg-gray-300' }
+                        return (
+                          <div key={tier} className="flex items-center gap-3">
+                            <span className="text-xs font-medium text-gray-600 w-16 capitalize">{tier}</span>
+                            <div className="flex-1 bg-gray-100 rounded-full h-2">
+                              <div className={`${colors[tier]} h-2 rounded-full`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-bold text-gray-900 w-8 text-right">{count}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Recent signups */}
+                  {stats.recentUsers.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                      <p className="text-xs font-semibold text-gray-700 px-4 py-3 border-b border-gray-100">Recent Signups</p>
+                      <div className="divide-y divide-gray-100">
+                        {stats.recentUsers.map(u => (
+                          <div key={u.id} className="px-4 py-2.5 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{u.email}</p>
+                              <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${
+                                u.tier === 'business' ? 'bg-purple-100 text-purple-700' :
+                                u.tier === 'pro' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-500'
+                              }`}>{u.tier}</span>
+                            </div>
+                            <p className="text-xs text-gray-400">{new Date(u.created_at).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Reports feed */}
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Recent Reports</p>
+              {!stats ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    {[
+                      { label: 'Total', value: stats.reports.total },
+                      { label: 'Last 7d', value: stats.reports.last7 },
+                      { label: 'Last 30d', value: stats.reports.last30 },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+                        <p className="text-xl font-bold text-gray-900">{value}</p>
+                        <p className="text-xs text-gray-500">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {stats.reports.recent.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="divide-y divide-gray-100">
+                        {stats.reports.recent.map(r => (
+                          <div key={r.id} className="px-4 py-2.5 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{r.port_id}</p>
+                              <p className="text-xs text-gray-400">{r.report_type || r.condition || 'report'}{r.wait_minutes ? ` · ${r.wait_minutes} min` : ''}</p>
+                            </div>
+                            <p className="text-xs text-gray-400">{new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'blast' && (
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Push Notification Blast</p>
+            <p className="text-xs text-gray-500 mb-4">Sends a push notification to every user who has notifications enabled.</p>
+            <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Title</label>
+                <input
+                  type="text"
+                  value={blastTitle}
+                  onChange={e => setBlastTitle(e.target.value)}
+                  placeholder="e.g. 🌉 Wait times just dropped!"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Message</label>
+                <textarea
+                  value={blastBody}
+                  onChange={e => setBlastBody(e.target.value)}
+                  placeholder="e.g. Hidalgo is at 8 min right now — perfect time to cross."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">Link (optional)</label>
+                <input
+                  type="text"
+                  value={blastUrl}
+                  onChange={e => setBlastUrl(e.target.value)}
+                  placeholder="https://cruzar.app"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <button
+                disabled={blastSending || !blastTitle.trim() || !blastBody.trim()}
+                onClick={async () => {
+                  setBlastSending(true)
+                  setBlastResult(null)
+                  try {
+                    const res = await fetch('/api/admin/push-blast', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ title: blastTitle, body: blastBody, url: blastUrl }),
+                    })
+                    const data = await res.json()
+                    setBlastResult(data)
+                  } catch {
+                    setBlastResult({ sent: 0, failed: 0, total: 0 })
+                  } finally {
+                    setBlastSending(false)
+                  }
+                }}
+                className="w-full bg-gray-900 text-white font-semibold py-3 rounded-xl text-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                {blastSending ? 'Sending...' : '🚀 Send to All Users'}
+              </button>
+              {blastResult && (
+                <div className={`rounded-xl px-4 py-3 text-sm font-semibold text-center ${blastResult.sent > 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {blastResult.sent > 0
+                    ? `✅ Sent to ${blastResult.sent} users${blastResult.failed > 0 ? ` (${blastResult.failed} failed)` : ''}`
+                    : `No push subscribers yet — users need to enable notifications first.`}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

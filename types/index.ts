@@ -8,7 +8,9 @@ export interface CbpPort {
   pedestrian_lanes: LaneData
   bicycle_lanes: LaneData
   commercial_vehicle_lanes: LaneData
-  date_time: string
+  date_time?: string
+  date?: string
+  time?: string
 }
 
 export interface LaneData {
@@ -40,7 +42,10 @@ export interface PortWaitTime {
   commercialLanesOpen: number | null
   isClosed: boolean
   noData: boolean
-  recordedAt: string
+  vehicleClosed: boolean
+  pedestrianClosed: boolean
+  commercialClosed: boolean
+  recordedAt: string | null
 }
 
 export interface WaitTimeReading {
