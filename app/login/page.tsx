@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
-import { PhoneButton } from '@/components/PhoneButton'
 import { useLang } from '@/lib/LangContext'
 
 export default function LoginPage() {
@@ -53,7 +52,6 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
           <GoogleButton label={t.continueWithGoogle} />
-          <PhoneButton label={t.continueWithPhone} />
 
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />

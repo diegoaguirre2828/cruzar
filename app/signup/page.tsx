@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
-import { PhoneButton } from '@/components/PhoneButton'
 import { useLang } from '@/lib/LangContext'
 
 const BENEFITS_ES = [
@@ -75,9 +74,8 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {/* Fast paths — lead with phone (RGV/WhatsApp audience) and Google */}
+        {/* Fast paths — Google OAuth */}
         <div className="space-y-3 mb-5">
-          <PhoneButton label={lang === 'es' ? '📱 Continuar con mi teléfono' : '📱 Continue with my phone'} />
           <GoogleButton label={lang === 'es' ? 'Continuar con Google' : 'Continue with Google'} />
         </div>
 
