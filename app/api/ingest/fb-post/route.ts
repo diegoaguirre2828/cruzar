@@ -1,7 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { getServiceClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
+
+const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
+
+async function isAdminRequest(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll: () => cookieStore.getAll() } }
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    return !!(user && user.email === ADMIN_EMAIL)
+  } catch {
+    return false
+  }
+}
 
 // Ingestion endpoint for Facebook community group posts.
 //
@@ -227,8 +246,13 @@ function classifyObservation(o: Observation): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Two acceptable auth modes:
+  //   1. X-Ingest-Secret header matches INGEST_SECRET env (for Make.com / scripts)
+  //   2. Logged in as the admin email via Supabase cookie (for the manual ingest UI)
   const secret = req.headers.get('x-ingest-secret') || req.nextUrl.searchParams.get('secret')
-  if (!process.env.INGEST_SECRET || secret !== process.env.INGEST_SECRET) {
+  const secretValid = !!process.env.INGEST_SECRET && secret === process.env.INGEST_SECRET
+  const adminValid = secretValid ? false : await isAdminRequest()
+  if (!secretValid && !adminValid) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

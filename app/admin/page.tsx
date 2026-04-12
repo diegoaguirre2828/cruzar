@@ -79,7 +79,7 @@ interface Subscription {
 export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users'>('groups')
+  const [tab, setTab] = useState<'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest'>('groups')
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
   const [subs, setSubs] = useState<Subscription[]>([])
   const [stats, setStats] = useState<{
@@ -119,6 +119,60 @@ export default function AdminPage() {
   const USERS_PAGE_SIZE = 25
   const [testingNotify, setTestingNotify] = useState(false)
   const [testNotifyResult, setTestNotifyResult] = useState<Record<string, { ok: boolean; detail: string }> | null>(null)
+  const [ingestText, setIngestText] = useState('')
+  const [ingestGroup, setIngestGroup] = useState('')
+  const [ingestImagePreview, setIngestImagePreview] = useState<string | null>(null)
+  const [ingestImageBase64, setIngestImageBase64] = useState<string | null>(null)
+  const [ingestImageMime, setIngestImageMime] = useState<string>('image/jpeg')
+  const [ingestSubmitting, setIngestSubmitting] = useState(false)
+  const [ingestResult, setIngestResult] = useState<{ ok?: boolean; inserted?: number; skipped?: string; observations?: unknown[]; error?: string; parsed?: unknown } | null>(null)
+
+  async function handleImageFile(file: File) {
+    if (!file.type.startsWith('image/')) return
+    const buf = await file.arrayBuffer()
+    const bytes = new Uint8Array(buf)
+    let binary = ''
+    const chunk = 0x8000
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)))
+    }
+    const base64 = btoa(binary)
+    setIngestImageBase64(base64)
+    setIngestImageMime(file.type || 'image/jpeg')
+    setIngestImagePreview(`data:${file.type};base64,${base64}`)
+  }
+
+  async function runIngest() {
+    if (!ingestText.trim() && !ingestImageBase64) return
+    setIngestSubmitting(true)
+    setIngestResult(null)
+    try {
+      const res = await fetch('/api/ingest/fb-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: ingestText.trim() || '(foto sin texto)',
+          group_name: ingestGroup.trim() || 'manual',
+          posted_at: new Date().toISOString(),
+          image_base64: ingestImageBase64 ?? undefined,
+          image_media_type: ingestImageBase64 ? ingestImageMime : undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+      setIngestResult(data)
+      if (data?.ok || data?.inserted) {
+        setIngestText('')
+        setIngestImagePreview(null)
+        setIngestImageBase64(null)
+        setIngestImageMime('image/jpeg')
+      }
+    } catch (err) {
+      setIngestResult({ error: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setIngestSubmitting(false)
+    }
+  }
 
   async function runTestNotify(channel: 'email' | 'push' | 'both') {
     setTestingNotify(true)
@@ -306,10 +360,11 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-          {(['stats', 'users', 'blast', 'groups', 'post', 'reply', 'cron', 'advertisers', 'subs'] as const).map(t => (
+          {(['stats', 'ingest', 'users', 'blast', 'groups', 'post', 'reply', 'cron', 'advertisers', 'subs'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors capitalize ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
               {t === 'stats'       ? '📊 Stats' :
+               t === 'ingest'      ? '📥 Ingest' :
                t === 'users'       ? '👥 Users' :
                t === 'blast'       ? '📣 Blast' :
                t === 'groups'      ? `Groups (${FACEBOOK_GROUPS.length})` :
@@ -1126,6 +1181,122 @@ export default function AdminPage() {
                 }`}>{s.tier}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'ingest' && (
+          <div>
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-gray-900">📥 Manual Ingest</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Pega texto de un post de Facebook y/o una captura de pantalla. El LLM lee texto + imagen y crea reportes reales en la app.
+              </p>
+            </div>
+
+            <div
+              onPaste={async (e) => {
+                const items = e.clipboardData?.items
+                if (!items) return
+                for (const item of Array.from(items)) {
+                  if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile()
+                    if (file) {
+                      e.preventDefault()
+                      await handleImageFile(file)
+                      return
+                    }
+                  }
+                }
+              }}
+              className="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-4 space-y-3"
+            >
+              <div>
+                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                  Texto del post
+                </label>
+                <textarea
+                  value={ingestText}
+                  onChange={(e) => setIngestText(e.target.value)}
+                  placeholder="Ej: 'Los Tomates horita' — o pega el post completo con comentarios"
+                  rows={5}
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                  Grupo (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={ingestGroup}
+                  onChange={(e) => setIngestGroup(e.target.value)}
+                  placeholder="Ej: Filas de Puentes Matamoros/Brownsville"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                  Imagen (opcional)
+                </label>
+                <p className="text-[11px] text-gray-400 mt-0.5 mb-2">
+                  Pega (Ctrl+V) una captura de pantalla, o sube un archivo. La IA analiza la foto para contar carros y estimar la espera.
+                </p>
+                {ingestImagePreview ? (
+                  <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ingestImagePreview} alt="preview" className="max-h-48 rounded-xl border border-gray-200" />
+                    <button
+                      onClick={() => { setIngestImagePreview(null); setIngestImageBase64(null) }}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-6 h-6 text-sm leading-none"
+                    >×</button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) handleImageFile(f)
+                    }}
+                    className="text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gray-100 file:text-gray-700 file:text-xs file:font-semibold"
+                  />
+                )}
+              </div>
+
+              <button
+                onClick={runIngest}
+                disabled={ingestSubmitting || (!ingestText.trim() && !ingestImageBase64)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl disabled:opacity-40"
+              >
+                {ingestSubmitting ? 'Procesando…' : '📥 Ingest post'}
+              </button>
+            </div>
+
+            {ingestResult && (
+              <div className="mt-4 bg-white rounded-2xl border border-gray-200 p-4">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Result</p>
+                {ingestResult.error && (
+                  <p className="text-sm text-red-600">✗ {ingestResult.error}</p>
+                )}
+                {ingestResult.skipped && (
+                  <p className="text-sm text-amber-600">↷ Skipped: {ingestResult.skipped}</p>
+                )}
+                {(ingestResult.inserted ?? 0) > 0 && (
+                  <p className="text-sm text-green-600 font-semibold">✓ {ingestResult.inserted} reporte{ingestResult.inserted === 1 ? '' : 's'} insertado{ingestResult.inserted === 1 ? '' : 's'}</p>
+                )}
+                {Array.isArray(ingestResult.observations) && ingestResult.observations.length > 0 && (
+                  <pre className="mt-2 text-[10px] bg-gray-50 rounded-lg p-2 overflow-x-auto font-mono text-gray-700">
+                    {JSON.stringify(ingestResult.observations, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
+
+            <p className="mt-4 text-[11px] text-gray-400 leading-relaxed">
+              <b>Pro tip:</b> En Windows, <kbd className="bg-gray-100 px-1 rounded">Win+Shift+S</kbd> toma una captura, se copia al portapapeles, y puedes pegarla directamente aquí con <kbd className="bg-gray-100 px-1 rounded">Ctrl+V</kbd> (sin guardar el archivo).
+            </p>
           </div>
         )}
 
