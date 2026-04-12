@@ -36,7 +36,18 @@ export default function SignupPage() {
     const supabase = createClient()
     const { error } = await supabase.auth.signUp({ email, password })
     if (error) {
-      setError(error.message)
+      const msg = error.message.toLowerCase()
+      // Supabase free-tier SMTP is capped at ~4 emails/hr. When that hits,
+      // it returns "email rate limit exceeded" — useless to the user. Reroute them.
+      if (msg.includes('rate limit') || msg.includes('email_send_rate')) {
+        setError(
+          lang === 'es'
+            ? 'Demasiados registros en este momento. Usa el botón de Google arriba — es instantáneo y no requiere confirmación por correo.'
+            : 'Too many signups right now. Use the Google button above — instant, no email confirmation needed.'
+        )
+      } else {
+        setError(error.message)
+      }
       setLoading(false)
     } else {
       const ref = typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null

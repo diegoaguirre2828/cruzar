@@ -8,7 +8,13 @@ export const dynamic = 'force-dynamic'
 
 const REPORT_FRESH_MIN = 30
 const CBP_STALE_MIN = 25
+const CBP_VERY_STALE_MIN = 60
 const DIVERGE_THRESHOLD_MIN = 15
+// HERE traffic API doesn't reliably detect stationary border queues —
+// cars parked at an inspection booth aren't seen as "congestion" on a road.
+// So a sub-10min traffic estimate on its own is not trustworthy and we'd
+// rather show nothing (and prompt a community report) than a confident "<1 min".
+const TRAFFIC_ONLY_TRUST_FLOOR_MIN = 10
 
 interface RecentReport {
   port_id: string
@@ -79,6 +85,7 @@ export async function GET() {
       const cbpDate = parseCbpRecorded(p.recordedAt)
       const cbpStaleMin = cbpDate ? Math.round((now - cbpDate.getTime()) / 60000) : null
       const cbpIsStale = cbpStaleMin != null && cbpStaleMin > CBP_STALE_MIN
+      const cbpIsVeryStale = cbpStaleMin != null && cbpStaleMin > CBP_VERY_STALE_MIN
 
       const cbpVehicle = p.vehicle
 
@@ -94,6 +101,10 @@ export async function GET() {
       //      so we never under-promise wait time and look wrong to people
       //      already at the bridge. Better to slightly over-state than to
       //      tell someone "0 min" when there's actually a 30 min line.
+      //   3. If CBP is very stale AND the only other signal is a low
+      //      traffic estimate, refuse to answer — show "unknown" and
+      //      prompt a community report. HERE can't see stationary queues,
+      //      so sub-10min traffic alone is worse than no data.
       // ────────────────────────────────────────────────────────
       if (communityVehicle != null && reportCount >= 1) {
         chosen = communityVehicle
@@ -105,8 +116,10 @@ export async function GET() {
         if (trafficVehicle != null) numerics.push(trafficVehicle)
 
         if (numerics.length === 0) {
-          // Fall through to stale CBP if that's all we have
-          if (cbpVehicle != null) {
+          // CBP is either stale or missing, HERE gave nothing.
+          // Don't show a stale CBP number as if it were current — users
+          // see the big green badge and miss the tiny "X min ago" label.
+          if (cbpVehicle != null && !cbpIsVeryStale) {
             chosen = cbpVehicle
             source = 'cbp'
           } else {
@@ -114,13 +127,19 @@ export async function GET() {
             source = 'cbp'
           }
         } else if (numerics.length === 1) {
-          chosen = numerics[0]
-          source = usableCbp != null ? 'cbp' : 'traffic'
+          const only = numerics[0]
+          // Traffic-only estimate below the trust floor = refuse to answer.
+          // HERE doesn't detect stopped cars waiting at a border booth.
+          if (usableCbp == null && only < TRAFFIC_ONLY_TRUST_FLOOR_MIN) {
+            chosen = null
+            source = 'traffic'
+          } else {
+            chosen = only
+            source = usableCbp != null ? 'cbp' : 'traffic'
+          }
         } else {
           const max = Math.max(...numerics)
           chosen = max
-          // Label as consensus only when both sources roughly agree;
-          // otherwise the higher source gets credit
           const diff = Math.abs(numerics[0] - numerics[1])
           if (diff < DIVERGE_THRESHOLD_MIN) {
             source = 'consensus'
@@ -137,9 +156,20 @@ export async function GET() {
         chosen = Math.max(chosen, 30)
       }
 
+      // CBP is the only source for pedestrian / sentri / commercial lanes
+      // (HERE doesn't distinguish lane types). If CBP is very stale and we
+      // have no community confirmation, those numbers are untrustworthy too.
+      const suppressStaleLanes = cbpIsVeryStale && reportCount === 0
+      const outPedestrian  = suppressStaleLanes ? null : p.pedestrian
+      const outSentri      = suppressStaleLanes ? null : p.sentri
+      const outCommercial  = suppressStaleLanes ? null : p.commercial
+
       return {
         ...p,
         vehicle: chosen,
+        pedestrian: outPedestrian,
+        sentri: outSentri,
+        commercial: outCommercial,
         source,
         cbpVehicle,
         communityVehicle,

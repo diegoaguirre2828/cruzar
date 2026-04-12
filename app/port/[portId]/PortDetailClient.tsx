@@ -852,8 +852,13 @@ export function PortDetailClient({ port, portId }: Props) {
       </div>
 
       {/* Submit report */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{es ? 'Enviar un reporte' : 'Submit a Report'}</h2>
+      <div id="report" className="bg-white dark:bg-gray-800 rounded-2xl border-2 border-blue-500 dark:border-blue-600 p-5 shadow-sm scroll-mt-20">
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+          📣 {es ? '¿Cruzaste? Reporta aquí' : 'Did you cross? Report here'}
+        </h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          {es ? 'Ayuda a otros viajeros con tu reporte · Gana puntos' : 'Help fellow travelers with your report · Earn points'}
+        </p>
         <ReportForm portId={portId} onSubmitted={() => setReportRefresh(r => r + 1)} port={port} />
       </div>
 

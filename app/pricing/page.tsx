@@ -13,6 +13,7 @@ export default function PricingPage() {
   const { t, lang } = useLang()
   const es = lang === 'es'
   const [loading, setLoading] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const PLANS = [
     {
@@ -67,18 +68,31 @@ export default function PricingPage() {
 
   async function handleUpgrade(planTier: string) {
     if (!user) {
-      window.location.href = '/signup'
+      window.location.href = `/signup?next=${encodeURIComponent('/pricing')}`
       return
     }
     setLoading(planTier)
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier: planTier }),
-    })
-    const { url } = await res.json()
-    if (url) window.location.href = url
-    setLoading(null)
+    setCheckoutError(null)
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: planTier }),
+      })
+      const data = await res.json().catch(() => ({ error: `Server returned ${res.status} (non-JSON)` }))
+      if (!res.ok || !data.url) {
+        setCheckoutError(data.error || (es ? 'No pudimos iniciar el pago. Intenta de nuevo.' : 'Could not start checkout. Try again.'))
+        setLoading(null)
+        return
+      }
+      window.location.href = data.url
+    } catch (err) {
+      setCheckoutError(
+        (es ? 'Error de red: ' : 'Network error: ') +
+          (err instanceof Error ? err.message : String(err))
+      )
+      setLoading(null)
+    }
   }
 
   return (
@@ -90,6 +104,14 @@ export default function PricingPage() {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{t.pricingTitle}</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-2">{t.pricingSubtitle}</p>
+          {checkoutError && (
+            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-xl px-4 py-3">
+              <p className="font-semibold mb-1">
+                {es ? 'No pudimos iniciar el pago' : "Couldn't start checkout"}
+              </p>
+              <p className="text-xs">{checkoutError}</p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

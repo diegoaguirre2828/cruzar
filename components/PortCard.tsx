@@ -185,11 +185,21 @@ export function PortCard({ port, signal }: Props) {
             {(port.commercial !== null || port.commercialClosed) && <WaitBadge minutes={port.commercial} label={t.laneTruck} lanesOpen={port.commercialLanesOpen} isClosed={port.commercialClosed} />}
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-1.5 mt-2 py-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-gray-400" />
-            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-              {lang === 'es' ? 'Sin datos recientes · revisa otros puentes' : 'No recent data · check other crossings'}
-            </p>
+          <div
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/port/${port.portId}#report` }}
+            className="mt-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                {lang === 'es' ? '🌉 Sin datos — sé el primero' : '🌉 No data — be the first'}
+              </p>
+              <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                {lang === 'es' ? 'Reporta este puente y gana puntos' : 'Report this crossing and earn points'}
+              </p>
+            </div>
+            <span className="text-xs font-bold text-white bg-blue-600 rounded-lg px-3 py-1.5 whitespace-nowrap">
+              {lang === 'es' ? 'Reportar' : 'Report'}
+            </span>
           </div>
         )}
       </div>
