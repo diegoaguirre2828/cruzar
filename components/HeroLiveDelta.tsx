@@ -148,17 +148,46 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
         if (!best || d < best.dist) best = { port: p, dist: d }
       }
       if (best && best.dist < 300) {
-        // Find a faster port within 50 km for the secondary callout
-        let faster: { port: PortWaitTime; saving: number } | null = null
+        const bestMeta = getPortMeta(best.port.portId)
+        const bestName = (best.port.localNameOverride || bestMeta.localName || best.port.crossingName || '').toLowerCase().trim()
+
+        // "Faster option nearby" rules — intentionally conservative:
+        //   1. Must be in the SAME mega region (don't tell a Hidalgo user
+        //      to drive to Brownsville; same for Tijuana → Mexicali etc.)
+        //   2. Must be within 25 km of the user (driving 30+ min usually
+        //      kills the savings unless the delta is huge)
+        //   3. Must save at least 10 min on the wait itself
+        //   4. Must pass the worth-it test: wait savings must exceed
+        //      estimated drive time × 1.5 (so a 10 min drive requires
+        //      at least 15 min of wait savings)
+        //   5. Must not be the SAME bridge by name (extra safety against
+        //      port_overrides collisions or duplicate CBP entries)
+        let faster: { port: PortWaitTime; saving: number; driveMin: number } | null = null
         for (const p of open) {
           if (p.portId === best.port.portId) continue
           const meta = getPortMeta(p.portId)
           if (!meta.lat || !meta.lng) continue
-          const d = haversineKm(userLoc.lat, userLoc.lng, meta.lat, meta.lng)
-          if (d > 50) continue
+          // Rule 1: same mega region
+          if (meta.megaRegion !== bestMeta.megaRegion) continue
+          // Rule 5: different bridge name
+          const altName = (p.localNameOverride || meta.localName || p.crossingName || '').toLowerCase().trim()
+          if (altName && bestName && altName === bestName) continue
+          // Rule 2: within 25 km of user
+          const altDistFromUser = haversineKm(userLoc.lat, userLoc.lng, meta.lat, meta.lng)
+          if (altDistFromUser > 25) continue
+          // Rule 3: wait savings ≥ 10 min
           const saving = (best.port.vehicle as number) - (p.vehicle as number)
-          if (saving >= 10 && (!faster || saving > faster.saving)) {
-            faster = { port: p, saving }
+          if (saving < 10) continue
+          // Rule 4: worth-it test vs drive time
+          // Drive distance ≈ straight-line distance between the two bridges,
+          // using 50 km/h average (urban border roads with stops, lights)
+          const driveKm = haversineKm(bestMeta.lat, bestMeta.lng, meta.lat, meta.lng)
+          const driveMin = Math.max(2, Math.round((driveKm / 50) * 60))
+          if (saving < driveMin * 1.5) continue
+          // Pick the alternative with the best NET savings (after drive time)
+          const netSaving = saving - driveMin
+          if (!faster || netSaving > (faster.saving - faster.driveMin)) {
+            faster = { port: p, saving, driveMin }
           }
         }
         return { mode: 'nearest' as const, port: best.port, distanceKm: best.dist, faster }
@@ -211,6 +240,9 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
       : display.mode === 'fastest'
         ? display.slowest
         : null
+  const savingDriveMin =
+    display.mode === 'nearest' ? display.faster?.driveMin ?? 0 : 0
+  const savingNet = Math.max(0, savingDelta - savingDriveMin)
 
   return (
     <div className="mt-3 relative">
@@ -270,8 +302,9 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
       </a>
 
       {/* Alternative option — calm, positive framing. Only shown when a
-          meaningfully faster nearby bridge exists. */}
-      {savingDelta >= 10 && savingPort && (
+          meaningfully faster nearby bridge exists AND the drive is worth it.
+          Shown with transparent math: "10 min faster (after 5 min drive)". */}
+      {savingNet > 0 && savingPort && (
         <a
           href={user
             ? `/port/${encodeURIComponent(savingPort.portId)}`
@@ -284,11 +317,13 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
                 {es ? 'Opción más rápida cerca' : 'Faster option nearby'}
               </p>
               <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-0.5 truncate">
-                {(getPortMeta(savingPort.portId).localName || savingPort.crossingName)}
+                {((savingPort.localNameOverride) || getPortMeta(savingPort.portId).localName || savingPort.crossingName)}
                 <span className="ml-2 text-emerald-700 dark:text-emerald-300">{waitLabel(savingPort.vehicle as number)}</span>
               </p>
               <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                {es ? `${savingDelta} min más rápido` : `${savingDelta} min faster`}
+                {es
+                  ? `Ahorras ${savingNet} min (después de ~${savingDriveMin} min de manejo)`
+                  : `Save ${savingNet} min (after ~${savingDriveMin} min drive)`}
               </p>
             </div>
             <span className="flex-shrink-0 bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-full">
