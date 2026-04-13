@@ -133,6 +133,7 @@ interface Props {
 export function HomeClient({ initialPorts, initialReports }: Props) {
   const { t, lang } = useLang()
   const { tier } = useTier()
+  const { user, loading: authLoading } = useAuth()
   const isBusiness = tier === 'business'
 
   // Capture referrer ID on any landing path so shares that point to the
@@ -197,11 +198,28 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
 
         {/* Hero delta — signed-in users only. Shrunk: no more big share
             card, no more hourly pattern (Pro-gated now). Still the polished
-            personalized moment as a post-signup reward. */}
-        {!isBusiness && tier !== 'guest' && <HeroLiveDelta ports={initialPorts} />}
+            personalized moment as a post-signup reward.
+            IMPORTANT: we gate the hero/ticker swap on authLoading — useAuth
+            starts with user=null (which looks like a guest) and resolves
+            asynchronously. Rendering based on tier alone used to flash the
+            guest LiveActivityTicker for ~300ms before swapping to the
+            signed-in hero, which was jarring. The skeleton placeholder
+            below reserves the space until auth resolves. */}
+        {!isBusiness && authLoading && (
+          <div
+            aria-hidden="true"
+            className="mt-3 bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 rounded-3xl p-5 shadow-2xl animate-pulse"
+          >
+            <div className="h-4 w-28 bg-white/25 rounded-full" />
+            <div className="h-8 w-48 bg-white/25 rounded-lg mt-4" />
+            <div className="h-20 w-40 bg-white/25 rounded-lg mt-3" />
+            <div className="h-12 w-full bg-white/15 rounded-2xl mt-4" />
+          </div>
+        )}
+        {!isBusiness && !authLoading && user && <HeroLiveDelta ports={initialPorts} />}
 
         {/* Live community activity ticker — replaces the hero for guests. */}
-        {!isBusiness && tier === 'guest' && <LiveActivityTicker initialReports={initialReports} />}
+        {!isBusiness && !authLoading && !user && <LiveActivityTicker initialReports={initialReports} />}
 
         {/* Near-me horizontal rail — swipeable preview of the 8 nearest
             crossings. Every flick is an interaction. */}
