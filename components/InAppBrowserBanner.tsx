@@ -38,10 +38,14 @@ export function InAppBrowserBanner() {
     try {
       if (sessionStorage.getItem('cruzar_iab_dismissed')) return
     } catch { /* ignore */ }
-    if (isInAppBrowser()) {
-      setShow(true)
-      setPlatform(detectPlatform())
-    }
+    if (!isInAppBrowser()) return
+    setPlatform(detectPlatform())
+    // Delay the modal so the user actually sees the data first. If they
+    // bounce in the first few seconds, no modal fires at all — so the
+    // banner itself can't cause a bounce. If they stay, we surface it
+    // after they've had a chance to read a wait time.
+    const timer = setTimeout(() => setShow(true), 12_000)
+    return () => clearTimeout(timer)
   }, [])
 
   function dismiss() {

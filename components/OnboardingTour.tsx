@@ -49,11 +49,16 @@ export function OnboardingTour() {
   const [visible, setVisible] = useState(false)
   const [step, setStep] = useState(0)
 
+  // Auto-show on first visit is disabled — it was firing a full-screen 5-step
+  // modal on every FB-sourced visitor before they could see the data, killing
+  // retention. The tour is now only shown when explicitly triggered via
+  // `window.dispatchEvent(new Event('cruzar:show-onboarding'))` (e.g. from a
+  // help button in NavBar, not added yet).
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const seen = localStorage.getItem(STORAGE_KEY)
-      if (!seen) setVisible(true)
-    }
+    if (typeof window === 'undefined') return
+    const handler = () => setVisible(true)
+    window.addEventListener('cruzar:show-onboarding', handler)
+    return () => window.removeEventListener('cruzar:show-onboarding', handler)
   }, [])
 
   // Default to Spanish for border region users

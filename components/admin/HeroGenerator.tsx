@@ -10,37 +10,59 @@ import type { PortWaitTime } from '@/types'
 // tuned to the time of day. Diego uses this to target specific Facebook
 // groups without authoring every post from scratch.
 
-type RegionKey = 'rgv' | 'brownsville' | 'laredo' | 'eagle_pass' | 'el_paso' | 'san_luis' | 'all'
+type RegionKey =
+  | 'rgv'
+  | 'brownsville'
+  | 'laredo'
+  | 'eagle_pass'
+  | 'el_paso'
+  | 'nogales'
+  | 'san_luis'
+  | 'tijuana'
+  | 'mexicali'
+  | 'all'
 
 const REGIONS: { key: RegionKey; label: string; emoji: string }[] = [
-  { key: 'rgv',         label: 'RGV / McAllen',          emoji: '🌵' },
+  { key: 'rgv',         label: 'RGV / McAllen',           emoji: '🌵' },
   { key: 'brownsville', label: 'Matamoros / Brownsville', emoji: '🏙️' },
   { key: 'laredo',      label: 'Laredo / N. Laredo',      emoji: '🛣️' },
   { key: 'eagle_pass',  label: 'Eagle Pass / P. Negras',  emoji: '🦅' },
   { key: 'el_paso',     label: 'El Paso / Juárez',        emoji: '⛰️' },
+  { key: 'nogales',     label: 'Nogales / Sonora',        emoji: '🌵' },
+  { key: 'san_luis',    label: 'San Luis RC / Yuma',      emoji: '☀️' },
+  { key: 'tijuana',     label: 'Tijuana / San Ysidro',    emoji: '🌊' },
+  { key: 'mexicali',    label: 'Mexicali / Calexico',     emoji: '🏜️' },
   { key: 'all',         label: 'All Mega-Regions',        emoji: '🌎' },
 ]
 
 // Maps the admin region keys to portMeta mega-region slugs
 const REGION_TO_MEGA: Record<RegionKey, string[]> = {
-  rgv: ['rgv'],
+  rgv:         ['rgv'],
   brownsville: ['rgv'],
-  laredo: ['laredo'],
-  eagle_pass: ['eagle_pass'],
-  el_paso: ['el_paso'],
-  san_luis: ['arizona'],
-  all: [],
+  laredo:      ['laredo'],
+  eagle_pass:  ['coahuila-tx'],
+  el_paso:     ['el-paso'],
+  nogales:     ['sonora-az'],
+  san_luis:    ['sonora-az'],
+  tijuana:     ['baja'],
+  mexicali:    ['baja'],
+  all:         [],
 }
 
-// Also allow by city-name match for fallback (portMeta has `.city`)
+// Also allow by city-name match for fallback (portMeta has `.city`). The
+// mega-region sets are too coarse to separate e.g. Tijuana from Mexicali
+// (both are `baja`), so the city filter is the real disambiguator.
 const REGION_CITY_MATCH: Record<RegionKey, (city: string) => boolean> = {
-  rgv: (c) => ['McAllen', 'Hidalgo', 'Pharr', 'Progreso', 'Donna', 'Rio Grande City', 'Roma'].some(s => c.includes(s)),
+  rgv:         (c) => ['McAllen', 'Hidalgo', 'Pharr', 'Progreso', 'Donna', 'Rio Grande City', 'Roma'].some(s => c.includes(s)),
   brownsville: (c) => c.includes('Brownsville'),
-  laredo: (c) => c.includes('Laredo'),
-  eagle_pass: (c) => c.includes('Eagle Pass'),
-  el_paso: (c) => c.includes('El Paso'),
-  san_luis: (c) => c.includes('San Luis') || c.includes('Yuma') || c.includes('Nogales'),
-  all: () => true,
+  laredo:      (c) => c.includes('Laredo'),
+  eagle_pass:  (c) => c.includes('Eagle Pass'),
+  el_paso:     (c) => c.includes('El Paso'),
+  nogales:     (c) => c.includes('Nogales') || c.includes('Douglas') || c.includes('Naco') || c.includes('Lukeville'),
+  san_luis:    (c) => c.includes('San Luis') || c.includes('Yuma'),
+  tijuana:     (c) => c.includes('San Ysidro') || c.includes('Otay Mesa') || c.includes('Tecate'),
+  mexicali:    (c) => c.includes('Calexico') || c.includes('Andrade'),
+  all:         () => true,
 }
 
 type TimeSlot = 'morning' | 'midday' | 'afternoon' | 'evening' | 'neutral'

@@ -13,6 +13,7 @@ import { OnboardingTour } from '@/components/OnboardingTour'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner'
 import { HeroLiveDelta } from '@/components/HeroLiveDelta'
+import { LiveActivityTicker } from '@/components/LiveActivityTicker'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -147,15 +148,59 @@ export function HomeClient({ initialPorts }: Props) {
           <NavBar />
         </div>
 
-        {/* Hero delta — the 'wow look at this' moment for FB-sourced visitors.
-            Shows the fastest crossing in the user's region + the time saved
-            vs. the slowest, with a share button that drops a pre-composed
-            WhatsApp message. This is the screenshot people send their friends.
-            Gets initialPorts from the server so it paints with real data on
-            first paint — zero client round-trip to /api/ports. */}
-        {!isBusiness && <HeroLiveDelta ports={initialPorts} />}
+        {/* Hero delta — only for signed-in users now. Guests used to see this
+            as the first thing and it gave them the whole answer in one glance,
+            killing retention. Now it's a post-signup reward: installed/logged-in
+            users still get the polished personalized card. Guests see raw data
+            + community activity instead. */}
+        {!isBusiness && tier !== 'guest' && <HeroLiveDelta ports={initialPorts} />}
 
-        {/* Services in Mexico banner — hidden for business accounts */}
+        {/* Live community activity ticker — replaces the hero for guests.
+            Rotating "what's happening at the border right now" strip that
+            makes the page feel alive and creates a reason to come back. */}
+        {!isBusiness && tier === 'guest' && <LiveActivityTicker />}
+
+        {/* Business Command Center — visible only to business tier */}
+        <BusinessCommandWidget />
+
+        {/* Geolocation — shows if user is near a crossing */}
+        <WaitingMode />
+
+        {/* Urgent alerts — accidents & inspections from last 30 min, above the list */}
+        {!isBusiness && <UrgentAlerts />}
+
+        <SavedCrossings initialPorts={initialPorts} />
+        <PortList />
+
+        {/* Primary signup hook — guests only, now BELOW the list so the data
+            is the first thing they get, and the pitch lands after they've
+            already seen the value. */}
+        {tier === 'guest' && (
+          <Link href="/signup" className="block mt-4">
+            <div className="cruzar-shimmer cruzar-rise bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 active:scale-[0.98] transition-transform">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white">
+                  {lang === 'es'
+                    ? '🔔 Te avisamos cuando tu puente baje de 30 min'
+                    : '🔔 We\'ll ping you when your bridge drops below 30 min'}
+                </p>
+                <p className="text-xs text-blue-100 mt-0.5">
+                  {lang === 'es'
+                    ? 'Gratis · sin spam · cancela cuando quieras'
+                    : 'Free · no spam · cancel anytime'}
+                </p>
+              </div>
+              <span className="flex-shrink-0 bg-white text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
+                {lang === 'es' ? 'Activar →' : 'Turn on →'}
+              </span>
+            </div>
+          </Link>
+        )}
+
+        {/* Exchange rate — hidden for business accounts, moved below the list */}
+        {!isBusiness && <ExchangeRateWidget />}
+
+        {/* Services in Mexico banner — moved below the list */}
         {!isBusiness && (
           <Link href="/services" className="block mt-3">
             <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-4 shadow-sm">
@@ -189,55 +234,6 @@ export function HomeClient({ initialPorts }: Props) {
             </div>
           </Link>
         )}
-
-        {/* Business Command Center — visible only to business tier */}
-        <BusinessCommandWidget />
-
-        {/* Geolocation — shows if user is near a crossing */}
-        <WaitingMode />
-
-        {/* Exchange rate — hidden for business accounts */}
-        {!isBusiness && <ExchangeRateWidget />}
-
-        {/* Urgent alerts — accidents & inspections from last 30 min, above the list */}
-        {!isBusiness && <UrgentAlerts />}
-
-        {/* Time loss hook — shown to non-business users */}
-        {!isBusiness && (
-          <div className="mt-3 px-1">
-            <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-              {lang === 'es'
-                ? '⏱ Los que cruzan a diario pierden hasta 200 horas al año en fila. Cruzar te avisa cuándo salir.'
-                : '⏱ Daily commuters lose up to 200 hours a year in line. Cruzar tells you the right time to leave.'}
-            </p>
-          </div>
-        )}
-
-        {/* Primary signup hook — guests only, ABOVE the port list so it isn't buried */}
-        {tier === 'guest' && (
-          <Link href="/signup" className="block mt-3">
-            <div className="cruzar-shimmer cruzar-rise bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 active:scale-[0.98] transition-transform">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-white">
-                  {lang === 'es'
-                    ? '🔔 Te avisamos cuando tu puente baje de 30 min'
-                    : '🔔 We\'ll ping you when your bridge drops below 30 min'}
-                </p>
-                <p className="text-xs text-blue-100 mt-0.5">
-                  {lang === 'es'
-                    ? 'Gratis · sin spam · cancela cuando quieras'
-                    : 'Free · no spam · cancel anytime'}
-                </p>
-              </div>
-              <span className="flex-shrink-0 bg-white text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
-                {lang === 'es' ? 'Activar →' : 'Turn on →'}
-              </span>
-            </div>
-          </Link>
-        )}
-
-        <SavedCrossings initialPorts={initialPorts} />
-        <PortList />
 
         <ShareAppButton lang={lang} />
 
