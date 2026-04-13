@@ -6,6 +6,8 @@ import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import { InstallGuide } from '@/components/InstallGuide'
+import { getPortMeta } from '@/lib/portMeta'
+import { haversineKm } from '@/lib/geo'
 import type { PortWaitTime } from '@/types'
 
 // Forced activation flow. Every new signup lands here before the dashboard.
@@ -177,27 +179,46 @@ function WelcomeInner() {
 
   // Compute the 6 bridges to show:
   //   1. If geolocation available, nearest 6 by haversine distance
-  //   2. Otherwise, the 6 with the most traffic (lowest wait as a proxy)
+  //      against the port's metadata coordinates. Works anywhere on
+  //      the border — a user in El Paso sees El Paso bridges, a user
+  //      in Tijuana sees Tijuana bridges, not RGV fallback.
+  //   2. Otherwise, a representative cross-border set spanning RGV,
+  //      Brownsville, Laredo, El Paso, Tijuana, and Mexicali so
+  //      unknown-location users still see their region if they pick.
   const displayPorts = (() => {
     const open = ports.filter((p) => !p.isClosed && p.vehicle != null)
     if (open.length === 0) return []
     if (userLoc) {
-      // Need to haversine against port coordinates from portMeta
-      return [...open]
-        .map((p) => ({
-          port: p,
-          // crude: we'll import from portMeta at render time
-        }))
+      const withDist = open
+        .map((p) => {
+          const meta = getPortMeta(p.portId)
+          if (!meta.lat || !meta.lng) return null
+          return {
+            port: p,
+            dist: haversineKm(userLoc.lat, userLoc.lng, meta.lat, meta.lng),
+          }
+        })
+        .filter((x): x is { port: PortWaitTime; dist: number } => x !== null)
+        .sort((a, b) => a.dist - b.dist)
         .slice(0, 6)
         .map((x) => x.port)
+      if (withDist.length >= 3) return withDist
+      // If portMeta coverage was sparse, fall through to the default set
     }
-    // Fallback: a representative set of the biggest RGV bridges
-    const priority = ['230501', '230502', '230503', '230901', '535501', '535502']
+    // Cross-border default set — one representative bridge per major
+    // crossing region so a user anywhere can recognize theirs.
+    const priority = [
+      '230501', // Hidalgo (RGV)
+      '535504', // Brownsville Gateway
+      '230401', // Laredo I
+      '240201', // El Paso
+      '250401', // San Ysidro (Tijuana)
+      '250301', // Calexico East (Mexicali)
+    ]
     const priorityPorts = priority
       .map((id) => open.find((p) => p.portId === id))
       .filter(Boolean) as PortWaitTime[]
     if (priorityPorts.length >= 6) return priorityPorts
-    // Fill with whatever else is available
     return [...priorityPorts, ...open.filter((p) => !priority.includes(p.portId))].slice(0, 6)
   })()
 

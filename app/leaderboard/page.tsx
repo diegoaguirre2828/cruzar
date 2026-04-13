@@ -10,10 +10,20 @@ import { GuardianProgressCard } from '@/components/GuardianProgressCard'
 
 interface Leader {
   id: string
-  username: string
+  display_name: string | null
   points: number
   reports_count: number
   badges: string[]
+}
+
+// Fallback display name when a user hasn't set one. We don't have
+// their email here (not in the leaderboard API select), so derive
+// a stable short handle from the user ID so every row still reads
+// like a distinct guardian instead of a pile of "@" symbols.
+function handleFor(leader: Leader): string {
+  if (leader.display_name && leader.display_name.trim()) return `@${leader.display_name.trim()}`
+  const suffix = leader.id.replace(/-/g, '').slice(0, 4)
+  return `Guardián-${suffix}`
 }
 
 // Guardián tiers — same ladder as the home-page GuardianProgressCard,
@@ -155,7 +165,7 @@ export default function LeaderboardPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">@{leader.username}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{handleFor(leader)}</span>
                           {leader.badges?.slice(0, 3).map(b => (
                             <span key={b} title={BADGES[b]?.label}>{BADGES[b]?.emoji}</span>
                           ))}

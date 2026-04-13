@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PortWaitTime } from '@/types'
 import { getPortMeta } from '@/lib/portMeta'
 import { getWaitLevel } from '@/lib/cbp'
@@ -26,6 +26,13 @@ const LEVEL_COLORS = {
 export function BorderMap({ ports, selectedRegion, onPortClick, fillParent }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<unknown>(null)
+  // Flipping this to true when Leaflet finishes initializing triggers
+  // a re-run of the marker effect below. Without it, the marker
+  // effect would fire on mount (before Leaflet is ready), bail out
+  // because mapInstanceRef.current is null, and then never fire
+  // again until parent props changed — which meant the map showed
+  // zero pins until the user manually hit refresh.
+  const [mapReady, setMapReady] = useState(false)
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return
@@ -45,6 +52,7 @@ export function BorderMap({ ports, selectedRegion, onPortClick, fillParent }: Pr
       }).addTo(map)
 
       mapInstanceRef.current = map
+      setMapReady(true)
     }
 
     initMap()
@@ -58,7 +66,7 @@ export function BorderMap({ ports, selectedRegion, onPortClick, fillParent }: Pr
   }, [])
 
   useEffect(() => {
-    if (!mapInstanceRef.current) return
+    if (!mapReady || !mapInstanceRef.current) return
 
     async function updateMarkers() {
       const L = (await import('leaflet')).default
@@ -143,7 +151,7 @@ export function BorderMap({ ports, selectedRegion, onPortClick, fillParent }: Pr
     }
 
     updateMarkers()
-  }, [ports, selectedRegion, onPortClick])
+  }, [ports, selectedRegion, onPortClick, mapReady])
 
   return (
     <div

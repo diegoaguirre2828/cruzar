@@ -80,10 +80,17 @@ export function RegionalSnapshot({ ports }: Props) {
   return (
     <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400">
-          {es ? '🌎 De un vistazo' : '🌎 At a glance'}
-        </p>
-        <Link href="/mapa" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400">
+            {es ? '🌎 Toda la frontera' : '🌎 Whole border'}
+          </p>
+          <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+            {es
+              ? 'Puentes rápidos, moderados y lentos por región'
+              : 'Fast, moderate, and slow crossings by region'}
+          </p>
+        </div>
+        <Link href="/mapa" className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex-shrink-0 ml-3">
           {es ? 'Mapa →' : 'Map →'}
         </Link>
       </div>
@@ -113,10 +120,34 @@ export function RegionalSnapshot({ ports }: Props) {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0 text-[11px] font-black tabular-nums">
-                {green > 0 && <span className="text-green-600 dark:text-green-400">●{green}</span>}
-                {amber > 0 && <span className="text-amber-600 dark:text-amber-400">●{amber}</span>}
-                {red > 0 && <span className="text-red-600 dark:text-red-400">●{red}</span>}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {green > 0 && (
+                  <span
+                    title={es ? `${green} puentes rápidos` : `${green} fast crossings`}
+                    className="inline-flex items-center gap-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full px-1.5 py-0.5 text-[10px] font-black tabular-nums"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    {green}
+                  </span>
+                )}
+                {amber > 0 && (
+                  <span
+                    title={es ? `${amber} puentes moderados` : `${amber} moderate`}
+                    className="inline-flex items-center gap-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full px-1.5 py-0.5 text-[10px] font-black tabular-nums"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    {amber}
+                  </span>
+                )}
+                {red > 0 && (
+                  <span
+                    title={es ? `${red} puentes lentos` : `${red} slow`}
+                    className="inline-flex items-center gap-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full px-1.5 py-0.5 text-[10px] font-black tabular-nums"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    {red}
+                  </span>
+                )}
               </div>
               <span className="text-gray-300 dark:text-gray-600 text-sm flex-shrink-0">→</span>
             </Link>

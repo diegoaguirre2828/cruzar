@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
 import { Copy, Check, ExternalLink, RefreshCw } from 'lucide-react'
 import { HeroGenerator } from '@/components/admin/HeroGenerator'
+import { ViralLoopDetail } from '@/components/admin/ViralLoopDetail'
 
 const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
 
@@ -1196,9 +1197,7 @@ export default function AdminPage() {
                         <p className="text-[11px] text-emerald-600 mt-0.5 font-semibold">Users who shared</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-1.5 text-center italic">
-                      Share count tracked in DB for future redemption — not shown to users.
-                    </p>
+                    <ViralLoopDetail />
                   </div>
 
                   {/* Tiers */}
