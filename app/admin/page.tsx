@@ -1318,7 +1318,7 @@ export default function AdminPage() {
             <div className="mb-4">
               <p className="text-sm font-semibold text-gray-900">📥 Manual Ingest</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Pega texto de un post de Facebook y/o una captura de pantalla. El LLM lee texto + imagen y crea reportes reales en la app.
+                Paste a Facebook post (with comments, if possible) and/or a screenshot. The LLM reads text + image and creates real reports in the app. <b>Important:</b> on FB, click &quot;view more comments&quot; BEFORE you Ctrl+A — that&apos;s where the wait times live.
               </p>
             </div>
 
@@ -1367,15 +1367,15 @@ export default function AdminPage() {
             >
               <div>
                 <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
-                  Texto · Post único o feed completo
+                  Text · Single post or full feed
                 </label>
                 <p className="text-[11px] text-gray-400 mt-0.5 mb-1.5">
-                  Pega un post, un post con comentarios, o <b>toda la página</b> (Ctrl+A → Ctrl+C en un grupo de FB) — la IA encuentra todos los reportes de espera en el texto.
+                  Paste a single post, a post with its comments, or <b>the whole page</b> (Ctrl+A → Ctrl+C on an FB group) — the AI will find every wait-time report in the text.
                 </p>
                 <textarea
                   value={ingestText}
                   onChange={(e) => setIngestText(e.target.value)}
-                  placeholder="Ej: 'Los Tomates horita 45 min' — o pega el feed completo con muchos posts"
+                  placeholder="e.g. 'Los Tomates horita 45 min' — or paste the whole feed with many posts"
                   rows={10}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono leading-relaxed"
                 />
@@ -1386,23 +1386,23 @@ export default function AdminPage() {
 
               <div>
                 <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
-                  Grupo (opcional)
+                  Group (optional)
                 </label>
                 <input
                   type="text"
                   value={ingestGroup}
                   onChange={(e) => setIngestGroup(e.target.value)}
-                  placeholder="Ej: Filas de Puentes Matamoros/Brownsville"
+                  placeholder="e.g. Filas de Puentes Matamoros/Brownsville"
                   className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
                 <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
-                  Imagen (opcional)
+                  Image (optional)
                 </label>
                 <p className="text-[11px] text-gray-400 mt-0.5 mb-2">
-                  Pega (Ctrl+V) una captura de pantalla, o sube un archivo. La IA analiza la foto para contar carros y estimar la espera.
+                  Paste (Ctrl+V) a screenshot or upload a file. The AI analyzes the photo to count cars and estimate the wait.
                 </p>
                 {ingestImagePreview ? (
                   <div className="relative inline-block">
@@ -1431,7 +1431,7 @@ export default function AdminPage() {
                 disabled={ingestSubmitting || (!ingestText.trim() && !ingestImageBase64)}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl disabled:opacity-40"
               >
-                {ingestSubmitting ? 'Procesando…' : '📥 Ingest post'}
+                {ingestSubmitting ? 'Processing…' : '📥 Ingest post'}
               </button>
             </div>
 
@@ -1441,15 +1441,35 @@ export default function AdminPage() {
                 {ingestResult.error && (
                   <p className="text-sm text-red-600">✗ {ingestResult.error}</p>
                 )}
-                {ingestResult.skipped && (
+                {(ingestResult.inserted ?? 0) > 0 && (
+                  <p className="text-sm text-green-600 font-semibold">✓ {ingestResult.inserted} report{ingestResult.inserted === 1 ? '' : 's'} inserted</p>
+                )}
+                {ingestResult.skipped === 'no_wait_info' && !ingestResult.error && (
+                  <div className="text-sm">
+                    <p className="text-amber-700 font-semibold">↷ No wait-time info found</p>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                      The pasted text was either a question (like &quot;cómo está la fila?&quot;), an ad, or chit-chat — no concrete wait times to extract.
+                      {ingestResult._filter && ingestResult._filter.keptCount === 0 && ingestResult._filter.totalCount > 0 && (
+                        <> {ingestResult._filter.totalCount} post{ingestResult._filter.totalCount === 1 ? '' : 's'} checked, none had a bridge name + wait time in the same chunk.</>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-2">
+                      <b>Tip:</b> On FB, scroll and <b>click &quot;view more comments&quot;</b> on each post <i>before</i> Ctrl+A — the replies are where the actual wait times live. A question post alone won&apos;t have data to extract.
+                    </p>
+                  </div>
+                )}
+                {ingestResult.skipped && ingestResult.skipped !== 'no_wait_info' && (
                   <p className="text-sm text-amber-600">↷ Skipped: {ingestResult.skipped}</p>
                 )}
-                {(ingestResult.inserted ?? 0) > 0 && (
-                  <p className="text-sm text-green-600 font-semibold">✓ {ingestResult.inserted} reporte{ingestResult.inserted === 1 ? '' : 's'} insertado{ingestResult.inserted === 1 ? '' : 's'}</p>
-                )}
                 {ingestResult._filter && (
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    🧹 Filtro: {ingestResult._filter.keptCount}/{ingestResult._filter.totalCount} posts relevantes · {ingestResult._filter.charsBefore.toLocaleString()} → {ingestResult._filter.charsAfter.toLocaleString()} chars ({Math.round((1 - ingestResult._filter.charsAfter / Math.max(1, ingestResult._filter.charsBefore)) * 100)}% ruido descartado)
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    🧹 Filter: kept {ingestResult._filter.keptCount} of {ingestResult._filter.totalCount} post{ingestResult._filter.totalCount === 1 ? '' : 's'}
+                    {ingestResult._filter.keptCount > 0 && (
+                      <> · {ingestResult._filter.charsBefore.toLocaleString()} → {ingestResult._filter.charsAfter.toLocaleString()} chars sent to LLM</>
+                    )}
+                    {ingestResult._filter.keptCount === 0 && (
+                      <> · sent raw as fallback ({ingestResult._filter.charsBefore.toLocaleString()} chars)</>
+                    )}
                   </p>
                 )}
                 {Array.isArray(ingestResult.observations) && ingestResult.observations.length > 0 && (
@@ -1461,7 +1481,7 @@ export default function AdminPage() {
             )}
 
             <p className="mt-4 text-[11px] text-gray-400 leading-relaxed">
-              <b>Pro tip:</b> En Windows, <kbd className="bg-gray-100 px-1 rounded">Win+Shift+S</kbd> toma una captura, se copia al portapapeles, y puedes pegarla directamente aquí con <kbd className="bg-gray-100 px-1 rounded">Ctrl+V</kbd> (sin guardar el archivo).
+              <b>Pro tip:</b> On Windows, <kbd className="bg-gray-100 px-1 rounded">Win+Shift+S</kbd> takes a screenshot straight to clipboard, and you can paste it right here with <kbd className="bg-gray-100 px-1 rounded">Ctrl+V</kbd> (no need to save the file).
             </p>
           </div>
         )}

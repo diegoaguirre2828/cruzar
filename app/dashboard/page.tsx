@@ -10,6 +10,7 @@ import { WaitBadge } from '@/components/WaitBadge'
 import { useLang } from '@/lib/LangContext'
 import { Bell, Star, LogOut, ArrowLeft, Plus, Trash2, Route, Settings, Lock, Navigation, Building2, User } from 'lucide-react'
 import { PushToggle } from '@/components/PushToggle'
+import { PortSearch } from '@/components/PortSearch'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import type { PortWaitTime } from '@/types'
 
@@ -410,16 +411,12 @@ export default function DashboardPage() {
                 {es ? 'Paso 2 — Cuándo avisarte' : 'Step 2 — When to alert you'}
               </p>
               <div className="space-y-3">
-                <select
+                <PortSearch
+                  ports={ports}
                   value={newAlertPortId}
-                  onChange={e => setNewAlertPortId(e.target.value)}
-                  className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">{t.selectCrossing}</option>
-                  {ports.map(p => (
-                    <option key={p.portId} value={p.portId}>{p.portName} – {p.crossingName}</option>
-                  ))}
-                </select>
+                  onChange={setNewAlertPortId}
+                  placeholder={t.selectCrossing}
+                />
                 <select
                   value={newAlertLane}
                   onChange={e => setNewAlertLane(e.target.value)}
