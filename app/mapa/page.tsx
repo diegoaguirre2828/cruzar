@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/LangContext'
 import { BorderMap } from '@/components/BorderMap'
+import { useHomeRegion, MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
+import { useTier } from '@/lib/useTier'
+import { getPortMeta } from '@/lib/portMeta'
 import type { PortWaitTime } from '@/types'
 
 // Full-screen map tab. Loads Leaflet on-demand (heavy dependency)
@@ -17,8 +20,12 @@ export default function MapaPage() {
   const { lang } = useLang()
   const router = useRouter()
   const es = lang === 'es'
+  const { homeRegion } = useHomeRegion()
+  const { tier } = useTier()
+  const isBusiness = tier === 'business'
   const [ports, setPorts] = useState<PortWaitTime[]>([])
   const [loading, setLoading] = useState(true)
+  const [scopeBypass, setScopeBypass] = useState(false)
 
   useEffect(() => {
     fetch('/api/ports', { cache: 'no-store' })
@@ -29,6 +36,13 @@ export default function MapaPage() {
       })
       .catch(() => setLoading(false))
   }, [])
+
+  // Scope map pins to the home region for non-business users when a
+  // region is set and the user hasn't explicitly bypassed the scope.
+  const scopeActive = !isBusiness && homeRegion != null && !scopeBypass
+  const visiblePorts = scopeActive
+    ? ports.filter((p) => getPortMeta(p.portId).megaRegion === homeRegion)
+    : ports
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
@@ -60,14 +74,31 @@ export default function MapaPage() {
             </Link>
           </div>
         ) : (
-          <div className="h-[calc(100vh-200px)] rounded-2xl overflow-hidden">
-            <BorderMap
-              ports={ports}
-              selectedRegion="all"
-              fillParent
-              onPortClick={(portId) => router.push(`/port/${encodeURIComponent(portId)}`)}
-            />
-          </div>
+          <>
+            {scopeActive && homeRegion && (
+              <div className="mb-3 flex items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2">
+                <p className="text-[11px] font-bold text-blue-900 dark:text-blue-200 leading-tight">
+                  📍 {es
+                    ? `Mostrando ${MEGA_REGION_LABELS[homeRegion].es}`
+                    : `Showing ${MEGA_REGION_LABELS[homeRegion].en}`}
+                </p>
+                <button
+                  onClick={() => setScopeBypass(true)}
+                  className="text-[10px] font-bold text-blue-700 dark:text-blue-300 underline underline-offset-2"
+                >
+                  {es ? 'Ver todos →' : 'See all →'}
+                </button>
+              </div>
+            )}
+            <div className="h-[calc(100vh-200px)] rounded-2xl overflow-hidden">
+              <BorderMap
+                ports={visiblePorts}
+                selectedRegion="all"
+                fillParent
+                onPortClick={(portId) => router.push(`/port/${encodeURIComponent(portId)}`)}
+              />
+            </div>
+          </>
         )}
       </div>
     </main>

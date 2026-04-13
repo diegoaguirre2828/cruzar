@@ -9,6 +9,7 @@ import { UrgentAlerts } from '@/components/UrgentAlerts'
 import { WaitingMode } from '@/components/WaitingMode'
 import { BusinessCommandWidget } from '@/components/BusinessCommandWidget'
 import { ExchangeRatePill } from '@/components/ExchangeRatePill'
+import { RegionPicker } from '@/components/RegionPicker'
 import { OnboardingTour } from '@/components/OnboardingTour'
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner'
 import { HeroLiveDelta } from '@/components/HeroLiveDelta'
@@ -171,6 +172,7 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             signed-in users with at least one report today. */}
         {!isBusiness && (
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <RegionPicker />
             <InstallPill />
             <ExchangeRatePill />
             <WeatherHook variant="pill" />

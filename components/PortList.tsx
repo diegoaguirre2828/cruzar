@@ -11,6 +11,7 @@ import { RefreshCw, Map, List, Navigation, X, Share2, Check } from 'lucide-react
 import { ALL_REGIONS, getPortMeta } from '@/lib/portMeta'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
+import { useHomeRegion, MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
@@ -58,7 +59,17 @@ export function PortList() {
   const router = useRouter()
   const { t, lang } = useLang()
   const { tier } = useTier()
+  const { homeRegion } = useHomeRegion()
   const isBusiness = tier === 'business'
+  // Session-local bypass of the home-region scope. Set when the user
+  // taps "See all" on the scope indicator banner. Doesn't persist —
+  // on next page load the scope returns so the default behaviour is
+  // always the zone view.
+  const [scopeBypass, setScopeBypass] = useState(false)
+  // Scope the visible list to the user's home mega region unless they
+  // are business tier (fleets cross multiple regions and need the full
+  // picture). homeRegion === null means "show all", so no scoping.
+  const scopeActive = !isBusiness && homeRegion != null && !scopeBypass
   // Hydrate from the localStorage cache on first render so even a
   // cold-offline load shows data. The network fetch below still
   // fires and replaces this with fresh data when possible.
@@ -247,9 +258,17 @@ export function PortList() {
   }
 
   const filteredPorts = (() => {
-    let list = selectedRegion === 'All'
-      ? ports
-      : ports.filter(p => getPortMeta(p.portId).region === selectedRegion)
+    // Apply home-region scoping first. Only kicks in when the user has
+    // NOT manually picked a display region (selectedRegion === 'All')
+    // AND they're not searching (search bypasses all filters) AND they
+    // aren't business tier. Prevents Mexicali users from drowning in
+    // RGV noise on first load.
+    let list = ports
+    if (scopeActive && selectedRegion === 'All' && !searchQuery.trim()) {
+      list = ports.filter(p => getPortMeta(p.portId).megaRegion === homeRegion)
+    } else if (selectedRegion !== 'All') {
+      list = ports.filter(p => getPortMeta(p.portId).region === selectedRegion)
+    }
     const q = searchQuery.trim().toLowerCase()
     if (q) {
       list = list.filter(p => {
@@ -584,6 +603,25 @@ export function PortList() {
                   <PortCard port={port} signal={signals[port.portId]} />
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Home-region scope indicator — tells the user the list is
+              filtered to their zone and gives them a one-tap bypass
+              when they actually want the full border view. */}
+          {view === 'list' && !nearMe && scopeActive && selectedRegion === 'All' && !searchQuery.trim() && homeRegion && (
+            <div className="mb-3 flex items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2">
+              <p className="text-[11px] font-bold text-blue-900 dark:text-blue-200 leading-tight">
+                📍 {lang === 'es'
+                  ? `Mostrando ${MEGA_REGION_LABELS[homeRegion].es}`
+                  : `Showing ${MEGA_REGION_LABELS[homeRegion].en}`}
+              </p>
+              <button
+                onClick={() => setScopeBypass(true)}
+                className="text-[10px] font-bold text-blue-700 dark:text-blue-300 underline underline-offset-2"
+              >
+                {lang === 'es' ? 'Ver todos →' : 'See all →'}
+              </button>
             </div>
           )}
 

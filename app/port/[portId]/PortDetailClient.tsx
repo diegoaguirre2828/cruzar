@@ -18,6 +18,7 @@ import { PushToggle } from '@/components/PushToggle'
 import { ReportForm } from '@/components/ReportForm'
 import { ReportsFeed } from '@/components/ReportsFeed'
 import { BridgeCameras } from '@/components/BridgeCameras'
+import { PortDetailSoftWall } from '@/components/PortDetailSoftWall'
 import { PingCircleButton } from '@/components/PingCircleButton'
 import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
 import { HourlyWaitChart } from '@/components/HourlyWaitChart'
@@ -518,6 +519,11 @@ export function PortDetailClient({ port, portId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Soft signup wall — dismissible sheet + persistent sticky bar
+          for guests. Renders nothing for authed users. Lives high in
+          the tree so it's mounted alongside the data, not after. */}
+      <PortDetailSoftWall portId={portId} portName={port.portName} />
 
       {/* Live bridge camera — Pro-gated when a feed is registered for this
           port. Sits below the wait number so it's the first thing after
