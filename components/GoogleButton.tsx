@@ -5,7 +5,7 @@ import { createClient } from '@/lib/auth'
 
 export function GoogleButton({
   label = 'Continue with Google',
-  next = '/dashboard',
+  next = '/welcome',
 }: { label?: string; next?: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

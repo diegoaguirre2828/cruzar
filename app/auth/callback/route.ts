@@ -19,7 +19,11 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   const { searchParams, origin } = new URL(req.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') || '/dashboard'
+  // New signups and first-time OAuth logins land on /welcome so they hit
+  // the mandatory alert-setup step. The /welcome page auto-redirects to
+  // /dashboard if the user already has an alert, so returning users
+  // bypass it transparently.
+  const next = searchParams.get('next') || '/welcome'
 
   if (code) {
     const cookieStore = await cookies()
@@ -41,7 +45,7 @@ export async function GET(req: NextRequest) {
     if (!error) {
       // Safe redirect — only allow local paths so we can't be used as
       // an open redirect.
-      const target = next.startsWith('/') ? next : '/dashboard'
+      const target = next.startsWith('/') ? next : '/welcome'
       return NextResponse.redirect(`${origin}${target}`)
     }
     console.error('auth/callback: exchange error', error)

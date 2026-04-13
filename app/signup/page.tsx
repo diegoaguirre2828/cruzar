@@ -84,10 +84,15 @@ export default function SignupPage() {
         })
       } catch { /* non-critical */ }
     }
+    // New users land on /welcome for the mandatory activation step (pick a
+    // bridge + set an alert), not straight to the dashboard. This fixes the
+    // 49% signup→dashboard leak — every new account now has at least one
+    // saved crossing + one alert before they see the full app.
     const nextParam = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('next')
       : null
-    router.push(nextParam && nextParam.startsWith('/') ? nextParam : '/dashboard')
+    const destination = nextParam && nextParam.startsWith('/') ? nextParam : '/welcome'
+    router.push(destination)
   }
 
   async function handleMagicLink(e: React.FormEvent) {
