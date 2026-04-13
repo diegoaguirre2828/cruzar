@@ -199,7 +199,7 @@ export default function HomePage() {
         {/* Primary signup hook — guests only, ABOVE the port list so it isn't buried */}
         {tier === 'guest' && (
           <Link href="/signup" className="block mt-3">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 active:scale-[0.98] transition-transform">
+            <div className="cruzar-shimmer cruzar-rise bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3 active:scale-[0.98] transition-transform">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-white">
                   {lang === 'es'

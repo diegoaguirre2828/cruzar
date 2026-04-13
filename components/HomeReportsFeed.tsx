@@ -114,12 +114,14 @@ export function HomeReportsFeed() {
 
   return (
     <div className="space-y-2">
-      {visible.map(r => {
+      {visible.map((r, i) => {
         const label = TYPE_LABEL[r.report_type] ?? { en: 'Update', es: 'Actualización' }
         const expired = isExpired(r)
+        // Stagger the rise-in entrance so the feed feels alive on first paint
+        const delayClass = i < 3 ? `cruzar-rise cruzar-rise-delay-${i + 1}` : 'cruzar-rise'
         return (
           <Link key={r.id} href={`/port/${encodeURIComponent(r.port_id)}`}>
-            <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${expired ? 'opacity-50' : ''}`}>
+            <div className={`${delayClass} bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${expired ? 'opacity-50' : ''}`}>
               <span className="text-2xl flex-shrink-0 leading-none">{TYPE_EMOJI[r.report_type] ?? '💬'}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">

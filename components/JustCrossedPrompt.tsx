@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
+import { ReportSentAnimation } from './ReportSentAnimation'
 
 interface Props {
   portId: string
@@ -197,8 +198,10 @@ export function JustCrossedPrompt({ portId, portName, onSubmitted, forceShow, on
           const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
           return (
             <div>
+              {/* Signature broadcast animation */}
+              <ReportSentAnimation variant="broadcast" />
+
               <div className="text-center mb-4">
-                <p className="text-4xl mb-2">🙌</p>
                 <p className="text-lg font-black text-gray-900 dark:text-gray-100">
                   {es ? '¡Gracias!' : 'Thanks!'}
                 </p>

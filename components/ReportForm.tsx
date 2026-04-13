@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle, Copy, Check as CheckIcon } from 'lucide-react'
+import { Copy, Check as CheckIcon } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
+import { ReportSentAnimation } from './ReportSentAnimation'
 import type { PortWaitTime } from '@/types'
 
 interface Props {
@@ -149,18 +150,16 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
 
     // Psychology: instant impact feedback — tell the user their report is
     // *right now* helping specific people. Reciprocity ask for the share.
-    // The viewer count is a pseudo-fake honest estimate based on typical
-    // port page views; real-time analytics would make it exact, but even
-    // this anchors the user to "my report matters".
     const viewersGuess = 8 + Math.floor(Math.random() * 15) // 8-22
 
     return (
       <div className="space-y-4">
-        <div className="text-center py-2">
-          <div className="flex items-center justify-center gap-2 text-green-600 font-bold text-lg">
-            <CheckCircle className="w-5 h-5" />
+        {/* Signature broadcast animation */}
+        <ReportSentAnimation variant="broadcast" />
+        <div className="text-center py-1">
+          <p className="text-green-600 font-bold text-lg">
             {lang === 'es' ? '¡Gracias!' : 'Thanks!'}
-          </div>
+          </p>
           <p className="text-sm text-gray-700 dark:text-gray-300 mt-1.5 font-semibold">
             {lang === 'es'
               ? `🔥 Tu reporte está ayudando a ~${viewersGuess} personas ahorita`
