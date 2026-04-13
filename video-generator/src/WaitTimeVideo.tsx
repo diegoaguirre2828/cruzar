@@ -93,16 +93,26 @@ function CrossingCard({
           {crossing.name}
         </div>
         <div style={{ fontSize: 24, fontWeight: 600, color }}>
-          ● {LABELS[crossing.level]}
+          ● {crossing.wait === 0 && crossing.level === 'low' ? 'Sin espera' : LABELS[crossing.level]}
         </div>
       </div>
       <div style={{ textAlign: 'right' }}>
-        <div style={{ fontSize: 68, fontWeight: 900, color, lineHeight: 1 }}>
-          {crossing.level === 'unknown' ? '--' : displayed}
-        </div>
-        <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>
-          minutos
-        </div>
+        {crossing.level === 'unknown' ? (
+          <>
+            <div style={{ fontSize: 68, fontWeight: 900, color, lineHeight: 1 }}>--</div>
+            <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>minutos</div>
+          </>
+        ) : crossing.wait === 0 ? (
+          <>
+            <div style={{ fontSize: 56, fontWeight: 900, color, lineHeight: 1, letterSpacing: 1 }}>LIBRE</div>
+            <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.55)', marginTop: 6 }}>pasa ya</div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 68, fontWeight: 900, color, lineHeight: 1 }}>{displayed}</div>
+            <div style={{ fontSize: 22, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>minutos</div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -111,6 +121,9 @@ function CrossingCard({
 export const WaitTimeVideo: React.FC<Props> = ({ crossings }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
+
+  const freeCount = crossings.filter(c => c.wait === 0 && c.level === 'low').length;
+  const allClear = freeCount >= Math.ceil(crossings.length * 0.6);
 
   // Title entrance
   const titleSpring = spring({ frame, fps, config: { damping: 200 } });
@@ -170,14 +183,15 @@ export const WaitTimeVideo: React.FC<Props> = ({ crossings }) => {
         </div>
         <div
           style={{
-            fontSize: 72,
+            fontSize: allClear ? 80 : 72,
             fontWeight: 900,
-            color: 'white',
+            color: allClear ? '#22c55e' : 'white',
             lineHeight: 1.05,
             marginBottom: 16,
+            whiteSpace: 'pre-line',
           }}
         >
-          TIEMPOS{'\n'}DE ESPERA
+          {allClear ? 'PUENTES\nLIBRES' : 'TIEMPOS\nDE ESPERA'}
         </div>
         <div
           style={{
