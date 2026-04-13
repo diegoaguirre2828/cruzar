@@ -5,6 +5,7 @@ import { Copy, Check as CheckIcon } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
 import { ReportSentAnimation } from './ReportSentAnimation'
 import { trackShare } from '@/lib/trackShare'
+import { saveMyReport } from '@/lib/myReports'
 import type { PortWaitTime } from '@/types'
 
 interface Props {
@@ -165,6 +166,12 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
           lng: coords?.lng,
         }),
       })
+
+      // Remember this report locally so the user sees ownership badges
+      // on port cards + a pinned "tu reporte" row in the live ticker
+      // as they scroll. Pure client-side — no DB query needed to check
+      // "did I report this" on every port card render.
+      saveMyReport(portId, selected, null)
       setDone(true)
       // Auto-dismiss extended from 8s → 14s so users have time to read the
       // impact numbers and tap the share button. The screen is the payoff,
@@ -197,6 +204,13 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
     const portName = port?.localNameOverride || port?.portName || ''
     const es = lang === 'es'
 
+    // Emoji + label for the pinned "your report is now live" card.
+    // Mirrors the LiveActivityTicker styling so the user sees their
+    // own submission sitting in the feed they've been scrolling past.
+    const reportTypeMeta = selected ? REPORT_TYPES.find((r) => r.value === selected) : null
+    const reportLabel = reportTypeMeta ? (es ? reportTypeMeta.es : reportTypeMeta.en) : ''
+    const reportEmoji = reportTypeMeta?.emoji ?? '💬'
+
     return (
       <div className="space-y-4">
         {/* Signature broadcast animation */}
@@ -212,6 +226,37 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
               : 'Your report is out. This is how we look out for each other at the bridge.'}
           </p>
         </div>
+
+        {/* "Your report is now live" — the FB-like moment where the user
+            sees their own submission sitting in the community feed. This
+            card mimics the LiveActivityTicker row visual so the user
+            recognizes it as "the same stream I've been scrolling past."
+            Creates the immediate visible-consequence loop that makes
+            posting feel real instead of abstract. */}
+        {reportTypeMeta && (
+          <div className="bg-white dark:bg-gray-800 border-2 border-green-400 dark:border-green-600 ring-4 ring-green-100 dark:ring-green-900/30 rounded-2xl px-4 py-3 cruzar-rise">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+              </span>
+              <span className="text-[10px] uppercase tracking-widest font-black text-green-700 dark:text-green-400">
+                {es ? 'TU REPORTE · en vivo ahorita' : 'YOUR REPORT · live now'}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl leading-none flex-shrink-0">{reportEmoji}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-gray-900 dark:text-gray-100 truncate">
+                  {reportLabel}
+                </p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                  {portName} · {es ? 'hace un momento' : 'just now'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Impact numbers — two real counts that make the contribution feel
             concrete. Subscribers = people who asked for alerts on this port,

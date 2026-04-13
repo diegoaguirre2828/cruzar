@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Share2, Check } from 'lucide-react'
 import { getWaitLevel, waitLevelDot } from '@/lib/cbp'
 import { WaitBadge } from './WaitBadge'
 import { useLang } from '@/lib/LangContext'
 import { getPortMeta } from '@/lib/portMeta'
 import { trackShare } from '@/lib/trackShare'
+import { getMyRecentReportAgeMin } from '@/lib/myReports'
 import type { PortWaitTime } from '@/types'
 
 export interface PortSignal {
@@ -38,6 +39,22 @@ export function PortCard({ port, signal }: Props) {
   const primaryWait = port.vehicle ?? port.pedestrian
   const [shared, setShared] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  // Did the user report on this specific bridge in the last 2 hours?
+  // Pulled from localStorage (set in ReportForm on successful submit)
+  // so the badge works for guests and signed-in users equally. Listens
+  // for the custom "my-reports-updated" event so the badge lights up
+  // immediately after submit without a full reload.
+  const [myReportAge, setMyReportAge] = useState<number | null>(null)
+  useEffect(() => {
+    const refresh = () => setMyReportAge(getMyRecentReportAgeMin(port.portId))
+    refresh()
+    const tick = setInterval(refresh, 60_000)
+    window.addEventListener('cruzar:my-reports-updated', refresh)
+    return () => {
+      clearInterval(tick)
+      window.removeEventListener('cruzar:my-reports-updated', refresh)
+    }
+  }, [port.portId])
 
   // Use actual lanes open for accuracy if available (0.7 cars/min/lane avg)
   // Fallback: assume ~3 cars/min total (typical 4-lane crossing at 0.75/lane)
@@ -99,6 +116,23 @@ export function PortCard({ port, signal }: Props) {
               </h3>
             </div>
             {displayCrossing && <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 ml-4">{displayCrossing}</p>}
+            {/* "You reported this" ownership badge — visible only when
+                the current device has submitted a report on this bridge
+                in the last 2 hours. Same psychological loop as seeing
+                your own FB post in a group feed: visible ownership
+                reinforces the "I contributed here" feeling every time
+                the user scrolls past. */}
+            {myReportAge != null && (
+              <div className="ml-4 mt-1 inline-flex items-center gap-1.5 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-full px-2 py-0.5">
+                <span className="text-[10px] leading-none">📣</span>
+                <span className="text-[10px] font-black text-green-700 dark:text-green-300 uppercase tracking-wide">
+                  {lang === 'es'
+                    ? (myReportAge < 1 ? 'Tú reportaste ahora' : `Tú reportaste hace ${myReportAge} min`)
+                    : (myReportAge < 1 ? 'You reported now' : `You reported ${myReportAge}m ago`)}
+                </span>
+              </div>
+            )}
+
             {/* Always-visible freshness badge — users in FB comment
                 threads kept complaining "la app no actualiza" because
                 there was no visual proof of the cadence. Now every row

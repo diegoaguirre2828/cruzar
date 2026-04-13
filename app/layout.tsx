@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/ThemeContext";
 import { Footer } from "@/components/Footer";
 import { BottomNav } from "@/components/BottomNav";
 import { CruzFab } from "@/components/CruzFab";
+import { ReactionsWelcomeToast } from "@/components/ReactionsWelcomeToast";
 import { PWASetup } from "@/components/PWASetup";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -86,6 +87,7 @@ export default function RootLayout({
             <Footer />
             <BottomNav />
             <CruzFab />
+            <ReactionsWelcomeToast />
             <PWASetup />
           </LangProvider>
         </ThemeProvider>
