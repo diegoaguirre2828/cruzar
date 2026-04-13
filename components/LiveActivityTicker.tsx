@@ -48,14 +48,27 @@ function ageLabel(iso: string, lang: string): string {
   return lang === 'es' ? `hace ${Math.round(mins / 60)}h` : `${Math.round(mins / 60)}h ago`
 }
 
+function filterFresh(list: Report[]): Report[] {
+  return list
+    .filter((r) => {
+      const mins = (Date.now() - new Date(r.created_at).getTime()) / 60000
+      return mins < 180
+    })
+    .slice(0, 5)
+}
+
+interface TickerProps {
+  initialReports?: Report[]
+}
+
 // A compact "what's happening at the border right now" strip. Shows ONE
 // community report at a time and rotates through the 5 freshest every 4s.
 // This is the page's heartbeat — the reason to come back. Replaces the
 // big hero card for guests.
-export function LiveActivityTicker() {
+export function LiveActivityTicker({ initialReports }: TickerProps = {}) {
   const { lang } = useLang()
   const es = lang === 'es'
-  const [reports, setReports] = useState<Report[]>([])
+  const [reports, setReports] = useState<Report[]>(() => initialReports ? filterFresh(initialReports) : [])
   const [idx, setIdx] = useState(0)
 
   useEffect(() => {
@@ -65,18 +78,16 @@ export function LiveActivityTicker() {
         .then(r => r.json())
         .then(d => {
           if (cancelled) return
-          const fresh = (d.reports || []).filter((r: Report) => {
-            const mins = (Date.now() - new Date(r.created_at).getTime()) / 60000
-            return mins < 180
-          }).slice(0, 5)
-          setReports(fresh)
+          setReports(filterFresh(d.reports || []))
         })
-        .catch(() => { /* ignore */ })
+        .catch(() => { /* ignore — keep whatever we had */ })
     }
-    load()
+    // Only fetch on mount if we didn't get initial data from the server —
+    // avoids a wasted round-trip on first paint. Still refreshes every 60s.
+    if (!initialReports || initialReports.length === 0) load()
     const refresh = setInterval(load, 60_000)
     return () => { cancelled = true; clearInterval(refresh) }
-  }, [])
+  }, [initialReports])
 
   useEffect(() => {
     if (reports.length <= 1) return

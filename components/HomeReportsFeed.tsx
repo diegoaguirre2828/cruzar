@@ -75,18 +75,24 @@ function freshnessColor(iso: string): string {
   return 'text-gray-400'
 }
 
-export function HomeReportsFeed() {
+interface Props {
+  initialReports?: Report[]
+}
+
+export function HomeReportsFeed({ initialReports }: Props = {}) {
   const { lang } = useLang()
-  const [reports, setReports] = useState<Report[]>([])
-  const [loading, setLoading] = useState(true)
+  const [reports, setReports] = useState<Report[]>(() => initialReports || [])
+  const [loading, setLoading] = useState(() => !initialReports || initialReports.length === 0)
   const [showExpired, setShowExpired] = useState(false)
 
   useEffect(() => {
+    // Skip the round-trip if the server already handed us data.
+    if (initialReports && initialReports.length > 0) return
     fetch('/api/reports/recent')
       .then(r => r.json())
       .then(d => setReports(d.reports || []))
       .finally(() => setLoading(false))
-  }, [])
+  }, [initialReports])
 
   if (loading) return (
     <div className="space-y-2">

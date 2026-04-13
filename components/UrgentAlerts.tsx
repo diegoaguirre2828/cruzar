@@ -39,31 +39,39 @@ function minsAgo(iso: string) {
   return Math.round((Date.now() - new Date(iso).getTime()) / 60000)
 }
 
-export function UrgentAlerts() {
+function pickUrgent(list: Report[]): Report[] {
+  const cutoff = Date.now() - 30 * 60 * 1000
+  const urgent = list.filter(
+    (r) => URGENT_TYPES.has(r.report_type) && new Date(r.created_at).getTime() > cutoff,
+  )
+  const seen = new Set<string>()
+  const deduped = urgent.filter((r) => {
+    const key = `${r.port_id}-${r.report_type}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+  return deduped.slice(0, 3)
+}
+
+interface Props {
+  initialReports?: Report[]
+}
+
+export function UrgentAlerts({ initialReports }: Props = {}) {
   const { lang } = useLang()
   const es = lang === 'es'
-  const [alerts, setAlerts] = useState<Report[]>([])
+  const [alerts, setAlerts] = useState<Report[]>(() => initialReports ? pickUrgent(initialReports) : [])
 
   useEffect(() => {
+    // Only refetch if we didn't already get server data — avoids a
+    // wasted round-trip on first paint on spotty connections.
+    if (initialReports && initialReports.length > 0) return
     fetch('/api/reports/recent?limit=50')
       .then(r => r.json())
-      .then(d => {
-        const cutoff = Date.now() - 30 * 60 * 1000
-        const urgent = (d.reports || []).filter(
-          (r: Report) => URGENT_TYPES.has(r.report_type) && new Date(r.created_at).getTime() > cutoff
-        )
-        // Deduplicate: one alert per port per type
-        const seen = new Set<string>()
-        const deduped = urgent.filter((r: Report) => {
-          const key = `${r.port_id}-${r.report_type}`
-          if (seen.has(key)) return false
-          seen.add(key)
-          return true
-        })
-        setAlerts(deduped.slice(0, 3))
-      })
+      .then(d => setAlerts(pickUrgent(d.reports || [])))
       .catch(() => {})
-  }, [])
+  }, [initialReports])
 
   if (!alerts.length) return null
 

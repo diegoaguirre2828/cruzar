@@ -1,26 +1,23 @@
 import { HomeClient } from '@/components/HomeClient'
 import { fetchRgvWaitTimes } from '@/lib/cbp'
+import { fetchRecentReports, type RecentReport } from '@/lib/recentReports'
 import type { PortWaitTime } from '@/types'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-// Server component shell. Fetches port data on the server so the hero paints
-// with real numbers on first paint — no client round-trip to /api/ports, no
-// blank loading state during the first 1-3 seconds. This is the single biggest
-// bounce-rate lever on a Facebook-sourced visitor: first 3 seconds decide
-// whether they stay or back out.
-//
-// The full port list + live reports still hydrate client-side (they need
-// auth/tier + reports data the hero doesn't), but the above-the-fold hero
-// is instant.
+// Server component shell. Fetches everything the homepage needs in one
+// parallel server pass — port list + recent reports — and hands them
+// down as props. This collapses what used to be 4-6 separate client
+// round-trips (ports, reports, urgent alerts, ticker, etc.) into a
+// single server render. On a spotty border cell connection this is the
+// difference between "broken skeletons everywhere" and "works the first
+// time." If either fetch fails, the client components still refetch on
+// their own — we never throw from here.
 export default async function Page() {
-  let initialPorts: PortWaitTime[] | null = null
-  try {
-    initialPorts = await fetchRgvWaitTimes()
-  } catch {
-    // Fall through — HomeClient will refetch from /api/ports client-side.
-    // Not throwing here means a CBP outage still serves the page shell.
-  }
-  return <HomeClient initialPorts={initialPorts} />
+  const [initialPorts, initialReports] = await Promise.all([
+    fetchRgvWaitTimes().catch<PortWaitTime[] | null>(() => null),
+    fetchRecentReports().catch<RecentReport[]>(() => []),
+  ])
+  return <HomeClient initialPorts={initialPorts} initialReports={initialReports} />
 }

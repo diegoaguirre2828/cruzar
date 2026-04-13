@@ -17,6 +17,7 @@ import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
 import type { PortWaitTime } from '@/types'
+import type { RecentReport } from '@/lib/recentReports'
 
 function ShareAppButton({ lang }: { lang: string }) {
   // Framed as "tell your people" instead of "share the app" — the sender
@@ -117,9 +118,10 @@ function SavedCrossings({ initialPorts }: { initialPorts: PortWaitTime[] | null 
 
 interface Props {
   initialPorts: PortWaitTime[] | null
+  initialReports: RecentReport[]
 }
 
-export function HomeClient({ initialPorts }: Props) {
+export function HomeClient({ initialPorts, initialReports }: Props) {
   const { t, lang } = useLang()
   const { tier } = useTier()
   const isBusiness = tier === 'business'
@@ -160,7 +162,7 @@ export function HomeClient({ initialPorts }: Props) {
         {/* Live community activity ticker — replaces the hero for guests.
             Rotating "what's happening at the border right now" strip that
             makes the page feel alive and creates a reason to come back. */}
-        {!isBusiness && tier === 'guest' && <LiveActivityTicker />}
+        {!isBusiness && tier === 'guest' && <LiveActivityTicker initialReports={initialReports} />}
 
         {/* Business Command Center — visible only to business tier */}
         <BusinessCommandWidget />
@@ -169,7 +171,7 @@ export function HomeClient({ initialPorts }: Props) {
         <WaitingMode />
 
         {/* Urgent alerts — accidents & inspections from last 30 min, above the list */}
-        {!isBusiness && <UrgentAlerts />}
+        {!isBusiness && <UrgentAlerts initialReports={initialReports} />}
 
         <SavedCrossings initialPorts={initialPorts} />
         <PortList />
@@ -262,7 +264,7 @@ export function HomeClient({ initialPorts }: Props) {
         {!isBusiness && (
           <div className="mt-6">
             <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.recentReports}</h2>
-            <HomeReportsFeed />
+            <HomeReportsFeed initialReports={initialReports} />
           </div>
         )}
 

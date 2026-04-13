@@ -1,7 +1,34 @@
-// Cruzar Service Worker — Push Notifications + Offline Shell
+// Cruzar Service Worker — push notifications + offline resilience.
+//
+// The border has notoriously bad cell coverage: line-of-sight issues at
+// the bridges, carrier handoff between Telcel / AT&T / T-Mobile, peak
+// congestion when everyone's in line. The worst moment to have the app
+// break is the exact moment the user needs it most. This service worker
+// caches the last-known wait times and recent reports so the app ALWAYS
+// shows numbers — even with zero signal — instead of blank skeletons.
+//
+// Strategy:
+//   - /api/ports            → stale-while-revalidate (show cache instantly, update in background)
+//   - /api/reports/recent   → stale-while-revalidate
+//   - Other /api/*          → network-only (auth-bound, must be fresh)
+//   - Page navigations      → network-first, fall back to cached shell
+//   - Static assets         → cache-first, network fallback
 
-const CACHE = 'cruzar-v3'
-const SHELL = ['/', '/offline']
+const CACHE = 'cruzar-v4'
+const API_CACHE = 'cruzar-api-v4'
+const SHELL = ['/']
+
+// API routes that are safe to serve stale-while-revalidate. These are
+// public, non-auth-bound, and the user benefits far more from seeing
+// 2-min-old numbers than a blank screen on a spotty connection.
+const SWR_API_PATHS = [
+  '/api/ports',
+  '/api/reports/recent',
+]
+
+function isSwrPath(pathname) {
+  return SWR_API_PATHS.some(p => pathname === p || pathname.startsWith(p + '?'))
+}
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -10,37 +37,80 @@ self.addEventListener('install', e => {
   self.skipWaiting()
 })
 
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()))
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    (async () => {
+      // Drop old cache versions so we don't accumulate stale data
+      // forever across deploys.
+      const keys = await caches.keys()
+      await Promise.all(
+        keys
+          .filter(k => k !== CACHE && k !== API_CACHE)
+          .map(k => caches.delete(k))
+      )
+      await self.clients.claim()
+    })()
+  )
+})
 
-// Network-first for API routes, cache-first for static assets
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(API_CACHE)
+  const cached = await cache.match(request)
+
+  // Kick off a background refresh no matter what — if it succeeds, the
+  // cache is updated for next time. Failure is silent so the user's
+  // current response isn't affected.
+  const networkPromise = fetch(request)
+    .then(res => {
+      if (res && res.ok) cache.put(request, res.clone()).catch(() => {})
+      return res
+    })
+    .catch(() => null)
+
+  if (cached) return cached
+
+  // No cache yet — wait for the network. If the network also fails,
+  // return a minimal empty-but-valid shape so the page doesn't explode.
+  const networkRes = await networkPromise
+  if (networkRes) return networkRes
+
+  return new Response(
+    JSON.stringify({ ports: [], reports: [] }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  )
+}
+
 self.addEventListener('fetch', e => {
   const { request } = e
   const url = new URL(request.url)
 
-  // Skip non-GET and cross-origin
   if (request.method !== 'GET') return
   if (url.origin !== self.location.origin) return
 
-  // API routes — always network, no cache
-  if (url.pathname.startsWith('/api/')) return
+  // SWR for the two public APIs the homepage depends on.
+  if (url.pathname.startsWith('/api/')) {
+    if (isSwrPath(url.pathname)) {
+      e.respondWith(staleWhileRevalidate(request))
+    }
+    // Other /api/* routes: let the network handle them normally.
+    return
+  }
 
-  // Everything else — try network, fall back to cache
+  // Pages + static assets: network-first, cache fallback.
   e.respondWith(
     fetch(request)
       .then(res => {
-        // Cache successful page responses
         if (res.ok && (request.destination === 'document' || request.destination === 'image')) {
           const clone = res.clone()
-          caches.open(CACHE).then(c => c.put(request, clone))
+          caches.open(CACHE).then(c => c.put(request, clone)).catch(() => {})
         }
         return res
       })
       .catch(async () => {
         const cached = await caches.match(request)
         if (cached) return cached
-        // Offline fallback for navigation requests
         if (request.destination === 'document') {
-          return caches.match('/') || new Response('Offline', { status: 503 })
+          return (await caches.match('/')) || new Response('Offline', { status: 503 })
         }
       })
   )
@@ -51,9 +121,6 @@ self.addEventListener('push', e => {
   let data = {}
   try { data = e.data.json() } catch { data = { title: 'Cruzar', body: e.data.text() } }
 
-  // Urgent alerts (accidents, inspections, wait drops) get a stronger
-  // buzz and stay on screen until the user taps. Normal pushes use a
-  // softer double-pulse.
   const isUrgent = !!data.requireInteraction || (data.tag || '').startsWith('urgent-')
   const vibrate = data.vibrate
     || (isUrgent ? [400, 120, 400, 120, 400, 120, 600] : [250, 100, 250])
