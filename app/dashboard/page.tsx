@@ -36,7 +36,7 @@ export default function DashboardPage() {
   const [ports, setPorts] = useState<PortWaitTime[]>([])
   const [saved, setSaved] = useState<SavedCrossing[]>([])
   const [alerts, setAlerts] = useState<AlertPref[]>([])
-  const [tab, setTab] = useState<'crossings' | 'alerts' | 'route'>('crossings')
+  const [tab, setTab] = useState<'crossings' | 'alerts' | 'route' | 'circle'>('crossings')
   const [newAlertPortId, setNewAlertPortId] = useState('')
   const [newAlertThreshold, setNewAlertThreshold] = useState(20)
   const [newAlertPhone, setNewAlertPhone] = useState('')
@@ -264,6 +264,7 @@ export default function DashboardPage() {
             { key: 'crossings', label: t.savedTab },
             { key: 'alerts',    label: t.alertsTab },
             { key: 'route',     label: t.routeTab },
+            { key: 'circle',    label: es ? '👥 Grupo' : '👥 Circle' },
           ].map(t => (
             <button
               key={t.key}
@@ -555,7 +556,243 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {tab === 'circle' && <CircleTab es={es} userId={user?.id ?? null} />}
       </div>
     </main>
+  )
+}
+
+// ─── Circle tab ─────────────────────────────────────────────────────
+// Life360-style trusted group: create a circle, invite family/coworkers
+// via link, see members. When any member taps Just Crossed, the others
+// get a push notification. Private — not a social feed.
+
+interface CircleMember {
+  user_id: string
+  role: string
+  email: string
+  display_name: string | null
+  joined_at: string
+}
+interface Circle {
+  id: string
+  name: string
+  owner_id: string
+  is_owner: boolean
+  members: CircleMember[]
+}
+
+function CircleTab({ es, userId }: { es: boolean; userId: string | null }) {
+  const [circles, setCircles] = useState<Circle[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({})
+  const [inviting, setInviting] = useState<string | null>(null)
+
+  const load = () => {
+    setLoading(true)
+    fetch('/api/circles', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => setCircles(d.circles || []))
+      .finally(() => setLoading(false))
+  }
+  useEffect(() => { load() }, [])
+
+  async function createCircle() {
+    if (!newName.trim() || creating) return
+    setCreating(true)
+    try {
+      const res = await fetch('/api/circles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() }),
+      })
+      if (res.ok) {
+        setNewName('')
+        load()
+      }
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function generateInvite(circleId: string) {
+    setInviting(circleId)
+    try {
+      const res = await fetch(`/api/circles/${circleId}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json()
+      if (data.invite_url) {
+        setInviteLinks((prev) => ({ ...prev, [circleId]: data.invite_url }))
+      }
+    } finally {
+      setInviting(null)
+    }
+  }
+
+  function copyLink(url: string) {
+    navigator.clipboard.writeText(url).catch(() => {})
+  }
+
+  async function shareLink(url: string, circleName: string) {
+    const text = es
+      ? `Te invité a mi grupo "${circleName}" en Cruzar. Acepta aquí: ${url}`
+      : `I invited you to my "${circleName}" circle on Cruzar. Accept here: ${url}`
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try { await navigator.share({ text, url }) } catch { /* cancelled */ }
+    } else {
+      copyLink(text)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 text-white">
+        <p className="text-sm font-bold">
+          {es ? '👥 Grupo de confianza' : '👥 Trusted circle'}
+        </p>
+        <p className="text-xs text-blue-100 mt-1 leading-relaxed">
+          {es
+            ? 'Invita a familia o compañeros de trabajo. Cuando alguien del grupo cruce un puente, los demás reciben una notificación. Privado, nada público.'
+            : "Invite family or coworkers. When a circle member crosses a bridge, the others get a push notification. Private — nothing public."}
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400 text-center py-6">{es ? 'Cargando…' : 'Loading…'}</p>
+      ) : circles.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">
+            {es ? 'Crea tu primer grupo' : 'Create your first circle'}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+            {es
+              ? 'Ejemplo: "Familia", "Compañeros de trabajo", "Mi ruta"'
+              : 'Example: "Family", "Coworkers", "My route"'}
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder={es ? 'Nombre del grupo' : 'Circle name'}
+              maxLength={50}
+              className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyDown={(e) => e.key === 'Enter' && createCircle()}
+            />
+            <button
+              onClick={createCircle}
+              disabled={!newName.trim() || creating}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl disabled:opacity-50"
+            >
+              {es ? 'Crear' : 'Create'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {circles.map((c) => (
+            <div key={c.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="min-w-0">
+                  <p className="text-base font-black text-gray-900 dark:text-gray-100 truncate">{c.name}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {c.members.length} {es ? (c.members.length === 1 ? 'miembro' : 'miembros') : (c.members.length === 1 ? 'member' : 'members')}
+                    {c.is_owner && <span className="ml-2 text-blue-600 font-bold">· {es ? 'Dueño' : 'Owner'}</span>}
+                  </p>
+                </div>
+              </div>
+
+              {/* Members list */}
+              <div className="space-y-1 mb-3">
+                {c.members.map((m) => (
+                  <div key={m.user_id} className="flex items-center gap-2 text-xs">
+                    <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                      {(m.display_name || m.email || '?').slice(0, 1).toUpperCase()}
+                    </div>
+                    <span className="flex-1 truncate text-gray-700 dark:text-gray-300">
+                      {m.display_name || m.email}
+                      {m.user_id === userId && <span className="ml-1 text-gray-400">({es ? 'tú' : 'you'})</span>}
+                    </span>
+                    {m.role === 'owner' && <span className="text-[10px] text-blue-600 font-bold">★</span>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Invite */}
+              {inviteLinks[c.id] ? (
+                <div className="space-y-2">
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={inviteLinks[c.id]}
+                      className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-2 py-2 text-[11px] font-mono text-gray-600 dark:text-gray-400"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <button
+                      onClick={() => copyLink(inviteLinks[c.id])}
+                      className="px-3 py-2 bg-gray-900 dark:bg-gray-100 dark:text-gray-900 text-white text-xs font-bold rounded-xl"
+                    >
+                      {es ? 'Copiar' : 'Copy'}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => shareLink(inviteLinks[c.id], c.name)}
+                    className="w-full py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl"
+                  >
+                    {es ? '📲 Compartir por WhatsApp' : '📲 Share via WhatsApp'}
+                  </button>
+                  <p className="text-[10px] text-gray-400 text-center">
+                    {es ? 'El link se puede usar una sola vez' : 'Single-use link'}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={() => generateInvite(c.id)}
+                  disabled={inviting === c.id}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl disabled:opacity-50"
+                >
+                  {inviting === c.id
+                    ? (es ? 'Generando…' : 'Generating…')
+                    : (es ? '+ Invitar a alguien' : '+ Invite someone')}
+                </button>
+              )}
+            </div>
+          ))}
+
+          {/* Create additional circle */}
+          {circles.length < 3 && (
+            <details className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
+              <summary className="text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer">
+                {es ? '+ Crear otro grupo' : '+ Create another circle'}
+              </summary>
+              <div className="flex gap-2 mt-3">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder={es ? 'Nombre del grupo' : 'Circle name'}
+                  maxLength={50}
+                  className="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2 text-xs"
+                />
+                <button
+                  onClick={createCircle}
+                  disabled={!newName.trim() || creating}
+                  className="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl disabled:opacity-50"
+                >
+                  {es ? 'Crear' : 'Create'}
+                </button>
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

@@ -3,6 +3,101 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { getServiceClient } from '@/lib/supabase'
 import { POINTS, getBadgesForProfile } from '@/lib/points'
+import webpush from 'web-push'
+import { getPortMeta } from '@/lib/portMeta'
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    'mailto:cruzabusiness@gmail.com',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  )
+}
+
+// When a circle member submits a Just Crossed report, push-notify every
+// other member of their circle(s). This is the Life360 "Mom just made
+// it home" moment — private utility, no public feed.
+async function notifyCircleMembers(
+  crosserId: string,
+  portId: string,
+  waitMinutes: number,
+  laneType: string | null,
+) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return
+
+  const db = getServiceClient()
+
+  // Find circles the crosser is in
+  const { data: myMemberships } = await db
+    .from('circle_members')
+    .select('circle_id')
+    .eq('user_id', crosserId)
+  const circleIds = (myMemberships || []).map((m) => m.circle_id)
+  if (circleIds.length === 0) return
+
+  // Find other members of those circles
+  const { data: otherMembers } = await db
+    .from('circle_members')
+    .select('user_id')
+    .in('circle_id', circleIds)
+    .neq('user_id', crosserId)
+  const otherUserIds = [...new Set((otherMembers || []).map((m) => m.user_id))]
+  if (otherUserIds.length === 0) return
+
+  // Fetch push subscriptions for those users
+  const { data: subs } = await db
+    .from('push_subscriptions')
+    .select('user_id, endpoint, p256dh, auth')
+    .in('user_id', otherUserIds)
+  if (!subs || subs.length === 0) return
+
+  // Resolve crosser name (for notification body)
+  const { data: crosserProfile } = await db
+    .from('profiles')
+    .select('display_name')
+    .eq('id', crosserId)
+    .maybeSingle()
+  const { data: authData } = await db.auth.admin.getUserById(crosserId)
+  const displayName =
+    crosserProfile?.display_name ||
+    authData?.user?.email?.split('@')[0] ||
+    'Alguien'
+
+  const meta = getPortMeta(portId)
+  const portLabel = meta?.localName
+    ? `${meta.city} (${meta.localName})`
+    : meta?.city || portId
+
+  const laneLabel =
+    laneType === 'sentri' ? ' en SENTRI' :
+    laneType === 'pedestrian' ? ' a pie' :
+    laneType === 'commercial' ? ' en camión' :
+    ''
+
+  const title = `${displayName} acaba de cruzar`
+  const body = `${portLabel}${laneLabel} · ${waitMinutes} min`
+
+  await Promise.allSettled(
+    subs.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify({
+            title,
+            body,
+            url: `/port/${encodeURIComponent(portId)}`,
+            tag: `circle-${crosserId}-${portId}`,
+          })
+        )
+      } catch (err: unknown) {
+        // Expired subscription — clean up
+        if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
+          await db.from('push_subscriptions').delete().eq('user_id', sub.user_id)
+        }
+      }
+    })
+  )
+}
 
 async function getUser() {
   const cookieStore = await cookies()
@@ -160,6 +255,18 @@ export async function POST(req: NextRequest) {
   }).select('id').single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Increment share counter / report counter / notify circle members
+  // Only fire circle notifications if this is an actual crossing report
+  // (clear / delay / normal) with wait minutes. Skip for hazards/accidents
+  // that aren't personal crossings.
+  const isPersonalCrossing = user && waitMinutes != null && ['clear', 'delay', 'other'].includes(mappedType)
+  if (isPersonalCrossing) {
+    // Fire-and-forget — don't block the submit response on notifications
+    notifyCircleMembers(user.id, portId, waitMinutes as number, normalizedLaneType).catch((err) => {
+      console.error('circle notify failed:', err)
+    })
+  }
 
   // Award points if logged in
   let pointsEarned = 0
