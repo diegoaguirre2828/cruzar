@@ -11,6 +11,7 @@ import { BusinessCommandWidget } from '@/components/BusinessCommandWidget'
 import { ExchangeRateWidget } from '@/components/ExchangeRateWidget'
 import { OnboardingTour } from '@/components/OnboardingTour'
 import { InstallPrompt } from '@/components/InstallPrompt'
+import { InAppBrowserBanner } from '@/components/InAppBrowserBanner'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -127,6 +128,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <InAppBrowserBanner />
       <OnboardingTour />
       <InstallPrompt />
       <div className="max-w-lg mx-auto px-4 pb-10">
