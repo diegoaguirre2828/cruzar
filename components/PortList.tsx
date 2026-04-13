@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PortCard } from './PortCard'
 import type { PortSignal } from './PortCard'
 import { BorderMap } from './BorderMap'
+import { saveCachedPorts, loadCachedPorts } from '@/lib/portCache'
 import type { PortWaitTime } from '@/types'
 import { RefreshCw, Map, List, Navigation, X, Share2, Check } from 'lucide-react'
 import { ALL_REGIONS, getPortMeta } from '@/lib/portMeta'
@@ -58,7 +59,13 @@ export function PortList() {
   const { t, lang } = useLang()
   const { tier } = useTier()
   const isBusiness = tier === 'business'
-  const [ports, setPorts] = useState<PortWaitTime[]>([])
+  // Hydrate from the localStorage cache on first render so even a
+  // cold-offline load shows data. The network fetch below still
+  // fires and replaces this with fresh data when possible.
+  const [ports, setPorts] = useState<PortWaitTime[]>(() => {
+    if (typeof window === 'undefined') return []
+    return loadCachedPorts()?.ports ?? []
+  })
   const [fetchedAt, setFetchedAt] = useState<string | null>(null)
   const [cbpUpdatedAt, setCbpUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -98,6 +105,10 @@ export function PortList() {
       setFetchedAt(data.fetchedAt)
       setCbpUpdatedAt(data.cbpUpdatedAt ?? null)
       setError(null)
+      // Stash the successful response so offline/dead-signal users
+      // can still see something on next visit. Survives SW cache
+      // eviction and reinstalls.
+      saveCachedPorts(data.ports)
 
       if (reportsRes.ok) {
         const { reports } = await reportsRes.json()
@@ -133,7 +144,16 @@ export function PortList() {
         setSignals(signalMap)
       }
     } catch {
-      setError('Could not load wait times. Showing cached data.')
+      // Network died — try to hydrate from the local cache so the
+      // user still has numbers to look at. Common case: spotty cell
+      // at the actual bridge.
+      const cached = loadCachedPorts()
+      if (cached && cached.ports.length > 0) {
+        setPorts(cached.ports)
+        setError(null)
+      } else {
+        setError('Could not load wait times. Showing cached data.')
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
