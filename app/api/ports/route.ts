@@ -5,7 +5,11 @@ import { fetchTrafficWaits } from '@/lib/traffic'
 import { confidenceWeight } from '@/lib/geo'
 import type { PortWaitTime } from '@/types'
 
-export const dynamic = 'force-dynamic'
+// Removed `export const dynamic = 'force-dynamic'` so the Cache-Control
+// headers we return actually get respected by Vercel's edge. The route
+// still re-runs whenever the edge cache expires (every 15s) — we just
+// don't re-run it on every single request. 80-95% DB load reduction
+// under traffic spikes.
 
 const REPORT_FRESH_MIN = 30
 const CBP_STALE_MIN = 25
@@ -195,11 +199,22 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json({
-      ports: blended,
-      fetchedAt: new Date().toISOString(),
-      cbpUpdatedAt,
-    })
+    return NextResponse.json(
+      {
+        ports: blended,
+        fetchedAt: new Date().toISOString(),
+        cbpUpdatedAt,
+      },
+      {
+        headers: {
+          // Vercel edge cache: serve fresh for 15s, stale-while-revalidate
+          // up to 60s. At the same 1-2 req/s traffic we just hit, this
+          // collapses ~80-95% of /api/ports calls onto the edge instead
+          // of hitting Supabase + CBP + HERE every single time.
+          'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60',
+        },
+      },
+    )
   } catch (err) {
     console.error('Ports route error:', err)
     return NextResponse.json({ error: 'Failed to fetch wait times' }, { status: 502 })

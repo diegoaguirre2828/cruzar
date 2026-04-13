@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 
-export const dynamic = 'force-dynamic'
+// `force-dynamic` removed to allow the Cache-Control header below to take
+// effect on Vercel's edge — feed doesn't need millisecond-fresh.
 
 export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 100)
@@ -16,5 +17,13 @@ export async function GET(req: NextRequest) {
     .limit(limit)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ reports: data || [] })
+  return NextResponse.json(
+    { reports: data || [] },
+    {
+      headers: {
+        // Edge cache — feed doesn't need to be millisecond-fresh
+        'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=60',
+      },
+    }
+  )
 }

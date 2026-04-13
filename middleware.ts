@@ -1,7 +1,34 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Routes where we do NOT need to run the auth-refresh hit against Supabase
+// on every request. These endpoints either don't look at the session at
+// all, or do their own auth check internally. Skipping them here saves a
+// massive amount of DB load under traffic spikes — every visit to the
+// homepage fires /api/ports + /api/reports/recent, which would otherwise
+// each trigger a getUser() call here.
+const PUBLIC_API_PREFIXES = [
+  '/api/ports',
+  '/api/reports/recent',
+  '/api/negocios',
+  '/api/exchange',
+  '/api/leaderboard',
+  '/api/predict',
+  '/api/predictions',
+  '/api/widget',
+  '/api/ingest',       // has its own admin/secret gate
+  '/api/cron',          // has its own CRON_SECRET gate
+  '/api/stripe/webhook', // has its own signature check
+]
+
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  // Fast-path: public API routes that don't need an auth refresh
+  if (PUBLIC_API_PREFIXES.some((p) => path.startsWith(p))) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
