@@ -12,13 +12,15 @@ export function NavBar() {
   const { lang, toggle } = useLang()
   const { theme, toggle: toggleTheme } = useTheme()
   const [tier, setTier] = useState<string>('')
-  const [points, setPoints] = useState<number>(0)
+  const [reportsCount, setReportsCount] = useState<number>(0)
+  const [sharesCount, setSharesCount] = useState<number>(0)
 
   useEffect(() => {
     if (user) {
       fetch('/api/profile').then(r => r.json()).then(d => {
         setTier(d.profile?.tier || 'free')
-        setPoints(d.profile?.points || 0)
+        setReportsCount(d.profile?.reports_count || 0)
+        setSharesCount(d.profile?.share_count || 0)
       })
     }
   }, [user])
@@ -66,13 +68,21 @@ export function NavBar() {
 
       {user ? (
         <>
-          {points > 0 && (
+          {(reportsCount > 0 || sharesCount > 0) && (
             <Link
-              href="/leaderboard"
-              className="flex items-center gap-1 text-xs font-bold text-yellow-300 bg-gray-900 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 px-3 py-1.5 rounded-xl transition-colors"
-              title="Points & Leaderboard"
+              href="/dashboard"
+              className="flex items-center gap-2 text-[11px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-400 px-2.5 py-1.5 rounded-xl transition-colors"
+              title={lang === 'es' ? 'Tu actividad en Cruzar' : 'Your Cruzar activity'}
             >
-              🏆 {points} pts
+              <span className="flex items-center gap-1">
+                <span className="text-gray-400">{lang === 'es' ? 'Reportes' : 'Reports'}</span>
+                <span className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">{reportsCount}</span>
+              </span>
+              <span className="w-px h-3 bg-gray-300 dark:bg-gray-600" aria-hidden />
+              <span className="flex items-center gap-1">
+                <span className="text-gray-400">{lang === 'es' ? 'Compartidos' : 'Shares'}</span>
+                <span className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">{sharesCount}</span>
+              </span>
             </Link>
           )}
           <Link
