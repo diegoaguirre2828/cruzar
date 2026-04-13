@@ -47,10 +47,14 @@ function waitColor(min: number | null): string {
   return 'bg-red-500'
 }
 
-function waitText(min: number | null): string {
-  if (min == null) return '—'
-  if (min === 0) return '<1'
-  return String(min)
+function waitText(min: number | null): { value: string; unit: string } {
+  if (min == null) return { value: '—', unit: 'min' }
+  if (min === 0) return { value: '<1', unit: 'min' }
+  if (min < 60) return { value: String(min), unit: 'min' }
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (m === 0) return { value: String(h), unit: 'h' }
+  return { value: `${h}h${m}`, unit: 'm' }
 }
 
 export function NearMeRail({ ports }: Props) {
@@ -135,10 +139,17 @@ export function NearMeRail({ ports }: Props) {
                   {name}
                 </p>
                 <div className="mt-1.5 flex items-baseline gap-1">
-                  <span className="text-2xl font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">
-                    {waitText(port.vehicle ?? null)}
-                  </span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">min</span>
+                  {(() => {
+                    const w = waitText(port.vehicle ?? null)
+                    return (
+                      <>
+                        <span className="text-2xl font-black tabular-nums text-gray-900 dark:text-gray-100 leading-none">
+                          {w.value}
+                        </span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold">{w.unit}</span>
+                      </>
+                    )
+                  })()}
                 </div>
                 {dist != null && (
                   <p className="text-[10px] text-gray-400 mt-1">

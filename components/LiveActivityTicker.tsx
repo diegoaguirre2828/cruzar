@@ -143,8 +143,12 @@ export function LiveActivityTicker({ initialReports }: TickerProps = {}) {
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
             {es ? label.es : label.en}
             {r.wait_minutes !== null && (
-              <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold px-1.5 py-0.5 rounded-full">
-                {r.wait_minutes}m
+              <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold px-1.5 py-0.5 rounded-full tabular-nums">
+                {r.wait_minutes >= 60
+                  ? (r.wait_minutes % 60 === 0
+                      ? `${Math.floor(r.wait_minutes / 60)}h`
+                      : `${Math.floor(r.wait_minutes / 60)}h${r.wait_minutes % 60}`)
+                  : `${r.wait_minutes}m`}
               </span>
             )}
           </p>

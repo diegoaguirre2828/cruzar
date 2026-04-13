@@ -143,7 +143,21 @@ export function PortList() {
   useEffect(() => {
     fetchPorts()
     const interval = setInterval(() => fetchPorts(), REFRESH_INTERVAL)
-    return () => clearInterval(interval)
+    // Refetch whenever the tab comes back to focus. Massive UX upgrade
+    // for the "I opened the app and the number looked old" complaint
+    // that was getting the app trashed in FB comment threads — users
+    // switching away and coming back now see fresh data immediately
+    // instead of whatever was cached when they left.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchPorts()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
   }, [fetchPorts])
 
   // Auto-sort by proximity on load

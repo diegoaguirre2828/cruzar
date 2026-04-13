@@ -7,6 +7,7 @@ import { useTier } from '@/lib/useTier'
 import { getPortMeta, type MegaRegion } from '@/lib/portMeta'
 import { haversineKm } from '@/lib/geo'
 import { trackShare } from '@/lib/trackShare'
+import { formatWaitLabel, splitWaitLabel } from '@/lib/formatWait'
 import type { PortWaitTime } from '@/types'
 
 // The hero moment.
@@ -241,7 +242,7 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
   const portDetail = `/port/${encodeURIComponent(headlinePort.portId)}`
   const clickHref = user ? portDetail : `/signup?next=${encodeURIComponent(portDetail)}`
 
-  const waitLabel = (n: number) => (n === 0 ? '<1 min' : `${n} min`)
+  const waitLabel = (n: number) => formatWaitLabel(n, es ? 'es' : 'en')
 
   // Share text — framed as "avisarle a los tuyos" (telling your people),
   // not "share the app." The sender is taking care of their community,
@@ -313,10 +314,17 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
               {headlineName}
             </p>
             <div className="mt-2 flex items-baseline gap-2 cruzar-rise cruzar-rise-delay-1">
-              <span className="text-6xl sm:text-7xl font-black leading-none drop-shadow">
-                {headlineWait === 0 ? '<1' : headlineWait}
-              </span>
-              <span className="text-xl font-bold text-blue-100">min</span>
+              {(() => {
+                const split = splitWaitLabel(headlineWait)
+                return (
+                  <>
+                    <span className="text-6xl sm:text-7xl font-black leading-none drop-shadow tabular-nums">
+                      {split.value}
+                    </span>
+                    <span className="text-xl font-bold text-blue-100">{split.unit}</span>
+                  </>
+                )
+              })()}
             </div>
 
             {/* Loss-aversion microcopy: staying = uncertainty, signing up = certainty.
@@ -385,6 +393,16 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
               ? (es ? `📣 ${reportCount} reportes de la comunidad hoy` : `📣 ${reportCount} community reports today`)
               : (es ? '📣 Sé el primero en reportar hoy' : '📣 Be the first to report today')}
           </p>
+
+          {/* CBP cadence disclosure — kills the "la app no actualiza"
+              objection by framing the 15-min cadence as CBP's rule,
+              not a Cruzar bug, AND points at community reports as the
+              live layer. */}
+          <p className="mt-1 text-[10px] text-blue-200/80 leading-snug">
+            {es
+              ? 'CBP actualiza cada 15 min · La comunidad reporta en vivo'
+              : 'CBP updates every 15 min · Community reports live'}
+          </p>
         </div>
       </a>
 
@@ -437,13 +455,13 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
               </p>
               <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-0.5 leading-tight">
                 {es
-                  ? `Pico ${formatHourLabel(hourly.peak.hour, true)}: sube a ~${hourly.peak.avgWait} min`
-                  : `Peak ${formatHourLabel(hourly.peak.hour, false)}: jumps to ~${hourly.peak.avgWait} min`}
+                  ? `Pico ${formatHourLabel(hourly.peak.hour, true)}: sube a ~${formatWaitLabel(hourly.peak.avgWait, 'es')}`
+                  : `Peak ${formatHourLabel(hourly.peak.hour, false)}: jumps to ~${formatWaitLabel(hourly.peak.avgWait, 'en')}`}
               </p>
               <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
                 {es
-                  ? `Mejor hora ${formatHourLabel(hourly.best.hour, true)} · solo ${hourly.best.avgWait} min`
-                  : `Best hour ${formatHourLabel(hourly.best.hour, false)} · only ${hourly.best.avgWait} min`}
+                  ? `Mejor hora ${formatHourLabel(hourly.best.hour, true)} · solo ${formatWaitLabel(hourly.best.avgWait, 'es')}`
+                  : `Best hour ${formatHourLabel(hourly.best.hour, false)} · only ${formatWaitLabel(hourly.best.avgWait, 'en')}`}
               </p>
             </div>
             <span className="flex-shrink-0 text-gray-400 text-lg">→</span>
@@ -511,17 +529,21 @@ function LivePulse({ es, secondsAgo, contextLabel }: { es: boolean; secondsAgo: 
     : secondsAgo < 60
       ? (es ? `hace ${secondsAgo}s` : `${secondsAgo}s ago`)
       : (es ? `hace ${Math.floor(secondsAgo / 60)} min` : `${Math.floor(secondsAgo / 60)} min ago`)
+  // Prominent pill framing so this badge survives as the first thing
+  // anyone sees in a reshared screenshot. Was previously tiny gray
+  // text in the corner — which is exactly why the FB comment thread
+  // complained "la app no actualiza." Now it's impossible to miss.
   return (
-    <div className="flex items-center gap-2">
+    <div className="inline-flex items-center gap-2 bg-red-500/95 text-white rounded-full pl-2.5 pr-3 py-1 shadow-lg">
       <span className="relative flex h-2.5 w-2.5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
       </span>
-      <span className="text-[10px] uppercase font-bold tracking-widest text-white/90">
+      <span className="text-[11px] uppercase font-black tracking-widest">
         {es ? 'EN VIVO' : 'LIVE'}
       </span>
-      <span className="text-[10px] text-white/60">· {label}</span>
-      {contextLabel && <span className="text-[10px] text-white/60">· {contextLabel}</span>}
+      <span className="text-[11px] font-bold text-white/90 tabular-nums">· {label}</span>
+      {contextLabel && <span className="text-[10px] font-semibold text-white/75 hidden sm:inline">· {contextLabel}</span>}
     </div>
   )
 }

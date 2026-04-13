@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Trophy, Star, Shield, Repeat2, Crown, ThumbsUp, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Trophy } from 'lucide-react'
 import { BADGES } from '@/lib/points'
 import { useLang } from '@/lib/LangContext'
 
@@ -14,17 +14,25 @@ interface Leader {
   badges: string[]
 }
 
-const BADGE_ICONS: Record<string, string> = {
-  first_cross: '🌉',
-  regular:     '🔁',
-  veteran:     '⭐',
-  expert:      '🏆',
-  legend:      '👑',
-  helpful:     '👍',
-  trusted:     '✅',
+// Guardián tiers — same ladder as the home-page GuardianProgressCard,
+// so rank/label/emoji are consistent across the app. Ranks are driven
+// by total report count, not arbitrary points.
+const TIERS = [
+  { at: 1,  emoji: '🌱', es: 'Guardián Novato',      en: 'Novice Guardian' },
+  { at: 5,  emoji: '🛡️', es: 'Guardián Confiable',   en: 'Trusted Guardian' },
+  { at: 10, emoji: '⚔️', es: 'Guardián Veterano',    en: 'Veteran Guardian' },
+  { at: 20, emoji: '👑', es: 'Guardián Legendario',  en: 'Legendary Guardian' },
+  { at: 50, emoji: '🔥', es: 'Guardián Mítico',      en: 'Mythic Guardian' },
+]
+
+function tierFor(count: number) {
+  let curr = null as (typeof TIERS)[number] | null
+  for (const t of TIERS) {
+    if (count >= t.at) curr = t
+  }
+  return curr
 }
 
-const RANK_COLORS = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
 const RANK_ICONS = ['🥇', '🥈', '🥉']
 
 export default function LeaderboardPage() {
@@ -39,6 +47,8 @@ export default function LeaderboardPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const es = lang === 'es'
+
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-lg mx-auto px-4 pb-16">
@@ -47,46 +57,62 @@ export default function LeaderboardPage() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t.leaderboardTitle}</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t.leaderboardSubtitle}</p>
+            <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">
+              {es ? 'Guardianes del puente' : 'Bridge guardians'}
+            </h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {es ? 'La raza protegiendo a los que cruzan' : 'The community looking out for crossers'}
+            </p>
           </div>
         </div>
 
-        {/* Badge legend */}
+        {/* Guardián tier ladder — replaces the old "how to earn points"
+            section. This is service framing, not gamification. Same
+            ladder used on the homepage GuardianProgressCard. */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border-2 border-amber-200 dark:border-amber-800 p-4 mb-4">
+          <h2 className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-widest mb-3">
+            {es ? 'Rangos de guardián' : 'Guardian ranks'}
+          </h2>
+          <div className="grid grid-cols-1 gap-1.5">
+            {TIERS.map((tier) => (
+              <div key={tier.at} className="flex items-center gap-3">
+                <span className="text-xl leading-none flex-shrink-0 w-6 text-center">{tier.emoji}</span>
+                <span className="text-xs font-bold text-gray-800 dark:text-gray-100 flex-1 min-w-0">
+                  {es ? tier.es : tier.en}
+                </span>
+                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 tabular-nums flex-shrink-0">
+                  {tier.at}+ {es ? 'reportes' : 'reports'}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 leading-snug">
+            {es
+              ? 'Cada reporte le ahorra tiempo a alguien cruzando. No son puntos, es ayudarle a la raza.'
+              : "Every report saves someone time at the border. Not points — just looking out for the community."}
+          </p>
+        </div>
+
+        {/* Badge legend — kept because badges are one-time milestones,
+            not points. Founder / First Cross / Trusted Reporter etc. */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-4">
-          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{t.leaderboardBadges}</h2>
+          <h2 className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-3">
+            {es ? 'Insignias' : 'Badges'}
+          </h2>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(BADGES).map(([key, badge]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="text-base">{badge.emoji}</span>
-                <div>
-                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{badge.label}</p>
-                  <p className="text-xs text-gray-400">{badge.description}</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">{badge.label}</p>
+                  <p className="text-[10px] text-gray-400 leading-tight">{badge.description}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Points guide */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl border border-blue-200 dark:border-blue-800 p-4 mb-4">
-          <h2 className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-2">{t.leaderboardHowToEarn}</h2>
-          <div className="space-y-1">
-            {[
-              { label: lang === 'es' ? 'Enviar un reporte' : 'Submit a report', pts: '+5' },
-              { label: lang === 'es' ? 'Incluir tiempo de espera real' : 'Include actual wait time', pts: '+10' },
-              { label: lang === 'es' ? 'Primer reporte del día en un puente' : 'First report at a crossing today', pts: '+15' },
-              { label: lang === 'es' ? 'Tu reporte recibe un voto' : 'Your report gets upvoted', pts: '+2' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center justify-between">
-                <span className="text-xs text-blue-800 dark:text-blue-200">{item.label}</span>
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{item.pts}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Leaderboard list */}
+        {/* Leaderboard list — now ranks by reports_count and shows tier */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-8 flex justify-center">
@@ -95,42 +121,60 @@ export default function LeaderboardPage() {
           ) : leaders.length === 0 ? (
             <div className="p-8 text-center">
               <Trophy className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t.leaderboardNoReports}</p>
-              <p className="text-xs text-gray-400 mt-1">{t.leaderboardBeFirst}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {es ? 'Aún no hay guardianes' : 'No guardians yet'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {es ? 'Sé el primero en reportar' : 'Be the first to report'}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {leaders.map((leader, i) => (
-                <div key={leader.id} className={`flex items-center gap-3 p-4 ${i < 3 ? 'bg-gray-50/50 dark:bg-gray-700/20' : ''}`}>
-                  <div className="w-8 text-center flex-shrink-0">
-                    {i < 3 ? (
-                      <span className="text-xl">{RANK_ICONS[i]}</span>
-                    ) : (
-                      <span className="text-sm font-bold text-gray-400">#{i + 1}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">@{leader.username}</span>
-                      {leader.badges?.slice(0, 3).map(b => (
-                        <span key={b} title={BADGES[b]?.label}>{BADGES[b]?.emoji}</span>
-                      ))}
+              {[...leaders]
+                .sort((a, b) => (b.reports_count || 0) - (a.reports_count || 0))
+                .map((leader, i) => {
+                  const tier = tierFor(leader.reports_count || 0)
+                  return (
+                    <div key={leader.id} className={`flex items-center gap-3 p-4 ${i < 3 ? 'bg-gradient-to-r from-amber-50/60 to-transparent dark:from-amber-900/10' : ''}`}>
+                      <div className="w-8 text-center flex-shrink-0">
+                        {i < 3 ? (
+                          <span className="text-xl">{RANK_ICONS[i]}</span>
+                        ) : (
+                          <span className="text-sm font-bold text-gray-400">#{i + 1}</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">@{leader.username}</span>
+                          {leader.badges?.slice(0, 3).map(b => (
+                            <span key={b} title={BADGES[b]?.label}>{BADGES[b]?.emoji}</span>
+                          ))}
+                        </div>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                          {tier && <span className="text-sm leading-none">{tier.emoji}</span>}
+                          <span>{tier ? (es ? tier.es : tier.en) : (es ? 'Sin rango' : 'Unranked')}</span>
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-lg font-black text-gray-900 dark:text-gray-100 tabular-nums leading-none">
+                          {leader.reports_count || 0}
+                        </p>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-bold">
+                          {es ? 'reportes' : 'reports'}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{t.leaderboardReports(leader.reports_count)}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{leader.points}</p>
-                    <p className="text-xs text-gray-400">pts</p>
-                  </div>
-                </div>
-              ))}
+                  )
+                })}
             </div>
           )}
         </div>
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-4">
-          {t.leaderboardBottom}{' '}
-          <Link href="/" className="text-blue-500 hover:underline">{t.leaderboardViewCrossings}</Link>
+          {es ? 'Reporta un puente y únete a los guardianes.' : 'Report a crossing and join the guardians.'}{' '}
+          <Link href="/" className="text-blue-500 hover:underline">
+            {es ? 'Ver puentes' : 'See crossings'}
+          </Link>
         </p>
       </div>
     </main>
