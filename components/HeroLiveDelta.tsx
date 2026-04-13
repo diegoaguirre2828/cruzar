@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLang } from '@/lib/LangContext'
 import { useAuth } from '@/lib/useAuth'
-import { useTier } from '@/lib/useTier'
 import { getPortMeta, type MegaRegion } from '@/lib/portMeta'
 import { haversineKm } from '@/lib/geo'
 import { trackShare } from '@/lib/trackShare'
@@ -39,9 +38,7 @@ interface Props {
 export function HeroLiveDelta({ ports: propPorts }: Props) {
   const { lang } = useLang()
   const { user } = useAuth()
-  const { tier } = useTier()
   const es = lang === 'es'
-  const isPro = tier === 'pro' || tier === 'business'
   const [ports, setPorts] = useState<PortWaitTime[] | null>(propPorts ?? null)
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null)
   const [secondsAgo, setSecondsAgo] = useState(0)
@@ -49,7 +46,6 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [geoDenied, setGeoDenied] = useState(false)
   const [reportCount, setReportCount] = useState<number | null>(null)
-  const [hourly, setHourly] = useState<{ peak: { hour: number; avgWait: number } | null; best: { hour: number; avgWait: number } | null } | null>(null)
   const [copied, setCopied] = useState(false)
 
   // Detect preferred region from localStorage or last-viewed port
@@ -213,23 +209,6 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
       delta: (slowest.vehicle as number) - (fastest.vehicle as number),
     }
   }, [ports, userLoc, region])
-
-  // Fetch the hourly pattern for whichever port the hero is showing.
-  // Powers the "today's pattern" hook below the hero — pulls users
-  // deeper into the page instead of letting them bounce.
-  const heroPortId = display?.port?.portId
-  useEffect(() => {
-    if (!heroPortId) return
-    let cancelled = false
-    fetch(`/api/ports/${encodeURIComponent(heroPortId)}/hourly`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return
-        setHourly({ peak: d.peak ?? null, best: d.best ?? null })
-      })
-      .catch(() => { if (!cancelled) setHourly(null) })
-    return () => { cancelled = true }
-  }, [heroPortId])
 
   if (!ports || !display) return <HeroSkeleton />
 
@@ -438,37 +417,6 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
         </a>
       )}
 
-      {/* Today's pattern hook — Pro-only. This is advanced analytics that
-          belongs in an Insights tab, not on the home page for every user. */}
-      {isPro && hourly && hourly.peak && hourly.best && hourly.peak.avgWait > hourly.best.avgWait + 15 && (
-        <a
-          href={clickHref}
-          className="mt-2 block bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-transform"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-lg">
-              📊
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase tracking-wider font-bold text-gray-500 dark:text-gray-400">
-                {es ? `Patrón de hoy en ${headlineName}` : `Today's pattern at ${headlineName}`}
-              </p>
-              <p className="text-sm font-black text-gray-900 dark:text-gray-100 mt-0.5 leading-tight">
-                {es
-                  ? `Pico ${formatHourLabel(hourly.peak.hour, true)}: sube a ~${formatWaitLabel(hourly.peak.avgWait, 'es')}`
-                  : `Peak ${formatHourLabel(hourly.peak.hour, false)}: jumps to ~${formatWaitLabel(hourly.peak.avgWait, 'en')}`}
-              </p>
-              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                {es
-                  ? `Mejor hora ${formatHourLabel(hourly.best.hour, true)} · solo ${formatWaitLabel(hourly.best.avgWait, 'es')}`
-                  : `Best hour ${formatHourLabel(hourly.best.hour, false)} · only ${formatWaitLabel(hourly.best.avgWait, 'en')}`}
-              </p>
-            </div>
-            <span className="flex-shrink-0 text-gray-400 text-lg">→</span>
-          </div>
-        </a>
-      )}
-
       {/* Compact share strip — was a full-size "Corre la voz" card that
           ate a whole screen. Now it's three icon buttons on a single
           line with a tiny label. Same three destinations (FB / WhatsApp
@@ -546,14 +494,6 @@ function LivePulse({ es, secondsAgo, contextLabel }: { es: boolean; secondsAgo: 
       {contextLabel && <span className="text-[10px] font-semibold text-white/75 hidden sm:inline">· {contextLabel}</span>}
     </div>
   )
-}
-
-function formatHourLabel(h: number, es: boolean): string {
-  if (es) return `${h.toString().padStart(2, '0')}:00`
-  if (h === 0) return '12am'
-  if (h < 12) return `${h}am`
-  if (h === 12) return '12pm'
-  return `${h - 12}pm`
 }
 
 function HeroSkeleton() {
