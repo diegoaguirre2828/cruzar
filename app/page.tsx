@@ -12,6 +12,7 @@ import { ExchangeRateWidget } from '@/components/ExchangeRateWidget'
 import { OnboardingTour } from '@/components/OnboardingTour'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner'
+import { HeroLiveDelta } from '@/components/HeroLiveDelta'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -139,6 +140,12 @@ export default function HomePage() {
           </div>
           <NavBar />
         </div>
+
+        {/* Hero delta — the 'wow look at this' moment for FB-sourced visitors.
+            Shows the fastest crossing in the user's region + the time saved
+            vs. the slowest, with a share button that drops a pre-composed
+            WhatsApp message. This is the screenshot people send their friends. */}
+        {!isBusiness && <HeroLiveDelta />}
 
         {/* Services in Mexico banner — hidden for business accounts */}
         {!isBusiness && (
