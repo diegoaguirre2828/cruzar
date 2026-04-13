@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { ArrowLeft, Trophy } from 'lucide-react'
 import { BADGES } from '@/lib/points'
 import { useLang } from '@/lib/LangContext'
+import { useAuth } from '@/lib/useAuth'
+import { GuardianProgressCard } from '@/components/GuardianProgressCard'
 
 interface Leader {
   id: string
@@ -38,7 +40,8 @@ const RANK_ICONS = ['🥇', '🥈', '🥉']
 export default function LeaderboardPage() {
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [loading, setLoading] = useState(true)
-  const { t, lang } = useLang()
+  const { lang } = useLang()
+  const { user } = useAuth()
 
   useEffect(() => {
     fetch('/api/leaderboard')
@@ -51,7 +54,7 @@ export default function LeaderboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-lg mx-auto px-4 pb-16">
+      <div className="max-w-lg mx-auto px-4 pb-24">
         <div className="pt-6 pb-4 flex items-center gap-3">
           <Link href="/" className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
             <ArrowLeft className="w-4 h-4" />
@@ -65,6 +68,13 @@ export default function LeaderboardPage() {
             </p>
           </div>
         </div>
+
+        {/* User's own progress card — shown only to signed-in users.
+            Makes this page function as a full Guardián tab (your
+            progress + community ranking) instead of a pure ranking
+            list. Unsigned users see the tier ladder + leaderboard
+            which still gives them context. */}
+        {user && <div className="-mt-2 mb-2"><GuardianProgressCard /></div>}
 
         {/* Guardián tier ladder — replaces the old "how to earn points"
             section. This is service framing, not gamification. Same

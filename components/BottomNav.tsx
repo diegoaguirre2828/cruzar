@@ -2,96 +2,116 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
 import { useLang } from '@/lib/LangContext'
-import { useAuth } from '@/lib/useAuth'
 
-// Pages where the bottom nav should not appear
-const HIDDEN_PATHS = ['/login', '/signup', '/dashboard', '/account', '/business', '/advertise', '/admin', '/driver']
+// Phase 2 bottom nav. Five fixed tabs: Home / Mapa / Datos (Pro) /
+// Guardián / Más. Previously was Crossings / Negocios / Help / Me
+// which stacked everything on the home page and had no dedicated
+// home for the map, analytics, or community leaderboard.
+
+// Only hidden on tight flows where the user needs to commit to a
+// step — login, signup, welcome, driver check-in, admin.
+const HIDDEN_PATHS = [
+  '/login',
+  '/signup',
+  '/welcome',
+  '/reset-password',
+  '/driver',
+  '/checkin',
+  '/admin',
+]
 
 export function BottomNav() {
   const pathname = usePathname()
   const { lang } = useLang()
-  const { user } = useAuth()
-  const [points, setPoints] = useState<number>(0)
-
-  useEffect(() => {
-    if (user) {
-      fetch('/api/profile').then(r => r.json()).then(d => setPoints(d.profile?.points || 0))
-    }
-  }, [user])
+  const es = lang === 'es'
 
   if (HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) return null
+
+  const isActive = (href: string, exact = false) =>
+    exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
 
   const tabs = [
     {
       href: '/',
-      label: lang === 'es' ? 'Cruces' : 'Crossings',
+      label: es ? 'Inicio' : 'Home',
+      active: isActive('/', true),
       icon: (active: boolean) => (
         <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.5 : 2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h4l2 10h6l2-10h4M3 7l9-4 9 4M12 3v4" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10" />
         </svg>
       ),
-      active: pathname === '/',
     },
     {
-      href: '/negocios',
-      label: 'Negocios',
+      href: '/mapa',
+      label: es ? 'Mapa' : 'Map',
+      active: isActive('/mapa'),
       icon: (active: boolean) => (
         <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.5 : 2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 22V12h6v10" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
       ),
-      active: pathname === '/negocios' || pathname.startsWith('/negocios'),
     },
     {
-      href: '/chat',
-      label: lang === 'es' ? 'Ayuda' : 'Help',
+      href: '/datos',
+      label: es ? 'Datos' : 'Insights',
+      active: isActive('/datos'),
       icon: (active: boolean) => (
         <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.5 : 2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V9m0 10l6-4m-6 4l-6-4m6-6l6 4m-6-4L3 9m6 0v10m6-6V5m0 8l6 4m-6-4L9 13" />
         </svg>
       ),
-      active: pathname === '/chat',
+      proBadge: true,
     },
     {
-      href: user ? '/dashboard' : '/signup',
-      label: lang === 'es' ? 'Yo' : 'Me',
+      href: '/leaderboard',
+      label: es ? 'Guardián' : 'Guardian',
+      active: isActive('/leaderboard') || isActive('/guardian'),
       icon: (active: boolean) => (
-        <span className="relative">
-          <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.5 : 2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          {user && points > 0 && (
-            <span className="absolute -top-1.5 -right-2.5 bg-yellow-400 text-gray-900 text-[9px] font-bold leading-none px-1 py-0.5 rounded-full min-w-[16px] text-center">
-              {points > 999 ? '999+' : points}
-            </span>
-          )}
-        </span>
+        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.5 : 2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 9l6-1 3-6z" />
+        </svg>
       ),
-      active: pathname === '/dashboard' || pathname === '/account',
+    },
+    {
+      href: '/mas',
+      label: es ? 'Más' : 'More',
+      active: isActive('/mas') || isActive('/account') || isActive('/dashboard') || isActive('/negocios'),
+      icon: (active: boolean) => (
+        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={active ? 2.5 : 2}>
+          <circle cx="5" cy="12" r="1.5" fill="currentColor" />
+          <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+          <circle cx="19" cy="12" r="1.5" fill="currentColor" />
+        </svg>
+      ),
     },
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex items-stretch">
         {tabs.map(tab => (
           <Link
             key={tab.href}
             href={tab.href}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors relative ${
               tab.active
                 ? 'text-blue-600 dark:text-blue-400'
                 : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
             }`}
           >
             {tab.icon(tab.active)}
-            <span className={`text-[10px] font-medium leading-none ${tab.active ? 'font-semibold' : ''}`}>
+            <span className={`text-[10px] leading-none ${tab.active ? 'font-black' : 'font-semibold'}`}>
               {tab.label}
             </span>
+            {tab.proBadge && (
+              <span className="absolute top-1 right-1/2 translate-x-5 bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[8px] font-black px-1 py-0.5 rounded-full leading-none">
+                PRO
+              </span>
+            )}
           </Link>
         ))}
       </div>

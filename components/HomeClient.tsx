@@ -17,7 +17,7 @@ import { WeatherHook } from '@/components/WeatherHook'
 import { NearMeRail } from '@/components/NearMeRail'
 import { GuardianProgressCard } from '@/components/GuardianProgressCard'
 import { StaticBorderMap } from '@/components/StaticBorderMap'
-import { CruzFab } from '@/components/CruzFab'
+import { InstallPill } from '@/components/InstallPill'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -158,11 +158,13 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
         </div>
 
         {/* Pill row — compact replacements for what used to be full-size
-            cards. Exchange rate + weather forecast + guardián progress
-            all live here as single-line pills. Wraps to a second line on
-            narrow screens. Each is tappable. */}
+            cards. Install + exchange rate + weather + guardián all live
+            here as single-line pills. Wraps to a second line on narrow
+            screens. Each is tappable. Install pill hides itself when
+            the app is already running as a standalone PWA. */}
         {!isBusiness && (
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <InstallPill />
             <ExchangeRatePill />
             <WeatherHook variant="pill" />
             {tier !== 'guest' && <GuardianProgressCard variant="pill" />}
@@ -318,12 +320,11 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
 
       {/* Overlays render AFTER the hero in DOM so they can't push the
           above-the-fold hero down during hydration. They're fixed/modal
-          anyway — the position in JSX only matters for paint order. */}
+          anyway — the position in JSX only matters for paint order.
+          CruzFab moved to app/layout.tsx so it floats on every tab,
+          not just Home. */}
       <InAppBrowserBanner />
       <OnboardingTour />
-      {/* Floating Cruz FAB — bottom-right on every homepage render,
-          replaces the full-size CruzAskCard that used to eat real estate. */}
-      {!isBusiness && <CruzFab />}
     </main>
   )
 }
