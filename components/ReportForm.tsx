@@ -104,9 +104,43 @@ const SLOW_LANE_OPTIONS = [
 
 const FIRST_WELCOME_KEY = 'cruzar_guardian_welcomed_v1'
 
+// Priority order for picking the "primary" tag when the user selects
+// multiple facets at once. Hazards outrank conditions outrank the
+// "all good" state. The primary becomes report_type on the DB row;
+// the rest go into source_meta.extra_tags and render as chips in the
+// feeds. Lower index = higher priority.
+const PRIMARY_PRIORITY = [
+  'accident', 'road_hazard', 'reckless_driver',
+  'inspection', 'officer_k9', 'officer_secondary',
+  'road_construction',
+  'weather_fog', 'weather_rain', 'weather_wind', 'weather_dust',
+  'delay',
+  'clear',
+  'other',
+]
+
+function pickPrimary(tags: string[]): string | null {
+  if (tags.length === 0) return null
+  for (const p of PRIMARY_PRIORITY) {
+    if (tags.includes(p)) return p
+  }
+  return tags[0]
+}
+
+// Quick-pick wait minute buckets shown in the "Did you already cross?"
+// block. Kept short so the user can tap once instead of typing.
+const WAIT_BUCKETS = [5, 15, 30, 45, 60, 90, 120]
+
 export function ReportForm({ portId, onSubmitted, port }: Props) {
   const { lang } = useLang()
-  const [selected, setSelected] = useState<string | null>(null)
+  // Multi-select state — each group is independently toggleable so a
+  // user can report "moving fast + heavy rain + K9 dogs" in one submit.
+  // The legacy `selected` single-string was the bottleneck that forced
+  // users into one-facet reports.
+  const [conditionsSel, setConditionsSel] = useState<Set<string>>(new Set())
+  const [weatherSel, setWeatherSel] = useState<Set<string>>(new Set())
+  const [alertsSel, setAlertsSel] = useState<Set<string>>(new Set())
+  const [waitMinutes, setWaitMinutes] = useState<number | null>(null)
   const [lineReach, setLineReach] = useState<string | null>(null)
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -117,6 +151,29 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
   const [lanesXray, setLanesXray] = useState<number | null>(null)
   const [slowLane, setSlowLane] = useState<string | null>(null)
   const [isFirstReport, setIsFirstReport] = useState(false)
+
+  // Flat list of every selected tag across all three groups — used for
+  // lane-detail gating, submit enablement, and the "done" screen summary.
+  const allTags: string[] = [
+    ...Array.from(conditionsSel),
+    ...Array.from(weatherSel),
+    ...Array.from(alertsSel),
+  ]
+  const primary = pickPrimary(allTags)
+  const hasSelection = allTags.length > 0
+
+  function toggleTag(group: 'conditions' | 'weather' | 'alerts', value: string) {
+    const setters: Record<typeof group, [Set<string>, (s: Set<string>) => void]> = {
+      conditions: [conditionsSel, setConditionsSel],
+      weather:    [weatherSel,    setWeatherSel],
+      alerts:     [alertsSel,     setAlertsSel],
+    }
+    const [current, setter] = setters[group]
+    const next = new Set(current)
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setter(next)
+  }
 
   // Pull impact numbers the moment the submission lands — shown in the
   // "Gracias, guardián" screen so the user's contribution feels concrete
@@ -130,7 +187,7 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
   }, [done, portId])
 
   async function submit() {
-    if (!selected) return
+    if (!primary || !hasSelection) return
     setSubmitting(true)
     try {
       // Request geolocation for anti-troll weighting. If the user denies
@@ -154,17 +211,30 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
           ? { lanes_open: lanesOpen, lanes_xray: lanesXray, slow_lane: slowLane }
           : null
 
+      // Extra tags = everything the user picked minus the primary.
+      // Primary becomes report_type on the DB row; extras get stored
+      // in source_meta.extra_tags and render as chips in the feeds.
+      const extraTags = allTags.filter(t => t !== primary)
+
+      // Severity derived from the highest-priority tag in the selection —
+      // accidents and hazards escalate regardless of other picks.
+      const severity =
+        allTags.some(t => ['accident', 'reckless_driver', 'road_hazard', 'officer_k9'].includes(t)) ? 'high'
+        : allTags.some(t => ['delay', 'weather_fog', 'weather_rain', 'inspection'].includes(t)) ? 'medium'
+        : 'low'
+
       await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           portId,
-          reportType: selected,
+          reportType: primary,
+          extraTags,
           description,
           lineReach,
           laneInfo,
-          severity: ['accident', 'reckless_driver', 'road_hazard', 'officer_k9'].includes(selected) ? 'high'
-            : ['delay', 'weather_fog', 'weather_rain', 'inspection'].includes(selected) ? 'medium' : 'low',
+          waitMinutes,
+          severity,
           ref: typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null,
           lat: coords?.lat,
           lng: coords?.lng,
@@ -175,11 +245,13 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
       // on port cards + a pinned "tu reporte" row in the live ticker
       // as they scroll. Pure client-side — no DB query needed to check
       // "did I report this" on every port card render.
-      saveMyReport(portId, selected, null)
+      saveMyReport(portId, primary, null)
       trackEvent('report_submitted', {
         port_id: portId,
-        report_type: selected,
+        report_type: primary,
+        extra_tag_count: extraTags.length,
         has_lane_info: laneInfo != null,
+        has_wait_minutes: waitMinutes != null,
       })
 
       // First-ever report from this device → flip into the welcome
@@ -197,7 +269,11 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
       // not a transition — don't rush them past it.
       setTimeout(() => {
         setDone(false)
-        setSelected(null)
+        setConditionsSel(new Set())
+        setWeatherSel(new Set())
+        setAlertsSel(new Set())
+        setWaitMinutes(null)
+        setLineReach(null)
         setDescription('')
         setCopied(false)
         setImpact(null)
@@ -218,7 +294,7 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
   }
 
   if (done) {
-    const friendlyReply = port && selected ? buildFriendlyReply(port, selected, lang) : null
+    const friendlyReply = port && primary ? buildFriendlyReply(port, primary, lang) : null
     const waUrl = friendlyReply ? `https://wa.me/?text=${encodeURIComponent(friendlyReply)}` : null
     const portName = port?.localNameOverride || port?.portName || ''
     const es = lang === 'es'
@@ -226,9 +302,13 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
     // Emoji + label for the pinned "your report is now live" card.
     // Mirrors the LiveActivityTicker styling so the user sees their
     // own submission sitting in the feed they've been scrolling past.
-    const reportTypeMeta = selected ? REPORT_TYPES.find((r) => r.value === selected) : null
+    const reportTypeMeta = primary ? REPORT_TYPES.find((r) => r.value === primary) : null
     const reportLabel = reportTypeMeta ? (es ? reportTypeMeta.es : reportTypeMeta.en) : ''
     const reportEmoji = reportTypeMeta?.emoji ?? '💬'
+    const extraTagMetas = allTags
+      .filter(t => t !== primary)
+      .map(t => REPORT_TYPES.find(r => r.value === t))
+      .filter((r): r is (typeof REPORT_TYPES)[number] => !!r)
 
     return (
       <div className="space-y-4">
@@ -315,12 +395,30 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-black text-gray-900 dark:text-gray-100 truncate">
                   {reportLabel}
+                  {waitMinutes != null && (
+                    <span className="ml-1.5 text-[11px] font-bold text-gray-500 dark:text-gray-400">
+                      · {waitMinutes} min
+                    </span>
+                  )}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
                   {portName} · {es ? 'hace un momento' : 'just now'}
                 </p>
               </div>
             </div>
+            {extraTagMetas.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {extraTagMetas.map(rt => (
+                  <span
+                    key={rt.value}
+                    className="inline-flex items-center gap-1 text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full"
+                  >
+                    <span className="text-sm leading-none">{rt.emoji}</span>
+                    {es ? rt.es : rt.en}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -422,38 +520,80 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
       ) : null}
 
       <p className="text-sm text-gray-500 dark:text-gray-400">
-        {lang === 'es' ? '¿Qué está pasando en este puente?' : "What's happening at this crossing?"}
+        {lang === 'es'
+          ? '¿Qué está pasando en este puente? Puedes escoger varias.'
+          : "What's happening at this crossing? You can pick more than one."}
       </p>
 
-      {GROUPS.map(group => (
-        <div key={group.key}>
+      {GROUPS.map(group => {
+        const groupSet =
+          group.key === 'conditions' ? conditionsSel :
+          group.key === 'weather' ? weatherSel :
+          alertsSel
+        return (
+          <div key={group.key}>
+            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+              {lang === 'es' ? group.es : group.en}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {REPORT_TYPES.filter(r => r.group === group.key).map(rt => {
+                const isSel = groupSet.has(rt.value)
+                return (
+                  <button
+                    key={rt.value}
+                    onClick={() => toggleTag(group.key as 'conditions' | 'weather' | 'alerts', rt.value)}
+                    className={`flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all active:scale-95 ${
+                      isSel
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-400'
+                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800'
+                    }`}
+                  >
+                    <span className="text-2xl leading-none">{rt.emoji}</span>
+                    <span className={`text-[10px] font-semibold text-center leading-tight ${
+                      isSel ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+                    }`}>
+                      {lang === 'es' ? rt.es : rt.en}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Wait time — how long the reporter actually waited. Optional,
+          but strongly encouraged because it's the single most useful
+          data point for the community. Shown as quick-pick buckets
+          so it's one tap instead of typing. */}
+      {hasSelection && (
+        <div>
           <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-            {lang === 'es' ? group.es : group.en}
+            {lang === 'es' ? '¿Cuánto esperaste? (opcional)' : 'How long did you wait? (optional)'}
           </p>
           <div className="grid grid-cols-4 gap-2">
-            {REPORT_TYPES.filter(r => r.group === group.key).map(rt => (
-              <button
-                key={rt.value}
-                onClick={() => setSelected(rt.value === selected ? null : rt.value)}
-                className={`flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all active:scale-95 ${
-                  selected === rt.value
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-400'
-                    : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800'
-                }`}
-              >
-                <span className="text-2xl leading-none">{rt.emoji}</span>
-                <span className={`text-[10px] font-semibold text-center leading-tight ${
-                  selected === rt.value ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  {lang === 'es' ? rt.es : rt.en}
-                </span>
-              </button>
-            ))}
+            {WAIT_BUCKETS.map(m => {
+              const isSel = waitMinutes === m
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setWaitMinutes(isSel ? null : m)}
+                  className={`py-2.5 rounded-2xl border text-sm font-bold tabular-nums transition-all active:scale-95 ${
+                    isSel
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 ring-2 ring-blue-400'
+                      : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+                  }`}
+                >
+                  {m} min
+                </button>
+              )
+            })}
           </div>
         </div>
-      ))}
+      )}
 
-      {selected && (
+      {hasSelection && (
         <div>
           <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
             {lang === 'es' ? '¿Hasta dónde llega la fila?' : 'How far back is the line?'}
@@ -477,7 +617,7 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
         </div>
       )}
 
-      {selected && LANE_DETAIL_REPORT_TYPES.has(selected) && (
+      {hasSelection && allTags.some(t => LANE_DETAIL_REPORT_TYPES.has(t)) && (
         <div className="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded-2xl p-3 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-base">🛣️</span>
@@ -561,7 +701,7 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
         </div>
       )}
 
-      {selected && (
+      {hasSelection && (
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
@@ -574,7 +714,7 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
 
       <button
         onClick={submit}
-        disabled={!selected || submitting}
+        disabled={!hasSelection || submitting}
         className="w-full bg-gray-900 dark:bg-gray-100 dark:text-gray-900 text-white text-base font-bold py-3.5 rounded-2xl disabled:opacity-40 transition-colors"
       >
         {submitting

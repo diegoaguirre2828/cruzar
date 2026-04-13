@@ -21,6 +21,26 @@ interface LaneInfo {
 interface SourceMeta {
   lane_type?: string
   lane_info?: LaneInfo
+  extra_tags?: string[]
+}
+
+// Mini metadata for rendering extra tag chips — keep in sync with
+// REPORT_TYPES in ReportForm. Pruned to label+emoji only.
+const EXTRA_TAG_META: Record<string, { emoji: string; es: string; en: string }> = {
+  delay:              { emoji: '🔴', es: 'Espera larga',     en: 'Long wait' },
+  clear:              { emoji: '🟢', es: 'Fluye rápido',     en: 'Moving fast' },
+  accident:           { emoji: '💥', es: 'Accidente',        en: 'Accident' },
+  inspection:         { emoji: '🔵', es: 'Inspección',       en: 'Inspection' },
+  weather_fog:        { emoji: '🌫️', es: 'Neblina',          en: 'Fog' },
+  weather_rain:       { emoji: '🌧️', es: 'Lluvia',           en: 'Rain' },
+  weather_wind:       { emoji: '💨', es: 'Viento',           en: 'Wind' },
+  weather_dust:       { emoji: '🟤', es: 'Tolvanera',        en: 'Dust' },
+  officer_k9:         { emoji: '🐕', es: 'K9',               en: 'K9' },
+  officer_secondary:  { emoji: '🚔', es: 'Revisiones extra', en: 'Extra checks' },
+  road_construction:  { emoji: '🚧', es: 'Construcción',     en: 'Construction' },
+  road_hazard:        { emoji: '⚠️', es: 'Peligro',          en: 'Hazard' },
+  reckless_driver:    { emoji: '😤', es: 'Conductor loco',   en: 'Reckless' },
+  other:              { emoji: '💬', es: 'Otro',             en: 'Other' },
 }
 
 interface Report {
@@ -132,6 +152,28 @@ export function ReportsFeed({ portId, refresh }: Props) {
 
                 {r.description && r.description !== 'Reported via Just Crossed prompt' && (
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{r.description}</p>
+                )}
+
+                {/* Extra facets — when the reporter combined multiple
+                    tags in one submission (e.g. "moving fast" + rain +
+                    K9), the primary shows as the header and the rest
+                    render here as chips. */}
+                {r.source_meta?.extra_tags && r.source_meta.extra_tags.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {r.source_meta.extra_tags.map(tag => {
+                      const meta = EXTRA_TAG_META[tag]
+                      if (!meta) return null
+                      return (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-0.5 text-[10px] font-semibold bg-white/70 dark:bg-gray-900/40 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded-full"
+                        >
+                          <span className="text-xs leading-none">{meta.emoji}</span>
+                          {meta.es}
+                        </span>
+                      )
+                    })}
+                  </div>
                 )}
 
                 {/* Lane-level detail — the moat feature. Community reports

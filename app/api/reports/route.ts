@@ -268,7 +268,7 @@ function checkReportRateLimit(key: string, max: number): boolean {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode, ref, laneType, laneInfo, lat, lng } = body
+  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode, ref, laneType, laneInfo, extraTags, lat, lng } = body
 
   // Support both reportType and condition field names
   const type = reportType || condition || 'other'
@@ -284,6 +284,19 @@ export async function POST(req: NextRequest) {
   ]
   const mappedType = type === 'fast' ? 'clear' : type === 'slow' ? 'delay' : type === 'normal' ? 'other' : type
   if (!validTypes.includes(type) && !validTypes.includes(mappedType)) return NextResponse.json({ error: 'Invalid report type' }, { status: 400 })
+
+  // Normalize extra tags — the multi-facet report form sends these
+  // when the user picks more than one facet (e.g. "moving fast" +
+  // "heavy rain" + "K9 dogs"). Primary tag becomes report_type;
+  // extras get stored in source_meta.extra_tags and render as chips
+  // in the feeds. Filtered against the valid type list to block
+  // garbage.
+  const normalizedExtraTags: string[] = Array.isArray(extraTags)
+    ? [...new Set(
+        (extraTags as unknown[])
+          .filter((t): t is string => typeof t === 'string' && validTypes.includes(t) && t !== mappedType)
+      )]
+    : []
 
   const user = await getUser()
 
@@ -343,11 +356,18 @@ export async function POST(req: NextRequest) {
     return { lanes_open: lanesOpen, lanes_xray: lanesXray, slow_lane: slowLane }
   })()
 
-  // source_meta bundles lane_type (legacy) + lane_info (new). Stored
-  // as a single JSONB column so no schema migration is needed.
+  // source_meta bundles lane_type (legacy) + lane_info (new) +
+  // extra_tags (multi-facet). Stored as a single JSONB column so no
+  // schema migration is needed. extra_tags holds every tag the user
+  // picked beyond the primary — feeds render these as chips.
+  const hasExtraTags = normalizedExtraTags.length > 0
   const sourceMeta =
-    normalizedLaneType || normalizedLaneInfo
-      ? { ...(normalizedLaneType ? { lane_type: normalizedLaneType } : {}), ...(normalizedLaneInfo ? { lane_info: normalizedLaneInfo } : {}) }
+    normalizedLaneType || normalizedLaneInfo || hasExtraTags
+      ? {
+          ...(normalizedLaneType ? { lane_type: normalizedLaneType } : {}),
+          ...(normalizedLaneInfo ? { lane_info: normalizedLaneInfo } : {}),
+          ...(hasExtraTags ? { extra_tags: normalizedExtraTags } : {}),
+        }
       : null
 
   // Geo-gate: compute distance from the port and classify the reporter's
