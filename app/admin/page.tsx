@@ -1262,15 +1262,21 @@ export default function AdminPage() {
             >
               <div>
                 <label className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
-                  Texto del post
+                  Texto · Post único o feed completo
                 </label>
+                <p className="text-[11px] text-gray-400 mt-0.5 mb-1.5">
+                  Pega un post, un post con comentarios, o <b>toda la página</b> (Ctrl+A → Ctrl+C en un grupo de FB) — la IA encuentra todos los reportes de espera en el texto.
+                </p>
                 <textarea
                   value={ingestText}
                   onChange={(e) => setIngestText(e.target.value)}
-                  placeholder="Ej: 'Los Tomates horita' — o pega el post completo con comentarios"
-                  rows={5}
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ej: 'Los Tomates horita 45 min' — o pega el feed completo con muchos posts"
+                  rows={10}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono leading-relaxed"
                 />
+                <p className="text-[10px] text-gray-400 mt-1 text-right">
+                  {ingestText.length.toLocaleString()} / 20,000 chars
+                </p>
               </div>
 
               <div>

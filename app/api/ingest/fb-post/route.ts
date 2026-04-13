@@ -84,12 +84,12 @@ async function parseWithClaude(
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return null
 
-  const prompt = `You extract US–Mexico border crossing wait time information from Spanish Facebook group posts.
+  const prompt = `You extract US–Mexico border crossing wait time information from Spanish Facebook content. The input may be a SINGLE post, a post + comments, or a LARGE BLOB of many posts pasted together (when someone did Ctrl+A on a whole group feed). Treat all cases — extract every distinct wait-time observation you can find.
 
 Known crossings (port_id  name):
 ${PORT_CATALOG}
 
-Post from group "${groupName}":
+Content from group "${groupName}":
 """
 ${text}
 """
@@ -111,9 +111,11 @@ Return ONLY valid JSON matching this schema. No markdown, no prose.
 }
 
 Rules:
+- The input MAY contain many distinct posts. Walk through all of them. For each post that contains concrete wait-time information, emit one or more observations. Skip questions-without-answers, ads, sale posts, greetings, memes.
 - A single post may describe MULTIPLE lanes or crossings. Emit one observation per lane+crossing.
   "B&M 20 min, nada de fila en sentri" → [{vehicle, 20}, {sentri, 0}]
   "Hidalgo lleno pero pharr fluido"   → [{hidalgo vehicle, 60}, {pharr vehicle, 5}]
+- If the SAME bridge appears in multiple posts with different times, emit each separately — the blending logic downstream handles deduplication and weighting. Don't average them yourself.
 - Q&A PATTERN: the text may be a question followed by one or more replies. If the ORIGINAL
   POST is a question ("alguien sabe la fila en Hidalgo?"), use the REPLIES as the source of
   truth. Replies come after the post text and often begin with a short answer like "30 min",
@@ -157,7 +159,7 @@ ${image ? `- IMAGE ANALYSIS: Look at the attached photo. If it shows a visible q
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
+        max_tokens: 3000,
         messages: [{ role: 'user', content: userContent }],
       }),
     })
@@ -275,8 +277,11 @@ export async function POST(req: NextRequest) {
   if (!text && !hasImage) {
     return NextResponse.json({ error: 'Missing text or image' }, { status: 400 })
   }
-  if (text.length > 2000) {
-    return NextResponse.json({ error: 'Text too long' }, { status: 400 })
+  // Admin path gets a bigger cap so Diego can paste an entire FB feed
+  // (Ctrl+A → Ctrl+C on a group page dumps 5-15k chars easily).
+  const textCap = adminValid ? 20000 : 2000
+  if (text.length > textCap) {
+    return NextResponse.json({ error: `Text too long (max ${textCap})` }, { status: 400 })
   }
   // Reject huge images — Anthropic caps at ~5MB base64 and this keeps payloads sane
   if (body.image_base64 && body.image_base64.length > 5_000_000) {
