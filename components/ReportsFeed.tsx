@@ -12,6 +12,17 @@ const TYPE_CONFIG: Record<string, { label: string; labelEs: string; icon: typeof
   other:      { label: 'Update',       labelEs: 'Actualización', icon: HelpCircle,    color: 'text-gray-500',   bg: 'bg-gray-50 dark:bg-gray-800' },
 }
 
+interface LaneInfo {
+  lanes_open?: number | null
+  lanes_xray?: number | null
+  slow_lane?: 'con_rayos' | 'sin_rayos' | 'sentri' | 'parejo' | null
+}
+
+interface SourceMeta {
+  lane_type?: string
+  lane_info?: LaneInfo
+}
+
 interface Report {
   id: string
   report_type: string
@@ -21,6 +32,14 @@ interface Report {
   created_at: string
   wait_minutes: number | null
   username: string | null
+  source_meta?: SourceMeta | null
+}
+
+const SLOW_LANE_LABEL: Record<string, { es: string; en: string }> = {
+  con_rayos: { es: 'Las con rayos X están más lentas', en: 'X-ray lanes are slower' },
+  sin_rayos: { es: 'La sin rayos X está más lenta',    en: 'No-X-ray lane is slower' },
+  sentri:    { es: 'SENTRI está más lenta',            en: 'SENTRI is slower' },
+  parejo:    { es: 'Todas las filas parejas',          en: 'All lanes similar' },
 }
 
 interface Props {
@@ -113,6 +132,37 @@ export function ReportsFeed({ portId, refresh }: Props) {
                 {r.description && r.description !== 'Reported via Just Crossed prompt' && (
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{r.description}</p>
                 )}
+
+                {/* Lane-level detail — the moat feature. Community reports
+                    capture what CBP can't: how many lanes are open, how
+                    many have X-ray, which lane is slower. Feature origin:
+                    Enrique Rodriguez's FB comment on 2026-04-13. */}
+                {r.source_meta?.lane_info && (() => {
+                  const li = r.source_meta!.lane_info!
+                  const parts: string[] = []
+                  if (li.lanes_open != null) {
+                    parts.push(`${li.lanes_open} ${li.lanes_open === 1 ? 'fila abierta' : 'filas abiertas'}`)
+                  }
+                  if (li.lanes_xray != null && li.lanes_open != null && li.lanes_open > 0) {
+                    const noXray = li.lanes_open - li.lanes_xray
+                    parts.push(`${li.lanes_xray} con rayos · ${noXray} sin rayos`)
+                  } else if (li.lanes_xray != null) {
+                    parts.push(`${li.lanes_xray} con rayos X`)
+                  }
+                  const slowLabel = li.slow_lane ? SLOW_LANE_LABEL[li.slow_lane] : null
+                  return (
+                    <div className="mt-1.5 bg-white/70 dark:bg-gray-900/40 border border-amber-200 dark:border-amber-700/50 rounded-lg px-2 py-1.5">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 leading-none">
+                        🛣️ {parts.join(' · ') || 'Detalles de la fila'}
+                      </p>
+                      {slowLabel && (
+                        <p className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold mt-0.5 leading-snug">
+                          {slowLabel.es}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-xs text-gray-400">

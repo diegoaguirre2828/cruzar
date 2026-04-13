@@ -85,6 +85,21 @@ const LINE_REACH = [
   { value: 'reten',    es: 'Retén del Ejército', en: 'Army checkpoint',emoji: '🪖' },
 ]
 
+// Lane detail section — optional. Only shown for vehicle-related
+// reports (delay / clear / inspection / other). This is the moat
+// feature nobody else has: CBP publishes one number per bridge but
+// locals decide which lane to pick based on how many are open and
+// which have X-ray. See project_cruzar_lane_details memory for
+// the FB-thread origin story.
+const LANE_DETAIL_REPORT_TYPES = new Set(['delay', 'clear', 'inspection', 'other'])
+
+const SLOW_LANE_OPTIONS = [
+  { value: 'con_rayos',  es: 'Las con rayos X',  en: 'With X-ray lanes' },
+  { value: 'sin_rayos',  es: 'La sin rayos X',   en: 'No-X-ray lane' },
+  { value: 'sentri',     es: 'SENTRI',           en: 'SENTRI' },
+  { value: 'parejo',     es: 'Todas parejas',    en: 'All similar' },
+]
+
 export function ReportForm({ portId, onSubmitted, port }: Props) {
   const { lang } = useLang()
   const [selected, setSelected] = useState<string | null>(null)
@@ -94,6 +109,9 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
   const [done, setDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [impact, setImpact] = useState<{ subscribers: number; guardiansToday: number } | null>(null)
+  const [lanesOpen, setLanesOpen] = useState<number | null>(null)
+  const [lanesXray, setLanesXray] = useState<number | null>(null)
+  const [slowLane, setSlowLane] = useState<string | null>(null)
 
   // Pull impact numbers the moment the submission lands — shown in the
   // "Gracias, guardián" screen so the user's contribution feels concrete
@@ -123,6 +141,14 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
         )
       })
 
+      // Assemble optional lane detail payload — only sent if the user
+      // filled at least one field. Server stores this inside source_meta
+      // alongside lane_type so no schema migration is needed.
+      const laneInfo =
+        (lanesOpen != null || lanesXray != null || slowLane != null)
+          ? { lanes_open: lanesOpen, lanes_xray: lanesXray, slow_lane: slowLane }
+          : null
+
       await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,6 +157,7 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
           reportType: selected,
           description,
           lineReach,
+          laneInfo,
           severity: ['accident', 'reckless_driver', 'road_hazard', 'officer_k9'].includes(selected) ? 'high'
             : ['delay', 'weather_fog', 'weather_rain', 'inspection'].includes(selected) ? 'medium' : 'low',
           ref: typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null,
@@ -148,6 +175,9 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
         setDescription('')
         setCopied(false)
         setImpact(null)
+        setLanesOpen(null)
+        setLanesXray(null)
+        setSlowLane(null)
         onSubmitted()
       }, 14000)
     } finally {
@@ -332,6 +362,90 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
                 <span>{lang === 'es' ? lr.es : lr.en}</span>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {selected && LANE_DETAIL_REPORT_TYPES.has(selected) && (
+        <div className="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 rounded-2xl p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🛣️</span>
+            <p className="text-xs font-black text-amber-900 dark:text-amber-200 leading-tight">
+              {lang === 'es' ? 'Detalles de la fila (opcional)' : 'Lane details (optional)'}
+            </p>
+          </div>
+          <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-snug -mt-1">
+            {lang === 'es'
+              ? 'Estos detalles son lo que CBP no dice — solo la gente en la fila los sabe.'
+              : "These details are what CBP won't tell you — only people in the line know them."}
+          </p>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400 mb-1.5">
+              {lang === 'es' ? '¿Cuántas filas abiertas?' : 'How many lanes open?'}
+            </p>
+            <div className="flex gap-1.5 flex-wrap">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setLanesOpen(lanesOpen === n ? null : n)}
+                  className={`w-9 h-9 rounded-xl text-xs font-black tabular-nums border transition-all active:scale-95 ${
+                    lanesOpen === n
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {lanesOpen != null && lanesOpen > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400 mb-1.5">
+                {lang === 'es' ? '¿Cuántas son con rayos X?' : 'How many with X-ray?'}
+              </p>
+              <div className="flex gap-1.5 flex-wrap">
+                {Array.from({ length: lanesOpen + 1 }, (_, i) => i).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setLanesXray(lanesXray === n ? null : n)}
+                    className={`w-9 h-9 rounded-xl text-xs font-black tabular-nums border transition-all active:scale-95 ${
+                      lanesXray === n
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400 mb-1.5">
+              {lang === 'es' ? '¿Cuál fila está más lenta?' : 'Which lane is slowest?'}
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SLOW_LANE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSlowLane(slowLane === opt.value ? null : opt.value)}
+                  className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all active:scale-95 text-center ${
+                    slowLane === opt.value
+                      ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  {lang === 'es' ? opt.es : opt.en}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

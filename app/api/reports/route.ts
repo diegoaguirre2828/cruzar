@@ -223,7 +223,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await db
     .from('crossing_reports')
-    .select('id, report_type, description, severity, upvotes, created_at, wait_minutes, username')
+    .select('id, report_type, description, severity, upvotes, created_at, wait_minutes, username, source_meta')
     .eq('port_id', portId)
     .gte('created_at', since)
     .order('created_at', { ascending: false })
@@ -250,7 +250,7 @@ function checkReportRateLimit(key: string, max: number): boolean {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode, ref, laneType, lat, lng } = body
+  const { portId, reportType, condition, description, severity, waitMinutes, note, waitingMode, ref, laneType, laneInfo, lat, lng } = body
 
   // Support both reportType and condition field names
   const type = reportType || condition || 'other'
@@ -306,6 +306,32 @@ export async function POST(req: NextRequest) {
   const validLaneTypes = ['vehicle', 'sentri', 'pedestrian', 'commercial']
   const normalizedLaneType = validLaneTypes.includes(laneType) ? laneType : null
 
+  // Normalize the optional lane-detail payload. These fields are the
+  // moat feature nobody else has — how many lanes are open, how many
+  // have X-ray, which lane type is slowest. Only captured when the
+  // reporter fills the optional block in ReportForm. Validated tight
+  // to prevent garbage — discard anything out-of-range rather than
+  // error out.
+  const validSlowLanes = new Set(['con_rayos', 'sin_rayos', 'sentri', 'parejo'])
+  const normalizedLaneInfo = (() => {
+    if (!laneInfo || typeof laneInfo !== 'object') return null
+    const lanesOpen = typeof laneInfo.lanes_open === 'number' && laneInfo.lanes_open >= 1 && laneInfo.lanes_open <= 12
+      ? laneInfo.lanes_open : null
+    const lanesXray = typeof laneInfo.lanes_xray === 'number' && laneInfo.lanes_xray >= 0 && laneInfo.lanes_xray <= 12
+      ? laneInfo.lanes_xray : null
+    const slowLane = typeof laneInfo.slow_lane === 'string' && validSlowLanes.has(laneInfo.slow_lane)
+      ? laneInfo.slow_lane : null
+    if (lanesOpen == null && lanesXray == null && slowLane == null) return null
+    return { lanes_open: lanesOpen, lanes_xray: lanesXray, slow_lane: slowLane }
+  })()
+
+  // source_meta bundles lane_type (legacy) + lane_info (new). Stored
+  // as a single JSONB column so no schema migration is needed.
+  const sourceMeta =
+    normalizedLaneType || normalizedLaneInfo
+      ? { ...(normalizedLaneType ? { lane_type: normalizedLaneType } : {}), ...(normalizedLaneInfo ? { lane_info: normalizedLaneInfo } : {}) }
+      : null
+
   // Geo-gate: compute distance from the port and classify the reporter's
   // location confidence. We intentionally only STORE the distance + bucket,
   // not the raw coords, to preserve privacy. Reports from too far away are
@@ -332,7 +358,7 @@ export async function POST(req: NextRequest) {
     wait_minutes: waitMinutes || null,
     username,
     source: 'cruzar',
-    source_meta: normalizedLaneType ? { lane_type: normalizedLaneType } : null,
+    source_meta: sourceMeta,
     location_confidence: locationConfidence,
     reporter_distance_km: reporterDistanceKm,
   }).select('id').single()
