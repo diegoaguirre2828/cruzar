@@ -3,6 +3,24 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
+// Peak-hour aware caption generator for the Cruzar FB page.
+//
+// Called by Make.com on a cron schedule. The `peak` query param tunes
+// the tone and opener for the commute window so each post feels
+// time-relevant instead of a generic data dump. Defaults to the
+// nearest peak window based on CST if `peak` isn't passed.
+//
+// Pipeline:
+//   Make.com cron (4x/day at 6am/11am/3pm/7pm CST) →
+//   GET /api/social/next-post?secret=X&peak=morning →
+//   Returns { caption, regions, peak } →
+//   Make.com pipes caption into FB Page "Create a Post" module
+//
+// Every caption ends with a page-follow CTA — the whole point of
+// frequent posts is to train FB's push-notification algorithm so
+// followers get pinged when the page posts. That only works if
+// people follow the page, so every post asks for it.
+
 function getLevel(wait: number | null): 'low' | 'medium' | 'high' {
   if (!wait || wait === 0) return 'low'
   if (wait <= 20) return 'low'
@@ -14,6 +32,48 @@ function emoji(level: string) {
   if (level === 'low') return '🟢'
   if (level === 'medium') return '🟡'
   return '🔴'
+}
+
+type PeakWindow = 'morning' | 'midday' | 'afternoon' | 'evening'
+
+const PEAK_COPY: Record<PeakWindow, {
+  opener: string
+  followHook: string
+  hashtag: string
+}> = {
+  morning: {
+    opener: '🌅 BUENOS DÍAS RAZA — tiempos de la mañana',
+    followHook: '👉 Dale follow a la página y te avisamos cada mañana antes de que salgas al puente',
+    hashtag: '#madrugada #commute',
+  },
+  midday: {
+    opener: '☀️ MEDIODÍA — así anda el puente ahorita',
+    followHook: '👉 Síguenos para que te llegue una notificación cuando publiquemos los tiempos — ya no andes buscando',
+    hashtag: '#mediodia',
+  },
+  afternoon: {
+    opener: '🌤️ TARDE — tiempos antes de la salida de escuela y trabajo',
+    followHook: '👉 Síguenos y te avisamos cada tarde ANTES de que salgas — te ahorras horas',
+    hashtag: '#tarde #commute',
+  },
+  evening: {
+    opener: '🌙 NOCHE — cómo anda el puente para los que cruzan al final del día',
+    followHook: '👉 Dale follow a la página — publicamos los tiempos 4 veces al día en los momentos clave',
+    hashtag: '#noche',
+  },
+}
+
+// Pick the nearest peak window based on current time in CST — used
+// as a fallback when Make.com doesn't pass ?peak explicitly.
+function defaultPeak(): PeakWindow {
+  const cstHour = parseInt(
+    new Date().toLocaleString('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/Chicago' }),
+    10,
+  )
+  if (cstHour < 10) return 'morning'
+  if (cstHour < 13) return 'midday'
+  if (cstHour < 17) return 'afternoon'
+  return 'evening'
 }
 
 const REGIONS = [
@@ -65,6 +125,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Pick the peak window either from the query param or auto-detect
+  // from current CST hour. Make.com scenarios should pass ?peak=X
+  // explicitly so each scheduled post has a stable identity.
+  const peakParam = req.nextUrl.searchParams.get('peak') as PeakWindow | null
+  const peak: PeakWindow = peakParam && peakParam in PEAK_COPY ? peakParam : defaultPeak()
+  const peakMeta = PEAK_COPY[peak]
+
   const portsRes = await fetch('https://cruzar.app/api/ports', { cache: 'no-store' })
   const { ports } = await portsRes.json()
 
@@ -104,7 +171,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (regionBlocks.length === 0) {
-    return NextResponse.json({ caption: null, message: 'No crossings with data right now' })
+    return NextResponse.json({ caption: null, peak, message: 'No crossings with data right now' })
   }
 
   const timeStrCST = now.toLocaleTimeString('es-MX', {
@@ -114,7 +181,7 @@ export async function GET(req: NextRequest) {
     weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Chicago',
   })
 
-  const caption = `🌉 TIEMPOS DE ESPERA — ${timeStrCST.toUpperCase()}
+  const caption = `${peakMeta.opener} — ${timeStrCST.toUpperCase()}
 ${dateStrFB.charAt(0).toUpperCase() + dateStrFB.slice(1)}
 
 ${regionBlocks.join('\n\n─────────────────\n\n')}
@@ -122,7 +189,9 @@ ${regionBlocks.join('\n\n─────────────────\n\n
 📱 Tiempos en vivo → cruzar.app
 Reporta tu tiempo y ayuda a todos en la fila 🙌
 
-#border #frontera #cruzar #espera #tiemposdeespera`
+${peakMeta.followHook}
 
-  return NextResponse.json({ caption, regions: regionBlocks.length })
+#border #frontera #cruzar #espera #tiemposdeespera ${peakMeta.hashtag}`
+
+  return NextResponse.json({ caption, regions: regionBlocks.length, peak })
 }

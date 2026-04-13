@@ -39,7 +39,7 @@ interface Stats {
 }
 
 const ALL_CATEGORIES: TemplateCategory[] = [
-  'morning', 'midday', 'afternoon', 'evening', 'heads_up', 'tip', 'ask', 'evergreen',
+  'morning', 'midday', 'afternoon', 'evening', 'heads_up', 'tip', 'ask', 'evergreen', 'page_follow',
 ]
 
 export function PromoterDashboard() {

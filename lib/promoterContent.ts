@@ -22,7 +22,7 @@
 
 export type TemplateCategory =
   | 'morning' | 'midday' | 'afternoon' | 'evening'
-  | 'heads_up' | 'tip' | 'ask' | 'evergreen'
+  | 'heads_up' | 'tip' | 'ask' | 'evergreen' | 'page_follow'
 
 export interface ContentTemplate {
   id: string
@@ -32,14 +32,15 @@ export interface ContentTemplate {
 }
 
 export const CATEGORY_META: Record<TemplateCategory, { es: string; en: string; emoji: string }> = {
-  morning:    { es: 'Mañana',             en: 'Morning',        emoji: '🌅' },
-  midday:     { es: 'Mediodía',           en: 'Midday',         emoji: '☀️' },
-  afternoon:  { es: 'Tarde',              en: 'Afternoon',      emoji: '🌤️' },
-  evening:    { es: 'Noche',              en: 'Evening',        emoji: '🌙' },
-  heads_up:   { es: 'Aviso',              en: 'Heads up',       emoji: '⚠️' },
-  tip:        { es: 'Consejo',            en: 'Tip',            emoji: '💡' },
-  ask:        { es: 'Respuesta pregunta', en: 'Reply to ask',   emoji: '💬' },
-  evergreen:  { es: 'Siempre',            en: 'Evergreen',      emoji: '♾️' },
+  morning:     { es: 'Mañana',             en: 'Morning',        emoji: '🌅' },
+  midday:      { es: 'Mediodía',           en: 'Midday',         emoji: '☀️' },
+  afternoon:   { es: 'Tarde',              en: 'Afternoon',      emoji: '🌤️' },
+  evening:     { es: 'Noche',              en: 'Evening',        emoji: '🌙' },
+  heads_up:    { es: 'Aviso',              en: 'Heads up',       emoji: '⚠️' },
+  tip:         { es: 'Consejo',            en: 'Tip',            emoji: '💡' },
+  ask:         { es: 'Respuesta pregunta', en: 'Reply to ask',   emoji: '💬' },
+  evergreen:   { es: 'Siempre',            en: 'Evergreen',      emoji: '♾️' },
+  page_follow: { es: 'Seguir FB',          en: 'Follow FB',      emoji: '📘' },
 }
 
 export const PROMOTER_TEMPLATES: ContentTemplate[] = [
@@ -183,6 +184,42 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'evergreen',
     label: 'Notificaciones',
     text: 'Lo mejor de todo es que te puede avisar cuando baja la espera de tu puente. Es gratis: {{refLink}}',
+  },
+
+  // ─── FB page follow push ──────────────────────────────────
+  // These point people at the Cruzar FB page, not the app. Purpose:
+  // build a page-following audience so peak-hour auto-posts reach
+  // them via FB push notifications. Separate funnel from the signup
+  // templates above — both matter, they just do different things.
+  {
+    id: 'page-01',
+    category: 'page_follow',
+    label: 'Notificaciones cada mañana',
+    text: 'Raza, les dejo la página de Cruzar — publica los tiempos de los puentes 4 veces al día. Si le dan follow, les llega notificación cada mañana antes de salir: facebook.com/cruzar',
+  },
+  {
+    id: 'page-02',
+    category: 'page_follow',
+    label: '4 horas clave del día',
+    text: 'Sigan la página de Cruzar en FB, publica los tiempos en las 4 horas clave: mañana, mediodía, tarde y noche. Les llega notificación directo al teléfono 👉 facebook.com/cruzar',
+  },
+  {
+    id: 'page-03',
+    category: 'page_follow',
+    label: 'Para los que se olvidan',
+    text: 'Si siempre se les olvida chequear el puente antes de salir, sigan a Cruzar en FB y FB les avisa cuando publican los tiempos. Ahorra horas de fila: facebook.com/cruzar',
+  },
+  {
+    id: 'page-04',
+    category: 'page_follow',
+    label: 'Recomendación directa',
+    text: 'Si cruzan seguido, síganse la página de Cruzar. Publica los tiempos de TODOS los puentes, en vivo, cuatro veces al día. Yo ya le di follow y no me arrepiento 👉 facebook.com/cruzar',
+  },
+  {
+    id: 'page-05',
+    category: 'page_follow',
+    label: 'Doble recomendación (app + página)',
+    text: 'Dos cosas que les van a servir si cruzan seguido:\n\n1️⃣ La app: {{refLink}} — tiempos en vivo de todos los puentes\n2️⃣ La página de FB: facebook.com/cruzar — notificaciones en las horas clave\n\nLas dos son gratis.',
   },
 ]
 

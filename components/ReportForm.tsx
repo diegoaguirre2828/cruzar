@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Copy, Check as CheckIcon } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
 import { ReportSentAnimation } from './ReportSentAnimation'
+import { FbPageFollowCard } from './FbPageFollowCard'
 import { trackShare } from '@/lib/trackShare'
 import { saveMyReport } from '@/lib/myReports'
 import { trackEvent } from '@/lib/trackEvent'
@@ -451,6 +452,12 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
             )}
           </div>
         )}
+
+        {/* FB page follow moment — the user just contributed a report,
+            they're in the highest-trust moment of their session. Pitch
+            the durable follow channel here because it's the one screen
+            where they're primed to commit to ongoing engagement. */}
+        <FbPageFollowCard variant="full" source="report_done" />
 
         {waUrl && (
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-2xl p-3 space-y-2">

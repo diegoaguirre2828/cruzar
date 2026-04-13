@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { InstallGuide } from '@/components/InstallGuide'
+import { FbPageFollowCard } from '@/components/FbPageFollowCard'
 
 // "Más" tab — the settings / everything-else hub. Previously these
 // destinations (account, negocios, pricing, guía, etc.) were scattered
@@ -123,6 +124,14 @@ export default function MasPage() {
             </p>
           </Link>
         )}
+
+        {/* Passive daily retention lever — every visit to /mas is a
+            chance to convert an existing user into a page follower who
+            gets pinged 4x/day. Sits above account section so it's
+            visible without scrolling. */}
+        <div className="mb-5">
+          <FbPageFollowCard variant="compact" source="mas_page" />
+        </div>
 
         <Section title={es ? 'Tu cuenta' : 'Your account'}>
           {ACCOUNT_ITEMS.map((item) => (

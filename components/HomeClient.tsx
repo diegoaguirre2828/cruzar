@@ -10,6 +10,7 @@ import { WaitingMode } from '@/components/WaitingMode'
 import { BusinessCommandWidget } from '@/components/BusinessCommandWidget'
 import { ExchangeRatePill } from '@/components/ExchangeRatePill'
 import { RegionPicker } from '@/components/RegionPicker'
+import { FbPageFollowCard } from '@/components/FbPageFollowCard'
 import { OnboardingTour } from '@/components/OnboardingTour'
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner'
 import { HeroLiveDelta } from '@/components/HeroLiveDelta'
@@ -230,6 +231,16 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
         {/* Urgent alerts — real-time accidents / inspections. Stays above
             the list because these are actionable warnings, not fluff. */}
         {!isBusiness && <UrgentAlerts initialReports={initialReports} />}
+
+        {/* Passive FB page follow CTA — only shown to authenticated
+            non-business users. Guests see the LiveActivityTicker /
+            HeroLiveDelta hero already, so the home surface is busy
+            for them; signed-in users have room for one more ask. */}
+        {!isBusiness && !authLoading && user && (
+          <div className="mt-3">
+            <FbPageFollowCard variant="compact" source="home" />
+          </div>
+        )}
 
         {/* Business Command Center — visible only to business tier */}
         <BusinessCommandWidget />
