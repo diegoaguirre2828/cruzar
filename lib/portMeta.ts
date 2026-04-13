@@ -62,9 +62,14 @@ export const PORT_META: Record<string, PortMeta> = {
   '231002': { city: 'Roma',     region: RGV_ROMA, megaRegion: 'rgv', lat: 26.4100, lng: -99.0200 },
 
   // ── Matamoros ↔ Brownsville ──────────────────────────────
-  '535501': { city: 'Brownsville', region: RGV_BROWNSVILLE, megaRegion: 'rgv', lat: 25.9007, lng: -97.4935, localName: 'B&M' },
+  // Local names confirmed 2026-04-12 with Diego (RGV native):
+  //   B&M = "Puente Nuevo" (the one locals call Nuevo; centro)
+  //   Gateway = "Gateway" (centro)
+  //   Veterans International = "Los Tomates" (east, Bagdad road)
+  //   Free Trade = "Los Indios" (west, commercial)
+  '535501': { city: 'Brownsville', region: RGV_BROWNSVILLE, megaRegion: 'rgv', lat: 25.9007, lng: -97.4935, localName: 'Puente Nuevo / B&M' },
   '535502': { city: 'Brownsville', region: RGV_BROWNSVILLE, megaRegion: 'rgv', lat: 25.8726, lng: -97.4866, localName: 'Los Tomates' },
-  '535503': { city: 'Brownsville', region: RGV_BROWNSVILLE, megaRegion: 'rgv', lat: 26.0416, lng: -97.7367, localName: 'Los Indios' },
+  '535503': { city: 'Brownsville', region: RGV_BROWNSVILLE, megaRegion: 'rgv', lat: 26.0416, lng: -97.7367, localName: 'Los Indios / Free Trade' },
   '535504': { city: 'Brownsville', region: RGV_BROWNSVILLE, megaRegion: 'rgv', lat: 25.9044, lng: -97.5040, localName: 'Gateway' },
 
   // ── Nuevo Laredo ↔ Laredo ────────────────────────────────
