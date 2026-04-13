@@ -47,7 +47,11 @@ function nearestRegion(lat: number, lng: number) {
   return best
 }
 
-export function WeatherHook() {
+interface WeatherHookProps {
+  variant?: 'card' | 'pill'
+}
+
+export function WeatherHook({ variant = 'card' }: WeatherHookProps = {}) {
   const { lang } = useLang()
   const es = lang === 'es'
   const [warning, setWarning] = useState<Warning | null>(null)
@@ -138,6 +142,29 @@ export function WeatherHook() {
   }
 
   const c = COPY[warning.kind]
+
+  if (variant === 'pill') {
+    const shortEs = warning.kind === 'rain' ? 'Lluvia'
+      : warning.kind === 'fog' ? 'Neblina' : 'Viento'
+    const shortEn = warning.kind === 'rain' ? 'Rain'
+      : warning.kind === 'fog' ? 'Fog' : 'Wind'
+    const when = warning.hoursAway === 0
+      ? (es ? 'ya' : 'now')
+      : warning.hoursAway === 1
+        ? (es ? 'en 1h' : 'in 1h')
+        : (es ? `en ${warning.hoursAway}h` : `in ${warning.hoursAway}h`)
+    return (
+      <div
+        className="inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-full pl-2 pr-3 py-1.5"
+        title={es ? c.es : c.en}
+      >
+        <span className="text-base leading-none">{c.emoji}</span>
+        <span className="text-[11px] font-bold text-sky-800 dark:text-sky-200 whitespace-nowrap">
+          {es ? shortEs : shortEn} {when}
+        </span>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-3 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 border border-sky-200 dark:border-sky-800 rounded-2xl px-4 py-3 flex items-start gap-3">

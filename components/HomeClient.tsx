@@ -13,11 +13,11 @@ import { OnboardingTour } from '@/components/OnboardingTour'
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner'
 import { HeroLiveDelta } from '@/components/HeroLiveDelta'
 import { LiveActivityTicker } from '@/components/LiveActivityTicker'
-import { CruzAskCard } from '@/components/CruzAskCard'
 import { WeatherHook } from '@/components/WeatherHook'
 import { NearMeRail } from '@/components/NearMeRail'
 import { GuardianProgressCard } from '@/components/GuardianProgressCard'
 import { StaticBorderMap } from '@/components/StaticBorderMap'
+import { CruzFab } from '@/components/CruzFab'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -153,40 +153,37 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">🌉 {t.appName}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{t.subtitle}</p>
-            {!isBusiness && <ExchangeRatePill />}
           </div>
           <NavBar />
         </div>
 
-        {/* Hero delta — only for signed-in users now. Guests used to see this
-            as the first thing and it gave them the whole answer in one glance,
-            killing retention. Now it's a post-signup reward: installed/logged-in
-            users still get the polished personalized card. Guests see raw data
-            + community activity instead. */}
+        {/* Pill row — compact replacements for what used to be full-size
+            cards. Exchange rate + weather forecast + guardián progress
+            all live here as single-line pills. Wraps to a second line on
+            narrow screens. Each is tappable. */}
+        {!isBusiness && (
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <ExchangeRatePill />
+            <WeatherHook variant="pill" />
+            {tier !== 'guest' && <GuardianProgressCard variant="pill" />}
+          </div>
+        )}
+
+        {/* Hero delta — signed-in users only. Shrunk: no more big share
+            card, no more hourly pattern (Pro-gated now). Still the polished
+            personalized moment as a post-signup reward. */}
         {!isBusiness && tier !== 'guest' && <HeroLiveDelta ports={initialPorts} />}
 
-        {/* Live community activity ticker — replaces the hero for guests.
-            Rotating "what's happening at the border right now" strip that
-            makes the page feel alive and creates a reason to come back. */}
+        {/* Live community activity ticker — replaces the hero for guests. */}
         {!isBusiness && tier === 'guest' && <LiveActivityTicker initialReports={initialReports} />}
 
-        {/* Weather hook — only surfaces when there's something actionable
-            (rain, fog, high winds) in the next 6h. Otherwise hides itself. */}
-        {!isBusiness && <WeatherHook />}
-
         {/* Near-me horizontal rail — swipeable preview of the 8 nearest
-            crossings. Every flick is an interaction, each card deep-links
-            into port detail. */}
+            crossings. Every flick is an interaction. */}
         {!isBusiness && <NearMeRail ports={initialPorts} />}
 
-        {/* Guardián progress card — only shown to signed-in users. Shows
-            their weekly report count and the next milestone they're
-            working toward. */}
-        {!isBusiness && tier !== 'guest' && <GuardianProgressCard />}
-
-        {/* Ask Cruz — AI chat entry point with three suggested questions.
-            Infra already built at /chat, just surfaced prominently. */}
-        {!isBusiness && <CruzAskCard />}
+        {/* Urgent alerts — real-time accidents / inspections. Stays above
+            the list because these are actionable warnings, not fluff. */}
+        {!isBusiness && <UrgentAlerts initialReports={initialReports} />}
 
         {/* Business Command Center — visible only to business tier */}
         <BusinessCommandWidget />
@@ -194,16 +191,14 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
         {/* Geolocation — shows if user is near a crossing */}
         <WaitingMode />
 
-        {/* Urgent alerts — accidents & inspections from last 30 min, above the list */}
-        {!isBusiness && <UrgentAlerts initialReports={initialReports} />}
-
-        {/* Tiny SVG map showing the whole border color-coded by wait level.
-            Pure inline SVG — no Leaflet, no tiles, no network weight. */}
-        {!isBusiness && <StaticBorderMap ports={initialPorts} />}
-
         <SavedCrossings initialPorts={initialPorts} />
         <div id="port-list" />
         <PortList />
+
+        {/* SVG border map — moved BELOW the port list. Users should see
+            the list first (that's why they came), then get the visual
+            hook as a secondary exploration prompt. */}
+        {!isBusiness && <StaticBorderMap ports={initialPorts} />}
 
         {/* Primary signup hook — guests only, now BELOW the list so the data
             is the first thing they get, and the pitch lands after they've
@@ -323,11 +318,12 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
 
       {/* Overlays render AFTER the hero in DOM so they can't push the
           above-the-fold hero down during hydration. They're fixed/modal
-          anyway — the position in JSX only matters for paint order.
-          InstallPrompt removed from the landing page — guests don't care
-          yet, and the forced install step is now part of /welcome. */}
+          anyway — the position in JSX only matters for paint order. */}
       <InAppBrowserBanner />
       <OnboardingTour />
+      {/* Floating Cruz FAB — bottom-right on every homepage render,
+          replaces the full-size CruzAskCard that used to eat real estate. */}
+      {!isBusiness && <CruzFab />}
     </main>
   )
 }

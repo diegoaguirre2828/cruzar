@@ -40,7 +40,11 @@ function currentMilestone(count: number) {
   return count >= MILESTONES[0].at ? curr : null
 }
 
-export function GuardianProgressCard() {
+interface GuardianCardProps {
+  variant?: 'card' | 'pill'
+}
+
+export function GuardianProgressCard({ variant = 'card' }: GuardianCardProps = {}) {
   const { lang } = useLang()
   const es = lang === 'es'
   const [stats, setStats] = useState<Stats | null>(null)
@@ -64,6 +68,24 @@ export function GuardianProgressCard() {
 
   const milestoneLabel = es ? next.es : next.en
   const currentLabel = curr ? (es ? curr.es : curr.en) : (es ? 'Aún no eres guardián' : 'Not a guardian yet')
+
+  if (variant === 'pill') {
+    return (
+      <Link
+        href="/leaderboard"
+        className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full pl-2 pr-3 py-1.5 active:scale-[0.97] transition-transform"
+        title={currentLabel}
+      >
+        <span className="text-base leading-none">{curr?.emoji || '🌱'}</span>
+        <span className="text-[11px] font-bold text-amber-800 dark:text-amber-200 whitespace-nowrap tabular-nums">
+          {stats.weekCount}/{next.at}
+          {stats.rank != null && stats.totalGuardians >= 3 && (
+            <span className="ml-1 text-amber-600 dark:text-amber-400">· #{stats.rank}</span>
+          )}
+        </span>
+      </Link>
+    )
+  }
 
   return (
     <Link
