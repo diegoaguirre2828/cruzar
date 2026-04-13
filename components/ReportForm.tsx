@@ -6,6 +6,7 @@ import { useLang } from '@/lib/LangContext'
 import { ReportSentAnimation } from './ReportSentAnimation'
 import { trackShare } from '@/lib/trackShare'
 import { saveMyReport } from '@/lib/myReports'
+import { trackEvent } from '@/lib/trackEvent'
 import type { PortWaitTime } from '@/types'
 
 interface Props {
@@ -175,6 +176,11 @@ export function ReportForm({ portId, onSubmitted, port }: Props) {
       // as they scroll. Pure client-side — no DB query needed to check
       // "did I report this" on every port card render.
       saveMyReport(portId, selected, null)
+      trackEvent('report_submitted', {
+        port_id: portId,
+        report_type: selected,
+        has_lane_info: laneInfo != null,
+      })
 
       // First-ever report from this device → flip into the welcome
       // state so the done screen shows the bigger "bienvenido a los

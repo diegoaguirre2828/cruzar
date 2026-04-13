@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useLang } from '@/lib/LangContext'
 import { InstallGuide } from './InstallGuide'
+import { trackEvent } from '@/lib/trackEvent'
 
 // First-visit "Add to Home Screen" sheet. Rendered globally in
 // app/layout.tsx so it fires on whichever page a brand-new visitor
@@ -61,13 +62,17 @@ export function FirstVisitInstallSheet() {
     // Small delay so first paint lands first — the user briefly sees
     // the data before the sheet slides up, which keeps perceived
     // trust high (vs blocking the data on first render).
-    const timer = setTimeout(() => setShow(true), 1500)
+    const timer = setTimeout(() => {
+      setShow(true)
+      trackEvent('install_sheet_shown')
+    }, 1500)
     return () => clearTimeout(timer)
   }, [pathname])
 
   function dismiss() {
     setDismissed(true)
     try { localStorage.setItem(SEEN_KEY, String(Date.now())) } catch { /* ignore */ }
+    trackEvent('install_sheet_dismissed', { expanded })
     setTimeout(() => setShow(false), 200)
   }
 

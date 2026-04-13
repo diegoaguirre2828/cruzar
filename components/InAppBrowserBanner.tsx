@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { track } from '@vercel/analytics'
 import { useLang } from '@/lib/LangContext'
+import { trackEvent } from '@/lib/trackEvent'
 
 // In-app browser recovery banner. 72% of Cruzar traffic lands from
 // m.facebook.com or lm.facebook.com — that's Facebook's in-app webview,
@@ -56,7 +56,7 @@ export function InAppBrowserBanner() {
     // in the app, short enough to catch them before they bounce.
     const timer = setTimeout(() => {
       setShow(true)
-      try { track('iab_banner_shown', { platform: detected }) } catch { /* ignore */ }
+      try { trackEvent('iab_banner_shown', { platform: detected }) } catch { /* ignore */ }
     }, 4000)
     return () => clearTimeout(timer)
   }, [])
@@ -64,12 +64,12 @@ export function InAppBrowserBanner() {
   function dismiss() {
     setDismissed(true)
     try { sessionStorage.setItem('cruzar_iab_dismissed', '1') } catch { /* ignore */ }
-    try { track('iab_banner_dismissed', { platform }) } catch { /* ignore */ }
+    try { trackEvent('iab_banner_dismissed', { platform }) } catch { /* ignore */ }
     setTimeout(() => setShow(false), 200)
   }
 
   function openExternal() {
-    try { track('iab_banner_escape', { platform }) } catch { /* ignore */ }
+    try { trackEvent('iab_banner_escape', { platform }) } catch { /* ignore */ }
     if (platform === 'android') {
       const path = window.location.pathname + window.location.search
       window.location.href = `intent://www.cruzar.app${path}#Intent;scheme=https;package=com.android.chrome;end`

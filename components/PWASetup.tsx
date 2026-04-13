@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { trackEvent } from '@/lib/trackEvent'
 
 // Global PWA plumbing. Renders no UI — the install-prompt UI now lives
 // in InstallPill (home header) and the /mas install card. This file's
@@ -32,6 +33,10 @@ async function tryClaimGrant() {
     const data = await res.json()
     if (data?.ok) {
       try { localStorage.setItem(PWA_GRANT_CLAIMED_KEY, String(Date.now())) } catch { /* ignore */ }
+      trackEvent('pwa_grant_claimed', {
+        granted: data.granted || false,
+        days: data.days || null,
+      })
       // Fire a window event so UI components (celebration toast, etc.)
       // can react to the grant landing if they want to.
       if (data.granted && data.days) {

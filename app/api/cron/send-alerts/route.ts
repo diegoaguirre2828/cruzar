@@ -66,6 +66,14 @@ async function sendPush(userId: string, portName: string, portId: string, wait: 
       }),
       { urgency: 'high', TTL: 600 }
     )
+    // Log the delivery for future alert-conversion analysis.
+    // Failure is silent — a missing event row shouldn't break
+    // the cron run.
+    await db.from('app_events').insert({
+      event_name: 'alert_fired',
+      props: { port_id: portId, wait, channel: 'push' },
+      user_id: userId,
+    }).then(() => {}, () => {})
   } catch (err: unknown) {
     // Subscription expired — remove it
     if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
