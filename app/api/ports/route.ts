@@ -51,7 +51,7 @@ export async function GET() {
     const sinceIso = new Date(Date.now() - REPORT_FRESH_MIN * 60 * 1000).toISOString()
     const portIds = ports.map((p) => p.portId)
 
-    const [reportsRes, trafficWaits] = await Promise.all([
+    const [reportsRes, trafficWaits, overridesRes] = await Promise.all([
       db
         .from('crossing_reports')
         .select('port_id, wait_minutes, report_type, created_at, location_confidence')
@@ -59,7 +59,16 @@ export async function GET() {
         .gte('created_at', sinceIso)
         .order('created_at', { ascending: false }),
       fetchTrafficWaits(portIds).catch(() => new Map<string, number>()),
+      // Load local-name overrides so cards render whatever Diego set in the
+      // admin Ports tab without needing a redeploy. Defaults to static
+      // portMeta.localName if no override row exists.
+      db.from('port_overrides').select('port_id, local_name'),
     ])
+
+    const overrideMap = new Map<string, string>()
+    for (const o of overridesRes.data || []) {
+      if (o.local_name) overrideMap.set(o.port_id, o.local_name)
+    }
 
     const reportsByPort = new Map<string, RecentReport[]>()
     if (!reportsRes.error && reportsRes.data) {
@@ -182,6 +191,7 @@ export async function GET() {
         reportCount,
         lastReportMinAgo,
         cbpStaleMin,
+        localNameOverride: overrideMap.get(p.portId) ?? null,
       }
     })
 

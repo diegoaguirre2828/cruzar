@@ -79,7 +79,7 @@ interface Subscription {
 export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest'>('groups')
+  const [tab, setTab] = useState<'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest' | 'ports'>('groups')
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
   const [subs, setSubs] = useState<Subscription[]>([])
   const [stats, setStats] = useState<{
@@ -119,6 +119,23 @@ export default function AdminPage() {
   const USERS_PAGE_SIZE = 25
   const [testingNotify, setTestingNotify] = useState(false)
   const [testNotifyResult, setTestNotifyResult] = useState<Record<string, { ok: boolean; detail: string }> | null>(null)
+  type PortRow = {
+    port_id: string
+    city: string
+    region: string
+    mega_region: string
+    static_local_name: string | null
+    override_local_name: string | null
+    effective_local_name: string | null
+    notes: string | null
+    updated_at: string | null
+  }
+  const [portsRows, setPortsRows] = useState<PortRow[]>([])
+  const [portsLoading, setPortsLoading] = useState(false)
+  const [portEditingId, setPortEditingId] = useState<string | null>(null)
+  const [portEditDraft, setPortEditDraft] = useState<string>('')
+  const [portFilter, setPortFilter] = useState<string>('')
+
   const [ingestText, setIngestText] = useState('')
   const [ingestGroup, setIngestGroup] = useState('')
   const [ingestImagePreview, setIngestImagePreview] = useState<string | null>(null)
@@ -320,6 +337,35 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!user || user.email !== ADMIN_EMAIL) return
+    if (tab !== 'ports') return
+    setPortsLoading(true)
+    fetch('/api/admin/port-overrides')
+      .then((r) => r.json())
+      .then((d) => setPortsRows(d.ports || []))
+      .finally(() => setPortsLoading(false))
+  }, [user, tab])
+
+  async function savePortOverride(portId: string, localName: string) {
+    const res = await fetch('/api/admin/port-overrides', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ port_id: portId, local_name: localName }),
+    })
+    if (res.ok) {
+      setPortsRows((rows) =>
+        rows.map((r) =>
+          r.port_id === portId
+            ? { ...r, override_local_name: localName || null, effective_local_name: localName || r.static_local_name }
+            : r
+        )
+      )
+      setPortEditingId(null)
+      setPortEditDraft('')
+    }
+  }
+
+  useEffect(() => {
+    if (!user || user.email !== ADMIN_EMAIL) return
     if (tab !== 'users') return
     setUsersLoading(true)
     const params = new URLSearchParams({
@@ -442,12 +488,13 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-          {(['stats', 'ingest', 'users', 'blast', 'groups', 'post', 'reply', 'cron', 'advertisers', 'subs'] as const).map(t => (
+          {(['stats', 'ingest', 'users', 'ports', 'blast', 'groups', 'post', 'reply', 'cron', 'advertisers', 'subs'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors capitalize ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
               {t === 'stats'       ? '📊 Stats' :
                t === 'ingest'      ? '📥 Ingest' :
                t === 'users'       ? '👥 Users' :
+               t === 'ports'       ? '🌉 Ports' :
                t === 'blast'       ? '📣 Blast' :
                t === 'groups'      ? `Groups (${FACEBOOK_GROUPS.length})` :
                t === 'post'        ? '✍️ Posts' :
@@ -1415,6 +1462,119 @@ export default function AdminPage() {
 
             <p className="mt-4 text-[11px] text-gray-400 leading-relaxed">
               <b>Pro tip:</b> En Windows, <kbd className="bg-gray-100 px-1 rounded">Win+Shift+S</kbd> toma una captura, se copia al portapapeles, y puedes pegarla directamente aquí con <kbd className="bg-gray-100 px-1 rounded">Ctrl+V</kbd> (sin guardar el archivo).
+            </p>
+          </div>
+        )}
+
+        {tab === 'ports' && (
+          <div>
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-gray-900">🌉 Port Local Names</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Override the local name shown on each port card. Leave empty to fall back to the static default in <code>lib/portMeta.ts</code>. Changes apply instantly — no redeploy needed.
+              </p>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Filtrar por ciudad, puente, port_id…"
+              value={portFilter}
+              onChange={(e) => setPortFilter(e.target.value)}
+              className="w-full mb-3 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            {portsLoading ? (
+              <p className="text-xs text-gray-500">Loading ports…</p>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="hidden sm:grid sm:grid-cols-12 px-4 py-2 bg-gray-50 text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+                  <div className="col-span-2">Port ID</div>
+                  <div className="col-span-2">City</div>
+                  <div className="col-span-3">Default</div>
+                  <div className="col-span-4">Override (edit to save)</div>
+                  <div className="col-span-1 text-right">·</div>
+                </div>
+                {portsRows
+                  .filter((r) => {
+                    if (!portFilter.trim()) return true
+                    const q = portFilter.toLowerCase()
+                    return (
+                      r.port_id.toLowerCase().includes(q) ||
+                      r.city.toLowerCase().includes(q) ||
+                      (r.static_local_name || '').toLowerCase().includes(q) ||
+                      (r.override_local_name || '').toLowerCase().includes(q) ||
+                      r.region.toLowerCase().includes(q)
+                    )
+                  })
+                  .map((r) => {
+                    const isEditing = portEditingId === r.port_id
+                    return (
+                      <div key={r.port_id} className="sm:grid sm:grid-cols-12 px-4 py-2.5 text-sm border-t border-gray-100 items-center">
+                        <div className="col-span-2 font-mono text-[11px] text-gray-500">{r.port_id}</div>
+                        <div className="col-span-2">
+                          <p className="text-gray-900 font-medium">{r.city}</p>
+                          <p className="text-[10px] text-gray-400 truncate">{r.region}</p>
+                        </div>
+                        <div className="col-span-3 text-xs text-gray-500">
+                          {r.static_local_name || <span className="italic text-gray-400">— none —</span>}
+                        </div>
+                        <div className="col-span-4">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={portEditDraft}
+                                onChange={(e) => setPortEditDraft(e.target.value)}
+                                autoFocus
+                                placeholder={r.static_local_name || 'local name'}
+                                className="flex-1 px-2 py-1.5 text-xs border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') savePortOverride(r.port_id, portEditDraft)
+                                  if (e.key === 'Escape') { setPortEditingId(null); setPortEditDraft('') }
+                                }}
+                              />
+                              <button
+                                onClick={() => savePortOverride(r.port_id, portEditDraft)}
+                                className="text-[11px] font-bold px-2 py-1.5 bg-blue-600 text-white rounded-lg"
+                              >Save</button>
+                              <button
+                                onClick={() => { setPortEditingId(null); setPortEditDraft('') }}
+                                className="text-[11px] font-bold px-2 py-1.5 bg-gray-100 text-gray-700 rounded-lg"
+                              >×</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setPortEditingId(r.port_id)
+                                setPortEditDraft(r.override_local_name || r.static_local_name || '')
+                              }}
+                              className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              {r.override_local_name ? (
+                                <span className="text-blue-700 font-semibold">{r.override_local_name}</span>
+                              ) : (
+                                <span className="text-gray-400 italic">{r.effective_local_name || 'Click to add'}</span>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                        <div className="col-span-1 text-right">
+                          {r.override_local_name && (
+                            <button
+                              onClick={() => savePortOverride(r.port_id, '')}
+                              title="Reset to default"
+                              className="text-[10px] text-red-500 hover:text-red-700"
+                            >reset</button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+
+            <p className="text-[10px] text-gray-400 mt-3 leading-relaxed">
+              💡 <b>Tip:</b> Blue bold = you&apos;ve set an override. Gray italic = using the static default from <code>portMeta.ts</code>. Click any row to edit. Press <kbd className="bg-gray-100 px-1 rounded">Enter</kbd> to save, <kbd className="bg-gray-100 px-1 rounded">Esc</kbd> to cancel. Click <b>reset</b> to clear an override and fall back to the default.
             </p>
           </div>
         )}

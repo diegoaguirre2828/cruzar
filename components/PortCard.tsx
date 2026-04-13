@@ -25,8 +25,10 @@ interface Props {
 export function PortCard({ port, signal }: Props) {
   const { t, lang } = useLang()
   const meta = getPortMeta(port.portId)
-  const displayCrossing = meta.localName
-    ? `${port.crossingName} / ${meta.localName}`
+  // Runtime override (set in /admin Ports tab) wins over static portMeta
+  const effectiveLocalName = port.localNameOverride || meta.localName
+  const displayCrossing = effectiveLocalName
+    ? `${port.crossingName} / ${effectiveLocalName}`
     : port.crossingName
   const allNull = port.vehicle === null && port.pedestrian === null && port.sentri === null && port.commercial === null
   const primaryLevel = getWaitLevel(port.vehicle)

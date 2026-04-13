@@ -54,6 +54,9 @@ export interface PortWaitTime {
   reportCount?: number
   lastReportMinAgo?: number | null
   cbpStaleMin?: number | null
+  // Runtime override for localName set via /admin Ports tab. Wins over the
+  // static portMeta.localName when present.
+  localNameOverride?: string | null
 }
 
 export interface WaitTimeReading {
