@@ -262,14 +262,27 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
 
   return (
     <div className="mt-3 relative">
-      {/* The giant clickable card — primary CTA */}
+      {/* Compact hero — half the vertical weight of the previous
+          implementation. Diego's 2026-04-14 insight: the old hero was
+          "too good" — it answered the question completely and took up
+          most of the screen, so FB arrivals got their number and
+          bounced before discovering anything else. Now the hero shows
+          the essentials (bridge name + big number + walk wait) and the
+          rest of the experience (alert CTA, live reports, port list,
+          feature discovery) gets its share of above-the-fold real
+          estate. Removed from the hero and relocated elsewhere:
+            - Fake notification preview (now lives as a dedicated
+              "see what you'd get" card below, not inside the hero)
+            - Full "Turn on your free alert" CTA button (moved to the
+              dedicated signup hook that already renders below the list)
+            - Loss-aversion "this wait changes" warning (belongs on
+              /port/[id] if anywhere, not the home moment) */}
       <a
         href={clickHref}
-        className="block bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 rounded-3xl p-5 shadow-2xl text-white relative overflow-hidden active:scale-[0.98] transition-transform"
+        className="block bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 rounded-3xl p-4 shadow-xl text-white relative overflow-hidden active:scale-[0.98] transition-transform"
       >
-        {/* background glow */}
-        <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -left-10 w-56 h-56 bg-purple-400/20 rounded-full blur-3xl" />
+        {/* background glow — softer now that the card is smaller */}
+        <div className="absolute -top-12 -right-12 w-36 h-36 bg-white/10 rounded-full blur-3xl" />
 
         <div className="relative">
           <LivePulse
@@ -282,35 +295,35 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
             }
           />
 
-          <div className="mt-4">
-            <p className="text-[11px] uppercase tracking-widest font-bold text-blue-100">
+          <div className="mt-3">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-blue-100">
               {display.mode === 'nearest'
                 ? (es ? 'Tu puente más cercano' : 'Your nearest crossing')
                 : (es ? 'Cruce más rápido ahorita' : 'Fastest crossing right now')}
             </p>
-            <p className="mt-1 text-3xl sm:text-4xl font-black leading-tight cruzar-rise">
-              {headlineName}
-            </p>
-            <div className="mt-2 flex items-baseline gap-2 cruzar-rise cruzar-rise-delay-1">
-              <span className="text-lg leading-none" aria-hidden="true">🚗</span>
-              {(() => {
-                const split = splitWaitLabel(headlineWait)
-                return (
-                  <>
-                    <span className="text-6xl sm:text-7xl font-black leading-none drop-shadow tabular-nums">
-                      {split.value}
-                    </span>
-                    <span className="text-xl font-bold text-blue-100">{split.unit}</span>
-                  </>
-                )
-              })()}
+            <div className="mt-0.5 flex items-baseline justify-between gap-3">
+              <p className="text-xl sm:text-2xl font-black leading-tight cruzar-rise truncate flex-1">
+                {headlineName}
+              </p>
+              <div className="flex items-baseline gap-1 cruzar-rise cruzar-rise-delay-1 flex-shrink-0">
+                <span className="text-base leading-none" aria-hidden="true">🚗</span>
+                {(() => {
+                  const split = splitWaitLabel(headlineWait)
+                  return (
+                    <>
+                      <span className="text-5xl font-black leading-none drop-shadow tabular-nums">
+                        {split.value}
+                      </span>
+                      <span className="text-sm font-bold text-blue-100">{split.unit}</span>
+                    </>
+                  )
+                })()}
+              </div>
             </div>
 
-            {/* Walk (pedestrian) wait — compact secondary stat so users
-                see both modes at a glance. Pedestrian crossings matter
-                a lot for downtown bridges (Hidalgo, Brownsville Gateway,
-                etc.) where foot traffic is 30-50% of daily crossers.
-                Hidden when the walk lane has no data or is closed. */}
+            {/* Walk (pedestrian) wait — compact inline badge so users
+                see both modes at a glance. Hidden when the walk lane
+                has no data or is closed. */}
             {(() => {
               const walk = headlinePort.pedestrian
               const walkClosed = headlinePort.pedestrianClosed
@@ -318,103 +331,46 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
               const split = walk != null ? splitWaitLabel(walk) : null
               return (
                 <div className="mt-2 inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-2.5 py-1 cruzar-rise cruzar-rise-delay-1">
-                  <span className="text-sm leading-none" aria-hidden="true">🚶</span>
-                  <span className="text-[11px] uppercase tracking-wider font-bold text-blue-100">
+                  <span className="text-xs leading-none" aria-hidden="true">🚶</span>
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-blue-100">
                     {es ? 'Peatonal' : 'Walk'}
                   </span>
                   {split ? (
-                    <span className="text-sm font-black text-white tabular-nums">
-                      {split.value}<span className="text-[11px] font-bold text-blue-100 ml-0.5">{split.unit}</span>
+                    <span className="text-xs font-black text-white tabular-nums">
+                      {split.value}<span className="text-[10px] font-bold text-blue-100 ml-0.5">{split.unit}</span>
                     </span>
                   ) : (
-                    <span className="text-[11px] font-bold text-white/80">
+                    <span className="text-[10px] font-bold text-white/80">
                       {es ? 'cerrado' : 'closed'}
                     </span>
                   )}
                 </div>
               )
             })()}
-
-            {/* Loss-aversion microcopy: staying = uncertainty, signing up = certainty.
-                Only shown to guests — logged-in users have already committed. */}
-            <p className="mt-2 text-[11px] text-amber-200 font-semibold leading-snug cruzar-rise cruzar-rise-delay-1">
-              {es
-                ? '⚠️ Esta espera cambia cada 5 minutos. Te puede subir 20 min sin avisarte.'
-                : '⚠️ This wait changes every 5 min. It can jump 20 min without warning.'}
-            </p>
           </div>
 
-          {/* Fake notification preview — shows users the product they get
-              when alerts are enabled. This is the climax of the card:
-              "here's literally what arrives on your phone." Visible to
-              everyone (guests AND signed-in users) so signed-in users
-              who haven't set up alerts yet still see the value prop. */}
-          <div className="mt-4 bg-white rounded-2xl px-3 py-2.5 shadow-xl cruzar-rise cruzar-rise-delay-2 border border-white/40">
-            <div className="flex items-start gap-2.5">
-              <img
-                src="/logo-icon.svg"
-                alt=""
-                width={32}
-                height={32}
-                className="flex-shrink-0 rounded-lg"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide truncate">Cruzar</p>
-                  <p className="text-[9px] text-gray-400 flex-shrink-0">{es ? 'ahora' : 'now'}</p>
-                </div>
-                <p className="text-[11px] font-bold text-gray-900 leading-snug truncate">
-                  🌉 {headlineName} — {Math.max(5, headlineWait - 15)} min
-                </p>
-                <p className="text-[10px] text-gray-600 leading-snug">
-                  {es
-                    ? 'La espera bajó. Es tu mejor momento pa\' cruzar.'
-                    : 'The wait just dropped. Your best window to cross.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* The CTA button — now the visual climax, not a passive stripe */}
-          <div className="mt-3 cruzar-rise cruzar-rise-delay-2">
-            {user ? (
-              <div className="bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 text-center">
-                <p className="text-sm font-bold text-white">
-                  {es ? 'Ver detalles del puente →' : 'See crossing details →'}
-                </p>
-              </div>
+          {/* Social proof + tap hint — single compact footer line */}
+          <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-blue-100/90">
+            {reportCount != null && reportCount > 0 ? (
+              <span className="font-medium">
+                {es ? `📣 ${reportCount} reportes hoy` : `📣 ${reportCount} reports today`}
+              </span>
             ) : (
-              <div className="bg-white text-indigo-700 rounded-2xl px-4 py-3.5 text-center shadow-lg cruzar-shimmer">
-                <p className="text-base font-black leading-tight">
-                  {es ? 'Activa tu alerta gratis →' : 'Turn on your free alert →'}
-                </p>
-                <p className="text-[11px] text-indigo-500 font-semibold mt-0.5 leading-snug">
-                  {es
-                    ? 'Te avisamos en 30 segundos cuando baje. 10 segundos pa\' registrarte.'
-                    : "We ping you within 30 seconds when it drops. 10 sec to sign up."}
-                </p>
-              </div>
+              <span className="text-blue-200/60">
+                {es ? 'CBP · cada 15 min' : 'CBP · every 15 min'}
+              </span>
             )}
+            <span className="font-semibold text-blue-100">
+              {user
+                ? (es ? 'Ver detalles →' : 'Details →')
+                : (es ? 'Abrir →' : 'Open →')}
+            </span>
           </div>
 
-          {/* Social proof — only shown when there are actual reports. When
-              reportCount is 0 we hide the line entirely rather than nag
-              users to "be the first." Empty state is not a call to action. */}
-          {reportCount != null && reportCount > 0 && (
-            <p className="mt-3 text-[11px] text-blue-100 font-medium">
-              {es ? `📣 ${reportCount} reportes de la comunidad hoy` : `📣 ${reportCount} community reports today`}
-            </p>
-          )}
-
-          {/* CBP cadence disclosure — kills the "la app no actualiza"
-              objection by framing the 15-min cadence as CBP's rule,
-              not a Cruzar bug, AND points at community reports as the
-              live layer. */}
-          <p className="mt-1 text-[10px] text-blue-200/80 leading-snug">
-            {es
-              ? 'CBP actualiza cada 15 min · La comunidad reporta en vivo'
-              : 'CBP updates every 15 min · Community reports live'}
-          </p>
+          {/* CBP cadence is now rolled into the compact footer line
+              above (shown in the "no reports today" state), so the
+              old dedicated <p> block was removed as part of the hero
+              compaction. */}
         </div>
       </a>
 

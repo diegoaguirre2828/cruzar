@@ -187,20 +187,36 @@ export default function DatosPage() {
   )
 }
 
-function HourlyBarChart({ data }: { data: Array<{ hour: number; avgWait: number }> }) {
-  const max = Math.max(...data.map((d) => d.avgWait), 1)
+function HourlyBarChart({ data }: { data: Array<{ hour: number; avgWait: number | null }> }) {
+  // CRITICAL: the API returns avgWait: null for hours with no samples.
+  // The previous implementation did Math.max(...data.map(d => d.avgWait), 1)
+  // which returns NaN when any element is null, which made EVERY bar
+  // height compute to NaN%, which is invalid CSS, which rendered nothing
+  // at all. Symptom: Diego said "hourly pattern doesn't show anything."
+  // Fix: coerce nulls to 0 BEFORE Math.max, and always render a visible
+  // stub for empty hours so users see the full 24-hour spec.
+  const numeric = data.map((d) => d.avgWait ?? 0)
+  const max = Math.max(...numeric, 1)
   return (
     <div className="flex items-end gap-0.5 h-28">
       {data.map((d) => {
-        // Minimum bar height 10% so a hour with no-yet-data still shows
-        // as a visible stub instead of a near-invisible 4px sliver.
-        const h = Math.max(10, (d.avgWait / max) * 100)
-        const color = d.avgWait <= 0 ? 'bg-gray-200 dark:bg-gray-700'
-          : d.avgWait <= 20 ? 'bg-green-500'
-          : d.avgWait <= 45 ? 'bg-amber-500'
-          : 'bg-red-500'
+        const value = d.avgWait ?? 0
+        // Minimum 12% so empty hours are still visible as grey stubs
+        // and users see the 24-hour spec even when data is sparse.
+        const h = Math.max(12, (value / max) * 100)
+        const color = value <= 0
+          ? 'bg-gray-200 dark:bg-gray-700'
+          : value <= 20
+            ? 'bg-green-500'
+            : value <= 45
+              ? 'bg-amber-500'
+              : 'bg-red-500'
         return (
-          <div key={d.hour} className="flex-1 flex flex-col items-center gap-1" title={`${d.hour}:00 — ${d.avgWait} min`}>
+          <div
+            key={d.hour}
+            className="flex-1 flex flex-col items-center gap-1"
+            title={`${d.hour}:00 — ${d.avgWait != null ? `${d.avgWait} min` : 'sin datos'}`}
+          >
             <div className="w-full rounded-t bg-gray-100 dark:bg-gray-700 flex-1 flex items-end">
               <div className={`w-full ${color} rounded-t`} style={{ height: `${h}%` }} />
             </div>
