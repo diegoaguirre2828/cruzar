@@ -25,6 +25,7 @@ import { HolidayOverlay } from '@/components/HolidayOverlay'
 import { ReciprocityCard } from '@/components/ReciprocityCard'
 import { ContextualNudge } from '@/components/ContextualNudge'
 import { HeroTriad } from '@/components/HeroTriad'
+import { UserCrossingInsights } from '@/components/UserCrossingInsights'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -353,7 +354,12 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
           </div>
         )}
         {!isBusiness && !authLoading && user && favoritePortId && (
-          <HeroTriad ports={initialPorts} favoritePortId={favoritePortId} />
+          <>
+            <HeroTriad ports={initialPorts} favoritePortId={favoritePortId} />
+            {/* Tier 1 personalization — rollup of the user's own crossing
+                patterns. Self-hides when totalReports < 3. */}
+            <UserCrossingInsights />
+          </>
         )}
         {!isBusiness && !authLoading && !(user && favoritePortId) && (
           <HeroCarousel
