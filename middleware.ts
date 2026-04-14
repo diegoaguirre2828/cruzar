@@ -52,7 +52,22 @@ export async function middleware(request: NextRequest) {
 
   // Refreshes the session token if expired — do not add logic between this
   // and the createServerClient call above or sessions will break randomly.
-  await supabase.auth.getUser()
+  //
+  // Hard 2.5s ceiling: if Supabase Auth is slow (connection-pool pressure,
+  // cold start, or degraded region), we pass through WITHOUT a session
+  // refresh rather than hang the whole request and trigger Vercel's
+  // MIDDLEWARE_INVOCATION_TIMEOUT. The user may appear signed-out for a
+  // single request in that failure mode — far better than the whole site
+  // 504'ing, which is what happened on 2026-04-14 after the /api/ports
+  // historical query saturated the connection pool.
+  try {
+    await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('auth timeout')), 2500)),
+    ])
+  } catch {
+    /* timeout or auth error — pass through without refresh */
+  }
 
   return supabaseResponse
 }
