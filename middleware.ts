@@ -120,6 +120,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Exclude: Next.js static assets, favicon, image files, and the
+    // .well-known directory. .well-known must be served directly
+    // without auth overhead for Digital Asset Links verification
+    // (Google crawls /.well-known/assetlinks.json to verify TWA apps).
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
