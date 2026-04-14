@@ -288,8 +288,16 @@ export function PortList() {
     return list
   })()
 
+  // "Near Me" view ranks by distance — but if the user has a home
+  // region set, we still scope the pool to that region first. A
+  // user in RGV doesn't want to see El Paso bridges ranked by
+  // distance even if Near Me is active. Business tier keeps the
+  // full pool.
+  const nearMePool = scopeActive
+    ? ports.filter(p => getPortMeta(p.portId).megaRegion === homeRegion)
+    : ports
   const sortedByDistance = userLoc
-    ? [...ports]
+    ? [...nearMePool]
         .map(p => ({ port: p, dist: haversineMi(userLoc.lat, userLoc.lng, getPortMeta(p.portId).lat, getPortMeta(p.portId).lng) }))
         .sort((a, b) => a.dist - b.dist)
     : []
