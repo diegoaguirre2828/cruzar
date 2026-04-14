@@ -20,6 +20,7 @@ import { PushToggle } from '@/components/PushToggle'
 import { ReportForm } from '@/components/ReportForm'
 import { ReportsFeed } from '@/components/ReportsFeed'
 import { BridgeCameras } from '@/components/BridgeCameras'
+import { CommunityBridgePhotos } from '@/components/CommunityBridgePhotos'
 import { PortDetailSoftWall } from '@/components/PortDetailSoftWall'
 import { PingCircleButton } from '@/components/PingCircleButton'
 import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
@@ -522,6 +523,12 @@ export function PortDetailClient({ port, portId }: Props) {
           port. Sits below the wait number so it's the first thing after
           the data, matching how Fronter uses cameras as the hero upsell. */}
       <BridgeCameras portId={portId} portName={port.portName} />
+
+      {/* Community photo rail — user-submitted bridge photos. Below
+          the official DOT cameras so there's no confusion about which
+          is which. See project_cruzar_photo_metadata_moat_20260414.md
+          for the full spec. */}
+      <CommunityBridgePhotos portId={portId} portName={port.portName} />
 
       {/* Community vs CBP signal */}
       {communitySignal && (() => {
