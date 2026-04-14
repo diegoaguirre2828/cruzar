@@ -24,9 +24,11 @@ import { InstallPill } from '@/components/InstallPill'
 import { ContributionTodayPill } from '@/components/ContributionTodayPill'
 import { HolidayOverlay } from '@/components/HolidayOverlay'
 import { ReciprocityCard } from '@/components/ReciprocityCard'
+import { ContextualNudge } from '@/components/ContextualNudge'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
+import { armNudge } from '@/lib/useNudge'
 import type { PortWaitTime } from '@/types'
 import type { RecentReport } from '@/lib/recentReports'
 
@@ -88,6 +90,10 @@ function SavedCrossings({ initialPorts }: { initialPorts: PortWaitTime[] | null 
       })
       setSaved(ports)
       setStatus('idle')
+      // Arm the alert-setup nudge the first time we see any saved
+      // bridges. armNudge is idempotent — ignored if the user has
+      // already dismissed or taken action.
+      if (ports.length > 0) armNudge('saved_bridge_set_alert')
     }).catch(() => {
       // Surface the failure as a retry state instead of silently
       // hiding the rail — returning users lost their saved bridges
@@ -178,6 +184,24 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
     }
   }, [])
 
+  // Arm the "discover features" nudge after the user has visited the
+  // home page 3+ times. Gives returning users a chance to find the
+  // /features index without being hit on their first visit. Uses
+  // cruzar_home_visits counter to track visit count.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem('cruzar_home_visits')
+      const visits = raw ? parseInt(raw, 10) || 0 : 0
+      const next = visits + 1
+      localStorage.setItem('cruzar_home_visits', String(next))
+      if (next === 3) {
+        // arm — but only if it hasn't already been dismissed or taken
+        armNudge('home_discover_features')
+      }
+    } catch { /* ignore */ }
+  }, [])
+
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-lg mx-auto px-4 pb-10">
@@ -234,6 +258,26 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             ambient content). */}
         {!isBusiness && tier !== 'guest' && <ReciprocityCard />}
 
+        {/* Contextual discovery nudge — only fires after the user has
+            hit the home page 3+ times. Points them at /features so
+            they can find the things they've been missing. Dismissable;
+            never re-fires once dismissed. */}
+        {!isBusiness && (
+          <ContextualNudge
+            nudgeKey="home_discover_features"
+            emoji="✨"
+            titleEs="¿Sabías todo lo que hace Cruzar?"
+            titleEn="Know what Cruzar can do?"
+            subEs="Alertas, insights, optimizador de ruta, cámaras en vivo — todo en una lista"
+            subEn="Alerts, insights, route optimizer, live cameras — everything in one list"
+            ctaEs="Ver"
+            ctaEn="See"
+            href="/features"
+            lang={lang}
+            tone="purple"
+          />
+        )}
+
         {/* Hero carousel — two swipeable slides on mobile, grid on desktop:
               1. HeroLiveDelta (personalized nearest crossing + alert CTA)
               2. LiveActivityTicker (live community reporting)
@@ -266,6 +310,25 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
                 content: <LiveActivityTicker initialReports={initialReports} />,
               },
             ]}
+          />
+        )}
+
+        {/* Nudge: just-saved-a-bridge → set an alert. Appears only for
+            signed-in non-business users with at least one saved bridge
+            but no active alert. Dismissable, sticks. */}
+        {!isBusiness && tier !== 'guest' && (
+          <ContextualNudge
+            nudgeKey="saved_bridge_set_alert"
+            emoji="🔔"
+            titleEs="Activa alertas pa' tu puente guardado"
+            titleEn="Turn on alerts for your saved bridge"
+            subEs="Te avisamos cuando baje de 30 min sin tener que andar chequeando"
+            subEn="We'll ping you when it drops below 30 min — no checking needed"
+            ctaEs="Activar"
+            ctaEn="Turn on"
+            href="/dashboard"
+            lang={lang}
+            tone="blue"
           />
         )}
 
