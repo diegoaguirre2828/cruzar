@@ -159,9 +159,6 @@ export function HomeReportsFeed({ initialReports }: Props = {}) {
         <p className="text-sm text-gray-400">
           {lang === 'es' ? 'Sin reportes recientes' : 'No recent reports'}
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {lang === 'es' ? 'Sé el primero en reportar' : 'Be the first to report'}
-        </p>
       </div>
     )
   }

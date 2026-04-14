@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { PortCard } from './PortCard'
 import type { PortSignal } from './PortCard'
-import { BorderMap } from './BorderMap'
 import { saveCachedPorts, loadCachedPorts } from '@/lib/portCache'
 import type { PortWaitTime } from '@/types'
-import { RefreshCw, Map, List, Navigation, X, Share2, Check } from 'lucide-react'
-import { ALL_REGIONS, getPortMeta } from '@/lib/portMeta'
+import { RefreshCw, Navigation, X, Share2, Check } from 'lucide-react'
+import Link from 'next/link'
+import { getPortMeta } from '@/lib/portMeta'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useHomeRegion, MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
@@ -84,7 +84,9 @@ export function PortList() {
   const [refreshing, setRefreshing] = useState(false)
   const [selectedRegion, setSelectedRegion] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
-  const [view, setView] = useState<'list' | 'map'>('list')
+  // Map view was deleted 2026-04-14 along with the Leaflet dependency;
+  // kept a single 'list' constant so the legacy render-path comments
+  // stay readable. Will delete entirely on next PortList refactor.
   const [direction, setDirection] = useState<Direction>('entering_us')
 
   // Proximity sort. No explicit "Near Me" button anymore — the list is
@@ -425,20 +427,6 @@ export function PortList() {
               ) : null}
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-                <button
-                  onClick={() => setView('list')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${view === 'list' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
-                >
-                  <List className="w-3 h-3" /> {t.list}
-                </button>
-                <button
-                  onClick={() => setView('map')}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${view === 'map' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
-                >
-                  <Map className="w-3 h-3" /> {t.map}
-                </button>
-              </div>
               <button
                 onClick={() => fetchPorts(true)}
                 className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
@@ -449,55 +437,43 @@ export function PortList() {
             </div>
           </div>
 
-          {/* Organization row — distance hint when geo granted, region
-              selector when it isn't. No explicit Near Me button: the
-              list auto-organizes by proximity if location is available,
-              and falls back to region grouping when it's not. */}
+          {/* Main list is ALWAYS scoped to the user's home region now —
+              the region dropdown and Near Me button are both gone. Users
+              who want to browse outside their region use the dedicated
+              read-only "All bridges" view (replacing /mapa). Search is
+              kept because it's the fastest way to find a specific bridge
+              by name. */}
           <div className="mb-4 space-y-2">
-            {nearMe ? (
+            {homeRegion && scopeActive && (
               <p className="px-1 text-xs text-blue-600 dark:text-blue-400 font-semibold flex items-center gap-1.5">
-                <Navigation className="w-3 h-3" />
-                {lang === 'es' ? 'Ordenados por distancia desde ti' : 'Sorted by distance from you'}
+                📍 {lang === 'es'
+                  ? `Tu zona: ${MEGA_REGION_LABELS[homeRegion].es}`
+                  : `Your zone: ${MEGA_REGION_LABELS[homeRegion].en}`}
               </p>
-            ) : (
-              <select
-                value={selectedRegion}
-                onChange={e => setSelectedRegion(e.target.value)}
-                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="All">{lang === 'es' ? '🗺️ Todos los cruces' : '🗺️ All crossings'}</option>
-                {ALL_REGIONS.filter(r => r !== 'All' && r !== 'Other').map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
             )}
 
-            {/* Port name search — lets users type 'hidalgo', 'puente nuevo',
-                'tijuana' etc. instead of hunting through the region dropdown */}
-            {!nearMe && (
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={lang === 'es' ? 'Busca tu puente — Hidalgo, Puente Nuevo, Tijuana…' : 'Search your bridge — Hidalgo, Puente Nuevo, Tijuana…'}
-                  className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-9 pr-8 py-2 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
-                </svg>
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={lang === 'es' ? 'Busca tu puente — Hidalgo, Puente Nuevo…' : 'Search your bridge — Hidalgo, Puente Nuevo…'}
+                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-9 pr-8 py-2 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
+              </svg>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Insurance banner — top of list, hidden for business accounts */}
@@ -556,18 +532,7 @@ export function PortList() {
             </button>
           </div>
 
-          {view === 'map' && (
-            <div className="mb-4">
-              <BorderMap
-                ports={ports}
-                selectedRegion={selectedRegion}
-                onPortClick={(portId) => router.push(`/port/${encodeURIComponent(portId)}`)}
-              />
-              <p className="text-xs text-gray-500 mt-1.5 text-center">{t.tapDot}</p>
-            </div>
-          )}
-
-          {view === 'list' && nearMe && userLoc && (
+          {nearMe && userLoc && (
             <div className="space-y-3">
               <h2 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2 px-1 flex items-center gap-1">
                 <Navigation className="w-3 h-3" />
@@ -584,26 +549,26 @@ export function PortList() {
             </div>
           )}
 
-          {/* Home-region scope indicator — tells the user the list is
-              filtered to their zone and gives them a one-tap bypass
-              when they actually want the full border view. */}
-          {view === 'list' && !nearMe && scopeActive && selectedRegion === 'All' && !searchQuery.trim() && homeRegion && (
+          {/* "See all bridges" deep-link into the new read-only view
+              that replaced the map tab. Users stuck in their region
+              who want to peek at the whole border can still do so. */}
+          {scopeActive && !searchQuery.trim() && homeRegion && (
             <div className="mb-3 flex items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2">
               <p className="text-[11px] font-bold text-blue-900 dark:text-blue-200 leading-tight">
                 📍 {lang === 'es'
                   ? `Mostrando ${MEGA_REGION_LABELS[homeRegion].es}`
                   : `Showing ${MEGA_REGION_LABELS[homeRegion].en}`}
               </p>
-              <button
-                onClick={() => setScopeBypass(true)}
+              <Link
+                href="/mapa"
                 className="text-[10px] font-bold text-blue-700 dark:text-blue-300 underline underline-offset-2"
               >
                 {lang === 'es' ? 'Ver todos →' : 'See all →'}
-              </button>
+              </Link>
             </div>
           )}
 
-          {view === 'list' && !nearMe && (
+          {!nearMe && (
             <div className="space-y-5">
               {Object.entries(grouped).map(([region, regionPorts]) => (
                 <div key={region}>

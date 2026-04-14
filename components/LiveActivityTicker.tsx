@@ -133,7 +133,7 @@ export function LiveActivityTicker({ initialReports }: TickerProps = {}) {
             {es ? 'EN VIVO' : 'LIVE'}
           </p>
           <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
-            {es ? 'Sé el primero en reportar hoy' : 'Be the first to report today'}
+            {es ? 'Sin reportes en tu zona ahorita' : 'No reports in your zone right now'}
           </p>
         </div>
       </div>

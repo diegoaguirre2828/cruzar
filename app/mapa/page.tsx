@@ -1,105 +1,199 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useLang } from '@/lib/LangContext'
-import { BorderMap } from '@/components/BorderMap'
-import { useHomeRegion, MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
-import { useTier } from '@/lib/useTier'
 import { getPortMeta } from '@/lib/portMeta'
-import type { PortWaitTime } from '@/types'
+import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
+import type { PortWaitTime, WaitLevel } from '@/types'
 
-// Full-screen map tab. Loads Leaflet on-demand (heavy dependency)
-// but only when the user explicitly navigates here — keeps the
-// home page lean for spotty-connection users, while giving the
-// "all crossings visually" view for people who want to see the
-// whole border at once.
+// "All bridges" tab — replaces the old Leaflet-based border map.
+//
+// Background (2026-04-14 late): the Leaflet map was taking ~30s to
+// cold-start inside the PWA on Diego's phone. Removed per his
+// directive: "if the border map feature is causing the app to take
+// too long to load then remove it, I don't really see the purpose
+// of it."
+//
+// This replacement is intentionally lightweight:
+//   - READ ONLY. No report button, no save, no alert setup. Stops
+//     cross-region trolls who'd never cross those bridges anyway.
+//   - Every port on the US-MX border, grouped by mega region, with
+//     live wait times and a color dot.
+//   - No map tiles, no Leaflet, no geocoding. Zero heavy imports.
+//
+// For users who want to INTERACT with a bridge (save, report, set
+// alert), the home page shows THEIR region's bridges with full
+// interactivity. This page is for curiosity, not action.
+
+interface Section {
+  region: string
+  regionEn: string
+  ports: Array<{ port: PortWaitTime; name: string; city: string; level: WaitLevel }>
+}
+
+function waitLevel(minutes: number | null, isClosed: boolean): WaitLevel {
+  if (isClosed) return 'closed'
+  if (minutes == null) return 'unknown'
+  if (minutes <= 20) return 'low'
+  if (minutes <= 45) return 'medium'
+  return 'high'
+}
+
+const LEVEL_DOT: Record<WaitLevel, string> = {
+  low:     'bg-green-500',
+  medium:  'bg-yellow-500',
+  high:    'bg-red-500',
+  closed:  'bg-gray-400',
+  unknown: 'bg-gray-300 dark:bg-gray-600',
+}
+
+const LEVEL_TEXT: Record<WaitLevel, string> = {
+  low:     'text-green-700 dark:text-green-400',
+  medium:  'text-yellow-700 dark:text-yellow-400',
+  high:    'text-red-700 dark:text-red-400',
+  closed:  'text-gray-500 dark:text-gray-400',
+  unknown: 'text-gray-400 dark:text-gray-500',
+}
 
 export default function MapaPage() {
   const { lang } = useLang()
-  const router = useRouter()
   const es = lang === 'es'
-  const { homeRegion } = useHomeRegion()
-  const { tier } = useTier()
-  const isBusiness = tier === 'business'
   const [ports, setPorts] = useState<PortWaitTime[]>([])
   const [loading, setLoading] = useState(true)
-  const [scopeBypass, setScopeBypass] = useState(false)
 
   useEffect(() => {
-    fetch('/api/ports', { cache: 'no-store' })
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    fetch('/api/ports', { cache: 'no-store', signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         setPorts(d.ports || [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
+      .finally(() => clearTimeout(timer))
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
   }, [])
 
-  // Scope map pins to the home region for non-business users when a
-  // region is set and the user hasn't explicitly bypassed the scope.
-  const scopeActive = !isBusiness && homeRegion != null && !scopeBypass
-  const visiblePorts = scopeActive
-    ? ports.filter((p) => getPortMeta(p.portId).megaRegion === homeRegion)
-    : ports
+  // Group by mega region for a scannable read-only view.
+  const sections = useMemo<Section[]>(() => {
+    const byRegion = new Map<string, Section>()
+    for (const port of ports) {
+      const meta = getPortMeta(port.portId)
+      const region = MEGA_REGION_LABELS[meta.megaRegion]?.es || 'Otros'
+      const regionEn = MEGA_REGION_LABELS[meta.megaRegion]?.en || 'Other'
+      const name = port.localNameOverride || meta.localName || port.crossingName || port.portName
+      if (!byRegion.has(meta.megaRegion)) {
+        byRegion.set(meta.megaRegion, { region, regionEn, ports: [] })
+      }
+      byRegion.get(meta.megaRegion)!.ports.push({
+        port,
+        name,
+        city: meta.city,
+        level: waitLevel(port.vehicle, port.isClosed),
+      })
+    }
+    // Sort inside each section: closed last, unknown second-last,
+    // live bridges first sorted by wait ascending.
+    for (const section of byRegion.values()) {
+      section.ports.sort((a, b) => {
+        const rank = (l: WaitLevel) =>
+          l === 'closed' ? 4 : l === 'unknown' ? 3 : 0
+        const rankDiff = rank(a.level) - rank(b.level)
+        if (rankDiff !== 0) return rankDiff
+        const av = a.port.vehicle ?? 999
+        const bv = b.port.vehicle ?? 999
+        return av - bv
+      })
+    }
+    // Standard display order for the sections themselves.
+    const order = ['rgv', 'laredo', 'coahuila-tx', 'el-paso', 'sonora-az', 'baja', 'other']
+    return order
+      .map((key) => byRegion.get(key))
+      .filter((s): s is Section => s != null && s.ports.length > 0)
+  }, [ports])
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
-      <div className="px-4 pt-6 pb-3">
-        <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">
-          🗺️ {es ? 'Mapa de la frontera' : 'Border map'}
-        </h1>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          {es
-            ? 'Todos los puentes en vivo. Toca uno pa\' ver detalles.'
-            : 'Every crossing live. Tap one for details.'}
-        </p>
-      </div>
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="max-w-lg mx-auto px-4 pb-24">
+        <div className="pt-6 pb-3">
+          <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">
+            {es ? '🌉 Todos los puentes' : '🌉 All bridges'}
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
+            {es
+              ? 'Vista de toda la frontera · solo lectura · para reportar usa tu zona en el inicio'
+              : 'Whole-border view · read-only · to report use your zone on home'}
+          </p>
+        </div>
 
-      <div className="flex-1 px-3 pb-24">
         {loading ? (
-          <div className="h-[60vh] flex items-center justify-center bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {es ? 'Cargando mapa…' : 'Loading map…'}
-            </p>
+          <div className="py-12 text-center">
+            <p className="text-sm text-gray-400">{es ? 'Cargando puentes…' : 'Loading bridges…'}</p>
           </div>
-        ) : ports.length === 0 ? (
-          <div className="h-[60vh] flex flex-col items-center justify-center bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {es ? 'No pudimos cargar los puentes.' : "Couldn't load crossings."}
+        ) : sections.length === 0 ? (
+          <div className="py-12 text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {es ? 'No pudimos cargar los puentes.' : "Couldn't load bridges."}
             </p>
-            <Link href="/" className="mt-3 text-xs text-blue-600 hover:underline">
+            <Link href="/" className="mt-2 inline-block text-xs text-blue-600 hover:underline">
               {es ? '← Volver al inicio' : '← Back to home'}
             </Link>
           </div>
         ) : (
-          <>
-            {scopeActive && homeRegion && (
-              <div className="mb-3 flex items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2">
-                <p className="text-[11px] font-bold text-blue-900 dark:text-blue-200 leading-tight">
-                  📍 {es
-                    ? `Mostrando ${MEGA_REGION_LABELS[homeRegion].es}`
-                    : `Showing ${MEGA_REGION_LABELS[homeRegion].en}`}
-                </p>
-                <button
-                  onClick={() => setScopeBypass(true)}
-                  className="text-[10px] font-bold text-blue-700 dark:text-blue-300 underline underline-offset-2"
-                >
-                  {es ? 'Ver todos →' : 'See all →'}
-                </button>
+          sections.map((section) => (
+            <div key={section.region} className="mb-5">
+              <h2 className="text-[10px] uppercase tracking-widest font-black text-gray-600 dark:text-gray-400 mb-2 px-1">
+                {es ? section.region : section.regionEn}{' '}
+                <span className="text-gray-400 dark:text-gray-500 font-semibold">
+                  · {section.ports.length}
+                </span>
+              </h2>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                {section.ports.map(({ port, name, city, level }, i) => {
+                  const waitLabel =
+                    level === 'closed' ? (es ? 'Cerrado' : 'Closed') :
+                    level === 'unknown' ? (es ? 'Sin tiempos' : 'No times') :
+                    port.vehicle === 0 ? '<1 min' :
+                    `${port.vehicle} min`
+                  return (
+                    <div
+                      key={port.portId}
+                      className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                        i < section.ports.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${LEVEL_DOT[level]}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                            {name}
+                          </p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                            {city}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-sm font-black tabular-nums flex-shrink-0 ${LEVEL_TEXT[level]}`}>
+                        {waitLabel}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
-            )}
-            <div className="h-[calc(100vh-200px)] rounded-2xl overflow-hidden">
-              <BorderMap
-                ports={visiblePorts}
-                selectedRegion="all"
-                fillParent
-                onPortClick={(portId) => router.push(`/port/${encodeURIComponent(portId)}`)}
-              />
             </div>
-          </>
+          ))
         )}
+
+        <div className="mt-6 text-center text-[11px] text-gray-400 dark:text-gray-500">
+          {es
+            ? 'Pa\' guardar un puente, poner una alerta, o reportar — usa el inicio (tu zona).'
+            : "To save a bridge, set an alert, or report — use home (your zone)."}
+        </div>
       </div>
     </main>
   )

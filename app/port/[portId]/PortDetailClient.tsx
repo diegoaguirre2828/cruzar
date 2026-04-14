@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   AreaChart,
   Area,
@@ -56,6 +57,7 @@ function formatHour(hour: number): string {
 
 export function PortDetailClient({ port, portId }: Props) {
   const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
   const { tier } = useTier()
   const { lang } = useLang()
   const es = lang === 'es'
@@ -279,17 +281,32 @@ export function PortDetailClient({ port, portId }: Props) {
     return <div className="min-h-[300px]" />
   }
 
-  // IMPORTANT — no hard wall for guests. Every FB share lands here
-  // (cruzar.app/port/230501?ref=...) and the whole point of the viral
-  // loop is that the user sees the wait time INSTANTLY, before any
-  // signup ask. PortDetailSoftWall (rendered below, line ~520) is the
-  // designed guest treatment: dismissible bottom sheet + persistent
-  // sticky CTA, with all the live data visible underneath.
+  // Guest redirect — per Diego's 2026-04-14 late directive, guests
+  // get the home page (with the full live port list) and nothing
+  // more. Any attempt to deep-link into a port detail goes straight
+  // to signup with the port URL preserved as `next`, so after signup
+  // they land back on this exact detail.
   //
-  // Until 2026-04-14 this file had a return-early "Create a free
-  // account" hard wall here, which silently nullified the soft wall
-  // AND broke every FB share arrival. That's what drove Diego's
-  // "clicks but no traffic + bounce rate climbing" symptoms.
+  // Client-side redirect via useEffect so the render still returns
+  // *something* during the flash between auth resolution and
+  // router.replace. PortDetailSoftWall is NOT used anymore — its
+  // dismissable design was for the old "soft wall over live data"
+  // flow, which is retired.
+  if (!user) {
+    if (typeof window !== 'undefined') {
+      const returnTo = encodeURIComponent(`/port/${portId}`)
+      // Replace so the back button doesn't trap users in /port/[id]
+      // after they abandon signup.
+      router.replace(`/signup?next=${returnTo}`)
+    }
+    return (
+      <div className="min-h-[200px] flex items-center justify-center">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          {es ? 'Redirigiendo…' : 'Redirecting…'}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">

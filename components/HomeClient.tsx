@@ -17,7 +17,6 @@ import { HeroLiveDelta } from '@/components/HeroLiveDelta'
 import { LiveActivityTicker } from '@/components/LiveActivityTicker'
 import { HeroCarousel } from '@/components/HeroCarousel'
 import { WeatherHook } from '@/components/WeatherHook'
-import { NearMeRail } from '@/components/NearMeRail'
 import { GuardianProgressCard } from '@/components/GuardianProgressCard'
 import { RegionalSnapshot } from '@/components/RegionalSnapshot'
 import { InstallPill } from '@/components/InstallPill'
@@ -332,9 +331,11 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
           />
         )}
 
-        {/* Near-me horizontal rail — swipeable preview of the 8 nearest
-            crossings. Every flick is an interaction. */}
-        {!isBusiness && <NearMeRail ports={initialPorts} />}
+        {/* NearMeRail removed 2026-04-14 per Diego's directive.
+            Rationale: the main list is now scoped to the user's home
+            region anyway, so a "near me" rail is redundant. Users who
+            want to browse outside their region use the dedicated
+            all-bridges read-only view (replacing /mapa). */}
 
         {/* Urgent alerts — real-time accidents / inspections. Stays above
             the list because these are actionable warnings, not fluff. */}
