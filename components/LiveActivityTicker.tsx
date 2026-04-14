@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
 import { getPortMeta } from '@/lib/portMeta'
+import { useHomeRegion } from '@/lib/useHomeRegion'
+import { useTier } from '@/lib/useTier'
 
 interface Report {
   id: string
@@ -68,17 +70,39 @@ interface TickerProps {
 export function LiveActivityTicker({ initialReports }: TickerProps = {}) {
   const { lang } = useLang()
   const es = lang === 'es'
-  const [reports, setReports] = useState<Report[]>(() => initialReports ? filterFresh(initialReports) : [])
+  const { homeRegion } = useHomeRegion()
+  const { tier } = useTier()
+  const isBusiness = tier === 'business'
+  const scopeActive = !isBusiness && homeRegion != null
+
+  // Apply the home-region scope to the incoming reports so users in
+  // RGV never see an El Paso or Tijuana report rotating through the
+  // ticker. Matches PortList / NearMeRail / RegionalSnapshot scoping.
+  const scopeReports = (list: Report[]): Report[] => {
+    if (!scopeActive) return list
+    return list.filter((r) => getPortMeta(r.port_id).megaRegion === homeRegion)
+  }
+
+  const [reports, setReports] = useState<Report[]>(() => initialReports ? scopeReports(filterFresh(initialReports)) : [])
   const [idx, setIdx] = useState(0)
+
+  // Re-scope when homeRegion changes (user switches region in picker)
+  useEffect(() => {
+    setReports((prev) => scopeReports(filterFresh(prev)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeRegion, scopeActive])
 
   useEffect(() => {
     let cancelled = false
     const load = () => {
-      fetch('/api/reports/recent?limit=10')
+      fetch('/api/reports/recent?limit=30')
         .then(r => r.json())
         .then(d => {
           if (cancelled) return
-          setReports(filterFresh(d.reports || []))
+          // Fetch more (30 instead of 10) to give us enough headroom
+          // after region scoping takes a bite. Then filter to fresh +
+          // scope to home region.
+          setReports(scopeReports(filterFresh(d.reports || [])))
         })
         .catch(() => { /* ignore — keep whatever we had */ })
     }

@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { Clock, ThumbsUp, MessageSquare } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
+import { useHomeRegion } from '@/lib/useHomeRegion'
+import { useTier } from '@/lib/useTier'
+import { getPortMeta } from '@/lib/portMeta'
 
 interface Report {
   id: string
@@ -82,10 +85,22 @@ interface Props {
 
 export function HomeReportsFeed({ initialReports }: Props = {}) {
   const { lang } = useLang()
+  const { homeRegion } = useHomeRegion()
+  const { tier } = useTier()
+  const isBusiness = tier === 'business'
+  const scopeActive = !isBusiness && homeRegion != null
   const [reports, setReports] = useState<Report[]>(() => initialReports || [])
   const [loading, setLoading] = useState(() => !initialReports || initialReports.length === 0)
   const [showExpired, setShowExpired] = useState(false)
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
+
+  // Scope the raw reports to the user's home region before any
+  // filtering (expired / active / visible) runs. Done via useMemo
+  // so rebuilds only when the raw list or scope changes.
+  const scopedReports = useMemo(() => {
+    if (!scopeActive) return reports
+    return reports.filter((r) => getPortMeta(r.port_id).megaRegion === homeRegion)
+  }, [reports, scopeActive, homeRegion])
 
   useEffect(() => {
     let cancelled = false
@@ -133,11 +148,11 @@ export function HomeReportsFeed({ initialReports }: Props = {}) {
     </div>
   )
 
-  const active = reports.filter(r => !isExpired(r))
-  const expired = reports.filter(r => isExpired(r))
-  const visible = showExpired ? reports : active
+  const active = scopedReports.filter(r => !isExpired(r))
+  const expired = scopedReports.filter(r => isExpired(r))
+  const visible = showExpired ? scopedReports : active
 
-  if (reports.length === 0) {
+  if (scopedReports.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 text-center">
         <MessageSquare className="w-6 h-6 text-gray-300 mx-auto mb-2" />

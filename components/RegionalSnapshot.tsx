@@ -5,6 +5,8 @@ import { useMemo } from 'react'
 import { useLang } from '@/lib/LangContext'
 import { getPortMeta } from '@/lib/portMeta'
 import { formatWaitLabel } from '@/lib/formatWait'
+import { useHomeRegion } from '@/lib/useHomeRegion'
+import { useTier } from '@/lib/useTier'
 import type { PortWaitTime } from '@/types'
 
 // "De un vistazo" regional snapshot. Replaces the old StaticBorderMap
@@ -49,6 +51,15 @@ function waitBucket(min: number | null, isClosed: boolean): 'green' | 'amber' | 
 export function RegionalSnapshot({ ports }: Props) {
   const { lang } = useLang()
   const es = lang === 'es'
+  const { homeRegion } = useHomeRegion()
+  const { tier } = useTier()
+  const isBusiness = tier === 'business'
+  // When the user has a home region set, this "all regions at a
+  // glance" grid becomes clutter — they're already only seeing their
+  // zone in the main port list. Hide it entirely; the region picker
+  // pill in the header is how they toggle to "all border" if they
+  // genuinely want to see other regions.
+  const scopeActive = !isBusiness && homeRegion != null
 
   const rows = useMemo(() => {
     if (!ports || ports.length === 0) return []
@@ -74,6 +85,9 @@ export function RegionalSnapshot({ ports }: Props) {
       return { region, green, amber, red, fastest, total: inRegion.length }
     }).filter((r): r is NonNullable<typeof r> => r !== null)
   }, [ports])
+
+  // Hide when scoped — redundant with what's already in PortList
+  if (scopeActive) return null
 
   if (rows.length === 0) return null
 

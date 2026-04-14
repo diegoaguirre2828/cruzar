@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
 import { getPortMeta } from '@/lib/portMeta'
+import { useHomeRegion } from '@/lib/useHomeRegion'
+import { useTier } from '@/lib/useTier'
 import type { PortWaitTime } from '@/types'
 
 // Horizontal "near me" swipe rail. Turns the vertical column of cards
@@ -60,6 +62,12 @@ function waitText(min: number | null): { value: string; unit: string } {
 export function NearMeRail({ ports }: Props) {
   const { lang } = useLang()
   const es = lang === 'es'
+  const { homeRegion } = useHomeRegion()
+  const { tier } = useTier()
+  const isBusiness = tier === 'business'
+  // Scope the pool before distance/priority sorting. Business tier
+  // bypass stays intact — fleets cross multiple regions.
+  const scopeActive = !isBusiness && homeRegion != null
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
 
   useEffect(() => {
@@ -78,11 +86,19 @@ export function NearMeRail({ ports }: Props) {
 
   const featured = useMemo(() => {
     if (!ports || ports.length === 0) return []
-    const open = ports.filter((p) => !p.isClosed && p.vehicle != null)
-    if (open.length === 0) return []
+    let pool = ports.filter((p) => !p.isClosed && p.vehicle != null)
+
+    // Apply home-region scope BEFORE distance/priority ranking so
+    // users in RGV never see El Paso or Mexicali crossings leak
+    // into this rail — matches what PortList does for the main list.
+    if (scopeActive) {
+      pool = pool.filter((p) => getPortMeta(p.portId).megaRegion === homeRegion)
+    }
+
+    if (pool.length === 0) return []
 
     if (userLoc) {
-      const withDistance = open
+      const withDistance = pool
         .map((p) => {
           const meta = getPortMeta(p.portId)
           if (!meta.lat || !meta.lng) return null
@@ -99,11 +115,11 @@ export function NearMeRail({ ports }: Props) {
 
     // Default pool: priority RGV/border bridges
     const priority = DEFAULT_PORT_IDS
-      .map((id) => open.find((p) => p.portId === id))
+      .map((id) => pool.find((p) => p.portId === id))
       .filter((p): p is PortWaitTime => p != null)
-    const filler = open.filter((p) => !DEFAULT_PORT_IDS.includes(p.portId))
+    const filler = pool.filter((p) => !DEFAULT_PORT_IDS.includes(p.portId))
     return [...priority, ...filler].slice(0, 8).map((port) => ({ port, dist: null as number | null }))
-  }, [ports, userLoc])
+  }, [ports, userLoc, scopeActive, homeRegion])
 
   if (featured.length === 0) return null
 

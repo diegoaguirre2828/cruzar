@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
+import { useHomeRegion } from '@/lib/useHomeRegion'
+import { useTier } from '@/lib/useTier'
+import { getPortMeta } from '@/lib/portMeta'
 
 interface Report {
   id: string
@@ -61,7 +64,12 @@ interface Props {
 export function UrgentAlerts({ initialReports }: Props = {}) {
   const { lang } = useLang()
   const es = lang === 'es'
-  const [alerts, setAlerts] = useState<Report[]>(() => initialReports ? pickUrgent(initialReports) : [])
+  const { homeRegion } = useHomeRegion()
+  const { tier } = useTier()
+  const isBusiness = tier === 'business'
+  const scopeActive = !isBusiness && homeRegion != null
+
+  const [rawAlerts, setRawAlerts] = useState<Report[]>(() => initialReports ? pickUrgent(initialReports) : [])
 
   useEffect(() => {
     // Only refetch if we didn't already get server data — avoids a
@@ -69,9 +77,16 @@ export function UrgentAlerts({ initialReports }: Props = {}) {
     if (initialReports && initialReports.length > 0) return
     fetch('/api/reports/recent?limit=50')
       .then(r => r.json())
-      .then(d => setAlerts(pickUrgent(d.reports || [])))
+      .then(d => setRawAlerts(pickUrgent(d.reports || [])))
       .catch(() => {})
   }, [initialReports])
+
+  // Scope the urgent alerts to the user's home region. A Matamoros
+  // accident should not alarm a user in Tijuana.
+  const alerts = useMemo(() => {
+    if (!scopeActive) return rawAlerts
+    return rawAlerts.filter((r) => getPortMeta(r.port_id).megaRegion === homeRegion)
+  }, [rawAlerts, scopeActive, homeRegion])
 
   if (!alerts.length) return null
 
