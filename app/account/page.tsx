@@ -212,11 +212,15 @@ export default function AccountPage() {
               </label>
               <input
                 value={form.display_name}
-                onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))}
-                className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. BorderPro_Laredo"
+                onChange={e => setForm(f => ({ ...f, display_name: e.target.value.toLowerCase() }))}
+                className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                placeholder="cruzante_norte_42"
                 maxLength={30}
+                pattern="[a-z0-9][a-z0-9_-]*[a-z0-9]"
               />
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                3-30 chars · lowercase letters, digits, underscore, hyphen · visible on the public leaderboard
+              </p>
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">

@@ -50,11 +50,11 @@ export async function POST(req: NextRequest) {
     .select('display_name')
     .eq('id', user.id)
     .maybeSingle()
-  const { data: authData } = await db.auth.admin.getUserById(user.id)
-  const displayName =
-    crosserProfile?.display_name ||
-    authData?.user?.email?.split('@')[0] ||
-    'Alguien'
+  // Privacy fix 2026-04-14: never fall back to email prefix — that
+  // leaked the user's email local part to every circle ping. Every
+  // profile now has an auto-generated handle from the random_handles
+  // SQL trigger, so display_name should always be populated.
+  const displayName = crosserProfile?.display_name || 'Alguien'
 
   // Find circles the user is in
   const { data: myMemberships } = await db

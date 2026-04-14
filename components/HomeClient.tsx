@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { PortList } from '@/components/PortList'
 import { NavBar } from '@/components/NavBar'
 import { HomeReportsFeed } from '@/components/HomeReportsFeed'
@@ -24,10 +24,12 @@ import { ContributionTodayPill } from '@/components/ContributionTodayPill'
 import { HolidayOverlay } from '@/components/HolidayOverlay'
 import { ReciprocityCard } from '@/components/ReciprocityCard'
 import { ContextualNudge } from '@/components/ContextualNudge'
+import { HeroTriad } from '@/components/HeroTriad'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
 import { armNudge } from '@/lib/useNudge'
+import { trackEvent } from '@/lib/trackEvent'
 import type { PortWaitTime } from '@/types'
 import type { RecentReport } from '@/lib/recentReports'
 
@@ -136,6 +138,7 @@ function SavedCrossings({ initialPorts }: { initialPorts: PortWaitTime[] | null 
           <Link
             key={s.port_id}
             href={`/port/${encodeURIComponent(s.port_id)}`}
+            onClick={() => trackEvent('home_action_taken', { action: 'saved_bridge_tap', port_id: s.port_id })}
             className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2.5 flex flex-col items-center min-w-[80px] shadow-sm active:scale-95 transition-transform"
           >
             <span className={`text-sm font-black ${
@@ -165,8 +168,54 @@ interface Props {
 export function HomeClient({ initialPorts, initialReports }: Props) {
   const { t, lang } = useLang()
   const { tier } = useTier()
-  const { loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const isBusiness = tier === 'business'
+  const es = lang === 'es'
+
+  // ─── Personalization state (Tier 0) ────────────────────────
+  // Fetched on mount for signed-in users:
+  //   - displayName: the random-generated handle stored in
+  //     profiles.display_name (populated by the signup trigger)
+  //   - favoritePortId: first saved crossing, treated as the user's
+  //     "primary" bridge for the HeroTriad ordering
+  const [displayName, setDisplayName] = useState<string | null>(null)
+  const [favoritePortId, setFavoritePortId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user) {
+      setDisplayName(null)
+      setFavoritePortId(null)
+      return
+    }
+    // Parallel fetch — both are small and the home page waits for
+    // neither (HeroTriad handles missing favorite gracefully).
+    Promise.all([
+      fetch('/api/profile').then((r) => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/saved').then((r) => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([profileData, savedData]) => {
+      setDisplayName(profileData?.profile?.display_name || null)
+      const firstSaved = savedData?.saved?.[0]?.port_id || null
+      setFavoritePortId(firstSaved)
+    })
+  }, [user])
+
+  // Time-aware salutation — "Buenos días" / "Buenas tardes" / "Buenas noches"
+  const salutation = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return es ? 'Buenos días' : 'Good morning'
+    if (hour < 19) return es ? 'Buenas tardes' : 'Good afternoon'
+    return es ? 'Buenas noches' : 'Good evening'
+  }, [es])
+
+  // Fire retention event once per home visit for signed-in users.
+  // Diego's 2026-04-14 metric picks: D7 retention + home-visits-with-action.
+  // The visit event powers D7; the action event (fired from the triad
+  // card, SavedCrossings tap, ReportForm submit, etc.) powers the
+  // with-action rate.
+  useEffect(() => {
+    if (!user) return
+    trackEvent('home_visited', { has_saved_bridge: !!favoritePortId })
+  }, [user, favoritePortId])
 
   // Capture referrer ID on any landing path so shares that point to the
   // homepage ('cruzar.app/?ref=...') actually credit the inviter. Previously
@@ -220,7 +269,13 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
               <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 leading-none tracking-tight lowercase">
                 cruzar
               </h1>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight">{t.subtitle}</p>
+              {user && displayName ? (
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight">
+                  {salutation}, <span className="font-bold text-gray-700 dark:text-gray-200">{displayName}</span>
+                </p>
+              ) : (
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight">{t.subtitle}</p>
+              )}
             </div>
           </div>
           <NavBar />
@@ -277,11 +332,15 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
           />
         )}
 
-        {/* Hero carousel — two swipeable slides on mobile, grid on desktop:
-              1. HeroLiveDelta (personalized nearest crossing + alert CTA)
-              2. LiveActivityTicker (live community reporting)
-            The third DailyTip slide was removed — it read as sparse and
-            low-value compared to the other two. */}
+        {/* Hero zone — two paths (Diego's 2026-04-14 personalization spec):
+              - Signed-in user with a saved bridge → HeroTriad renders 1-3
+                distinct bridges (favorite/closest/fastest, deduped, with
+                composable badges)
+              - Everyone else (guests + signed-in-but-no-saved-bridge) →
+                existing HeroCarousel with HeroLiveDelta + LiveActivityTicker
+            Guests stay generic on purpose — "lean into the contrast"
+            so signup becomes the transform moment (project memory
+            project_cruzar_personalization_framework.md). */}
         {!isBusiness && authLoading && (
           <div
             aria-hidden="true"
@@ -293,7 +352,10 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             <div className="h-12 w-full bg-white/15 rounded-2xl mt-4" />
           </div>
         )}
-        {!isBusiness && !authLoading && (
+        {!isBusiness && !authLoading && user && favoritePortId && (
+          <HeroTriad ports={initialPorts} favoritePortId={favoritePortId} />
+        )}
+        {!isBusiness && !authLoading && !(user && favoritePortId) && (
           <HeroCarousel
             slides={[
               {

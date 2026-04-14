@@ -57,11 +57,10 @@ async function notifyCircleMembers(
     .select('display_name')
     .eq('id', crosserId)
     .maybeSingle()
-  const { data: authData } = await db.auth.admin.getUserById(crosserId)
-  const displayName =
-    crosserProfile?.display_name ||
-    authData?.user?.email?.split('@')[0] ||
-    'Alguien'
+  // Privacy fix 2026-04-14: never fall back to email prefix. The
+  // random_handles SQL trigger populates display_name at signup, so
+  // this should always be set.
+  const displayName = crosserProfile?.display_name || 'Alguien'
 
   const meta = getPortMeta(portId)
   const portLabel = meta?.localName
@@ -381,7 +380,8 @@ export async function POST(req: NextRequest) {
       .select('display_name, reports_count')
       .eq('id', user.id)
       .single()
-    username = profile?.display_name || user.email?.split('@')[0] || null
+    // Privacy fix 2026-04-14: never fall back to email prefix.
+    username = profile?.display_name || null
     reportsCount = profile?.reports_count || 0
   }
 

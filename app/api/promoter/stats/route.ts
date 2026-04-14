@@ -92,7 +92,8 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    displayName: profile?.display_name || user.email?.split('@')[0] || 'Promoter',
+    // Privacy fix 2026-04-14: never fall back to email prefix.
+    displayName: profile?.display_name || 'Promoter',
     stats: {
       signups: signupsCount || 0,
       reports: reportsCount || 0,
