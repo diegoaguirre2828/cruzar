@@ -277,32 +277,28 @@ export function PortDetailClient({ port, portId }: Props) {
     return next?.time ?? null
   })()
 
-  if (authLoading) {
-    return <div className="min-h-[300px]" />
-  }
-
   // Guest redirect — per Diego's 2026-04-14 late directive, guests
   // get the home page (with the full live port list) and nothing
   // more. Any attempt to deep-link into a port detail goes straight
   // to signup with the port URL preserved as `next`, so after signup
   // they land back on this exact detail.
   //
-  // Client-side redirect via useEffect so the render still returns
-  // *something* during the flash between auth resolution and
-  // router.replace. PortDetailSoftWall is NOT used anymore — its
-  // dismissable design was for the old "soft wall over live data"
-  // flow, which is retired.
-  if (!user) {
-    if (typeof window !== 'undefined') {
+  // IMPORTANT: router.replace runs inside a useEffect, not during
+  // render. Calling it in the render body causes an infinite loop
+  // in React / Next 16 because the route change triggers a re-render
+  // which re-fires the redirect. Learned the hard way 2026-04-14.
+  useEffect(() => {
+    if (!authLoading && !user) {
       const returnTo = encodeURIComponent(`/port/${portId}`)
-      // Replace so the back button doesn't trap users in /port/[id]
-      // after they abandon signup.
       router.replace(`/signup?next=${returnTo}`)
     }
+  }, [authLoading, user, portId, router])
+
+  if (authLoading || !user) {
     return (
       <div className="min-h-[200px] flex items-center justify-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {es ? 'Redirigiendo…' : 'Redirecting…'}
+          {es ? 'Cargando…' : 'Loading…'}
         </p>
       </div>
     )

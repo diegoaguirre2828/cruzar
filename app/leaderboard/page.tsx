@@ -145,7 +145,9 @@ export default function LeaderboardPage() {
                 {es ? 'Aún no hay guardianes' : 'No guardians yet'}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                {es ? 'Sé el primero en reportar' : 'Be the first to report'}
+                {es
+                  ? 'La tabla aparece cuando empiezan los reportes'
+                  : 'The leaderboard fills in as the community starts reporting'}
               </p>
             </div>
           ) : (

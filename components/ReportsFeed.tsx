@@ -119,7 +119,6 @@ export function ReportsFeed({ portId, refresh }: Props) {
     return (
       <div className="text-center py-4">
         <p className="text-xs text-gray-400">No reports in the last 24 hours.</p>
-        <p className="text-xs text-gray-400 mt-0.5">Be the first to report! · ¡Sé el primero!</p>
       </div>
     )
   }

@@ -77,7 +77,7 @@ export function LiveActivityTicker({ initialReports }: TickerProps = {}) {
 
   // Apply the home-region scope to the incoming reports so users in
   // RGV never see an El Paso or Tijuana report rotating through the
-  // ticker. Matches PortList / NearMeRail / RegionalSnapshot scoping.
+  // ticker. Matches PortList / RegionalSnapshot scoping.
   const scopeReports = (list: Report[]): Report[] => {
     if (!scopeActive) return list
     return list.filter((r) => getPortMeta(r.port_id).megaRegion === homeRegion)

@@ -20,7 +20,7 @@ import type { PortWaitTime } from '@/types'
 //   - Signed-in → /port/{id}
 //
 // Fallback when location is unavailable: show the fastest crossing in
-// their home mega region (shared with NearMeRail/PortList via useHomeRegion).
+// their home mega region (shared with PortList via useHomeRegion).
 
 const MEGA_REGION_LABEL: Record<MegaRegion, { es: string; en: string }> = {
   rgv:           { es: 'Valle de Texas',           en: 'Rio Grande Valley' },
@@ -43,7 +43,7 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
   const [ports, setPorts] = useState<PortWaitTime[] | null>(propPorts ?? null)
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null)
   const [secondsAgo, setSecondsAgo] = useState(0)
-  // Share the home-region source with NearMeRail, PortList, etc. so hero and
+  // Share the home-region source with PortList so hero and
   // list never disagree about which region the user is "in". Previously this
   // component read localStorage independently and drifted — e.g. hero would
   // claim "YOUR NEAREST CROSSING: Bridge II (Laredo)" while the NearMe rail
@@ -126,7 +126,7 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
 
   // Compute the display port:
   //   1. If we have geolocation → nearest OPEN port with data (unbounded).
-  //      Matches NearMeRail's sort so the hero and the rail always agree
+  //      Matches PortList's proximity sort so the hero and the list always agree
   //      on which port is "yours." Previously this was capped at 300 km,
   //      which caused a false fall-through to Path 2 when the user was in
   //      a region where every RGV port was "Update Pending" — hero then
@@ -397,18 +397,14 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
             )}
           </div>
 
-          {/* Social proof — "be the first" only shows to guests. Signed-in
-              users get either the count or nothing, so returning users don't
-              get nagged to report on quiet days. */}
-          {reportCount != null && reportCount > 0 ? (
+          {/* Social proof — only shown when there are actual reports. When
+              reportCount is 0 we hide the line entirely rather than nag
+              users to "be the first." Empty state is not a call to action. */}
+          {reportCount != null && reportCount > 0 && (
             <p className="mt-3 text-[11px] text-blue-100 font-medium">
               {es ? `📣 ${reportCount} reportes de la comunidad hoy` : `📣 ${reportCount} community reports today`}
             </p>
-          ) : !user ? (
-            <p className="mt-3 text-[11px] text-blue-100 font-medium">
-              {es ? '📣 Sé el primero en reportar hoy' : '📣 Be the first to report today'}
-            </p>
-          ) : null}
+          )}
 
           {/* CBP cadence disclosure — kills the "la app no actualiza"
               objection by framing the 15-min cadence as CBP's rule,
