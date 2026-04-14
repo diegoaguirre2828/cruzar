@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { LockedFeatureWall } from '@/components/LockedFeatureWall'
+import { formatWaitLabel } from '@/lib/formatWait'
 import {
   AreaChart,
   Area,
@@ -57,7 +58,6 @@ function formatHour(hour: number): string {
 
 export function PortDetailClient({ port, portId }: Props) {
   const { user, loading: authLoading } = useAuth()
-  const router = useRouter()
   const { tier } = useTier()
   const { lang } = useLang()
   const es = lang === 'es'
@@ -277,30 +277,42 @@ export function PortDetailClient({ port, portId }: Props) {
     return next?.time ?? null
   })()
 
-  // Guest redirect — per Diego's 2026-04-14 late directive, guests
-  // get the home page (with the full live port list) and nothing
-  // more. Any attempt to deep-link into a port detail goes straight
-  // to signup with the port URL preserved as `next`, so after signup
-  // they land back on this exact detail.
-  //
-  // IMPORTANT: router.replace runs inside a useEffect, not during
-  // render. Calling it in the render body causes an infinite loop
-  // in React / Next 16 because the route change triggers a re-render
-  // which re-fires the redirect. Learned the hard way 2026-04-14.
-  useEffect(() => {
-    if (!authLoading && !user) {
-      const returnTo = encodeURIComponent(`/port/${portId}`)
-      router.replace(`/signup?next=${returnTo}`)
-    }
-  }, [authLoading, user, portId, router])
-
-  if (authLoading || !user) {
+  // Guest treatment — in-place LockedFeatureWall instead of a redirect.
+  // Diego's 2026-04-14 late directive: "shows that features are locked
+  // and to make an account." The user stays on /port/[id], sees the
+  // bridge name + a teaser wait number, and sees exactly what signing
+  // up would unlock. Back button returns them to wherever they came
+  // from (home, FB group, etc.) without any navigation trap.
+  if (authLoading) {
     return (
       <div className="min-h-[200px] flex items-center justify-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {es ? 'Cargando…' : 'Loading…'}
         </p>
       </div>
+    )
+  }
+  if (!user) {
+    const teaser = port.vehicle != null
+      ? formatWaitLabel(port.vehicle, es ? 'es' : 'en')
+      : es ? 'En vivo' : 'Live'
+    return (
+      <LockedFeatureWall
+        nextPath={`/port/${portId}`}
+        featureTitleEs={`Detalles completos de ${port.portName}`}
+        featureTitleEn={`Full details for ${port.portName}`}
+        summaryEs={`El tiempo de espera ahorita es ${teaser}. Crea tu cuenta gratis pa' desbloquear todo lo demás que sabemos de este puente.`}
+        summaryEn={`Current wait is ${teaser}. Create a free account to unlock everything we know about this crossing.`}
+        unlocks={[
+          { es: 'Cámaras en vivo del puente', en: 'Live bridge cameras' },
+          { es: 'Patrón por hora de los últimos 30 días', en: 'Hourly pattern from the last 30 days' },
+          { es: 'Mejor hora pa\' cruzar basado en tus datos', en: 'Best hour to cross based on your data' },
+          { es: 'Alertas push cuando baje de 30 min', en: 'Push alerts when it drops below 30 min' },
+          { es: 'Reportes de la comunidad en vivo', en: 'Live community reports' },
+          { es: 'Guardar este puente en favoritos', en: 'Save this bridge to favorites' },
+          { es: 'Reportar tu propio tiempo de espera', en: 'Report your own wait time' },
+        ]}
+      />
     )
   }
 

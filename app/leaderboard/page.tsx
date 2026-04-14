@@ -7,6 +7,7 @@ import { BADGES } from '@/lib/points'
 import { useLang } from '@/lib/LangContext'
 import { useAuth } from '@/lib/useAuth'
 import { GuardianProgressCard } from '@/components/GuardianProgressCard'
+import { LockedFeatureWall } from '@/components/LockedFeatureWall'
 
 interface Leader {
   id: string
@@ -82,9 +83,31 @@ export default function LeaderboardPage() {
         {/* User's own progress card — shown only to signed-in users.
             Makes this page function as a full Guardián tab (your
             progress + community ranking) instead of a pure ranking
-            list. Unsigned users see the tier ladder + leaderboard
-            which still gives them context. */}
+            list. */}
         {user && <div className="-mt-2 mb-2"><GuardianProgressCard /></div>}
+
+        {/* Guest preview lock — per Diego's 2026-04-14 direction:
+            preview accessible, heavy signup recommendation. Guests
+            scroll past this to see the leaderboard but the lock is
+            the first thing they see. */}
+        {!user && (
+          <div className="mb-5">
+            <LockedFeatureWall
+              nextPath="/leaderboard"
+              featureTitleEs="Únete a los guardianes"
+              featureTitleEn="Join the guardians"
+              summaryEs="Crea tu cuenta gratis pa' aparecer en la tabla, ganar rangos de guardián, y reportar tiempos de espera en vivo desde la fila."
+              summaryEn="Create a free account to appear on the board, earn guardian ranks, and report wait times live from the line."
+              unlocks={[
+                { es: 'Tu propio ranking de guardián', en: 'Your own guardian rank' },
+                { es: 'Puntos por cada reporte (con bonus)', en: 'Points for every report (with bonuses)' },
+                { es: 'Badges mensuales + de día', en: 'Monthly + day-of badges' },
+                { es: 'Notificación cuando te pasan de rango', en: 'Notification when you rank up' },
+                { es: 'El badge "Fundador" si eres de los primeros 100', en: '"Founder" badge if you are in the first 100' },
+              ]}
+            />
+          </div>
+        )}
 
         {/* Guardián tier ladder — replaces the old "how to earn points"
             section. This is service framing, not gamification. Same

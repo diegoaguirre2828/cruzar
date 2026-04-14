@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { ArrowLeft, Gift, MapPin, Star, Lock, ChevronRight, CheckCircle, X } from 'lucide-react'
+import { LockedFeatureWall } from '@/components/LockedFeatureWall'
 
 interface Business {
   id: string
@@ -123,6 +124,28 @@ export default function RewardsPage() {
             </div>
           )}
         </div>
+
+        {/* Guest preview lock — per Diego's 2026-04-14 direction:
+            preview accessible, heavy signup recommendation. Guests
+            see the rewards system as a teaser with a prominent
+            signup CTA at the top. */}
+        {!user && (
+          <div className="mb-5">
+            <LockedFeatureWall
+              nextPath="/rewards"
+              featureTitleEs={lang === 'es' ? 'Acumula puntos canjeables' : 'Earn redeemable points'}
+              featureTitleEn="Earn redeemable points"
+              summaryEs="Cada reporte de tiempo de espera suma puntos. Canjéalos por descuentos en negocios cerca de los puentes — restaurantes, farmacias, casas de cambio, llanteras."
+              summaryEn="Every wait-time report earns points. Redeem them for discounts at businesses near the crossings — restaurants, pharmacies, exchange houses, tire shops."
+              unlocks={[
+                { es: '+5 a +15 puntos por cada reporte', en: '+5 to +15 points per report' },
+                { es: 'Bonus por primer reporte del día', en: 'Bonus for first report of the day' },
+                { es: 'Descuentos reales en negocios locales', en: 'Real discounts at local businesses' },
+                { es: 'Acumula desde hoy — canjea cuando lleguen', en: 'Earn starting today — redeem when businesses go live' },
+              ]}
+            />
+          </div>
+        )}
 
         {/* How it works */}
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-5 mb-5 text-white">

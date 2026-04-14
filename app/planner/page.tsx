@@ -3,8 +3,11 @@
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
+import { useAuth } from '@/lib/useAuth'
 import { REGIONS, type RegionKey } from '@/lib/regionMatchers'
 import { formatWaitLabel } from '@/lib/formatWait'
+import { LockedFeatureWall } from '@/components/LockedFeatureWall'
+import { ArrowLeft } from 'lucide-react'
 
 // Public trip planner page. Lets users pick a day + hour + region
 // and get back "here's the fastest bridge at that time, here's the
@@ -39,6 +42,7 @@ function hourLabel(h: number): string {
 
 export default function PlannerPage() {
   const { lang } = useLang()
+  const { user, loading: authLoading } = useAuth()
   const es = lang === 'es'
 
   const now = new Date()
@@ -48,6 +52,34 @@ export default function PlannerPage() {
   const [result, setResult] = useState<PlannerResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  if (authLoading) {
+    return <main className="min-h-screen bg-gray-50 dark:bg-gray-950" />
+  }
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="max-w-lg mx-auto px-4 pt-6 pb-10">
+          <Link href="/" className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4">
+            <ArrowLeft className="w-4 h-4" /> {es ? 'Volver al inicio' : 'Back to home'}
+          </Link>
+          <LockedFeatureWall
+            nextPath="/planner"
+            featureTitleEs="Planifica tu cruce"
+            featureTitleEn="Plan your crossing"
+            summaryEs="Dime cuándo quieres cruzar y qué región. Te digo cuál puente está más fluido a esa hora basado en los últimos 30 días de datos — y si esperar 1 hora te ahorra más tiempo."
+            summaryEn="Tell me when you want to cross and which region. I'll tell you which bridge moves fastest at that time based on the last 30 days of data — and if shifting by 1 hour saves you more time."
+            unlocks={[
+              { es: 'Mejor puente pa\' cualquier día + hora', en: 'Best bridge for any day + hour' },
+              { es: 'Ahorro estimado en minutos', en: 'Estimated savings in minutes' },
+              { es: 'Recomendación de cambio de horario', en: 'Time-shift recommendation' },
+              { es: 'Historial del patrón del puente', en: 'Bridge pattern history' },
+            ]}
+          />
+        </div>
+      </main>
+    )
+  }
 
   const run = useCallback(async () => {
     setLoading(true)

@@ -21,33 +21,32 @@ const PUBLIC_API_PREFIXES = [
   '/api/stripe/webhook', // has its own signature check
 ]
 
-// Routes that require a signed-in session. Unauthenticated visitors are
-// redirected to /signup?next=<original-path>, so they land back where they
-// started after completing signup. Per Diego's 2026-04-14 direction:
-// guests should only see the home page, the read-only /mapa "all bridges"
-// view, and the auth pages themselves (signup, login, welcome, reset).
-// Every other surface is gated.
+// Routes that HARD-redirect to /signup when the visitor isn't
+// authenticated. Kept intentionally short — per Diego's 2026-04-14
+// late directive, guests should LAND on most routes and see a
+// rich "feature locked" preview (via LockedFeatureWall) rather
+// than bouncing to signup. That preserves the back button, lets
+// them browse the feature index, and turns the moment of highest
+// intent (they just tapped something) into a signup opportunity.
 //
-// Prefix matching rules:
-//   - entries ending in "/" match anything below (e.g. "/port/" → /port/123)
-//   - entries without trailing slash match the exact path OR sub-paths
-//     (e.g. "/planner" → /planner, /planner/settings)
+// Pages that render LockedFeatureWall themselves — /port/[id],
+// /chat, /leaderboard, /rewards, /planner, /features — are NOT
+// in this list. They handle the guest case in-page.
+//
+// Truly-gated destinations only:
+//   - /dashboard → personal alerts + saved, requires auth
+//   - /promoter  → promoter dashboard, requires is_promoter flag
+//   - /datos     → Insights PRO, Pro-gated (still needs auth first)
+//   - /fleet     → Business tier, requires business auth
+//   - /business  → Business tier
+//   - /admin     → Diego only
 const PROTECTED_ROUTE_PREFIXES = [
-  '/port/',
-  '/planner',
-  '/chat',
-  '/rewards',
-  '/leaderboard',
-  '/negocios',
-  '/services',
-  '/guide',
-  '/insurance',
-  '/for-fleets',
-  '/fleet',
-  '/features',
   '/dashboard',
   '/promoter',
   '/datos',
+  '/fleet',
+  '/business',
+  '/admin',
 ]
 
 function isProtectedPath(path: string): boolean {

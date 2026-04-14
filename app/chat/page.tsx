@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowLeft, Send, Bot, User, AlertCircle } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
+import { useAuth } from '@/lib/useAuth'
+import { LockedFeatureWall } from '@/components/LockedFeatureWall'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -31,6 +33,7 @@ const SUGGESTED_EN = [
 
 function ChatInner() {
   const { lang } = useLang()
+  const { user, loading: authLoading } = useAuth()
   const params = useSearchParams()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -121,6 +124,39 @@ function ChatInner() {
       e.preventDefault()
       send(input)
     }
+  }
+
+  // Guest gate — in-place locked preview. Chat is one of the features
+  // Diego explicitly flagged as hard to find ("chats have been added?").
+  // Guests who land here see the value prop and a signup CTA.
+  if (authLoading) {
+    return <main className="min-h-screen bg-gray-950" />
+  }
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="max-w-lg mx-auto px-4 pt-6 pb-10">
+          <Link href="/" className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mb-4">
+            <ArrowLeft className="w-4 h-4" /> {lang === 'es' ? 'Volver al inicio' : 'Back to home'}
+          </Link>
+          <LockedFeatureWall
+            nextPath="/chat"
+            featureTitleEs="Pregúntale a Cruz"
+            featureTitleEn="Ask Cruz"
+            summaryEs="Un asistente de AI entrenado en todo lo que sabemos de la frontera — documentos, SENTRI, FMM, aduana, qué traer, qué declarar. Responde al instante."
+            summaryEn="An AI assistant trained on everything we know about the border — documents, SENTRI, FMM, customs, what to bring, what to declare. Answers instantly."
+            unlocks={[
+              { es: 'Preguntas sobre documentos y FMM', en: 'Questions about documents & FMM' },
+              { es: 'Cómo aplicar para SENTRI', en: 'How to apply for SENTRI' },
+              { es: 'Qué puedes traer sin declarar', en: 'What you can bring without declaring' },
+              { es: 'Qué hacer si te mandan a secundaria', en: 'What to do if you get sent to secondary' },
+              { es: 'Seguro para manejar en México', en: 'Insurance for driving into Mexico' },
+              { es: 'Bilingüe · responde en español o inglés', en: 'Bilingual · answers in Spanish or English' },
+            ]}
+          />
+        </div>
+      </main>
+    )
   }
 
   return (
