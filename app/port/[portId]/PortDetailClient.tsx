@@ -279,49 +279,17 @@ export function PortDetailClient({ port, portId }: Props) {
     return <div className="min-h-[300px]" />
   }
 
-  if (!user) {
-    const returnTo = encodeURIComponent(`/port/${portId}`)
-    return (
-      <div className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 sm:p-8 text-center space-y-5">
-        <div className="text-4xl">🌉</div>
-        <div className="space-y-2">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-            {es ? 'Crea una cuenta gratis' : 'Create a free account'}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-            {es
-              ? `Para ver los detalles de ${port.portName} — historial, reportes de la comunidad, alertas y más — crea tu cuenta gratis.`
-              : `To see details for ${port.portName} — history, community reports, alerts and more — create your free account.`}
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500">
-            {es
-              ? 'Gratis para siempre. Toma 10 segundos.'
-              : 'Free forever. Takes 10 seconds.'}
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
-          <Link
-            href={`/signup?next=${returnTo}`}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-5 rounded-xl text-sm transition-colors"
-          >
-            {es ? 'Crear cuenta gratis' : 'Create free account'}
-          </Link>
-          <Link
-            href={`/login?next=${returnTo}`}
-            className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15 text-gray-900 dark:text-gray-100 font-semibold py-3 px-5 rounded-xl text-sm transition-colors"
-          >
-            {es ? 'Ya tengo cuenta' : 'I have an account'}
-          </Link>
-        </div>
-        <Link
-          href="/"
-          className="block text-xs text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 pt-2"
-        >
-          {es ? '← Ver tiempos de todos los puentes' : '← See all bridge wait times'}
-        </Link>
-      </div>
-    )
-  }
+  // IMPORTANT — no hard wall for guests. Every FB share lands here
+  // (cruzar.app/port/230501?ref=...) and the whole point of the viral
+  // loop is that the user sees the wait time INSTANTLY, before any
+  // signup ask. PortDetailSoftWall (rendered below, line ~520) is the
+  // designed guest treatment: dismissible bottom sheet + persistent
+  // sticky CTA, with all the live data visible underneath.
+  //
+  // Until 2026-04-14 this file had a return-early "Create a free
+  // account" hard wall here, which silently nullified the soft wall
+  // AND broke every FB share arrival. That's what drove Diego's
+  // "clicks but no traffic + bounce rate climbing" symptoms.
 
   return (
     <div className="space-y-4">
