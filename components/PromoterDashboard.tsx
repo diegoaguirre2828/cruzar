@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Copy, Check, ExternalLink, TrendingUp, Users, MessageSquare, Share2, ArrowLeft } from 'lucide-react'
+import { Copy, Check, ExternalLink, TrendingUp, Users, MessageSquare, Share2, ArrowLeft, Languages, Zap } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
+import { useLang } from '@/lib/LangContext'
 import {
   PROMOTER_TEMPLATES,
   CATEGORY_META,
@@ -42,8 +43,74 @@ const ALL_CATEGORIES: TemplateCategory[] = [
   'morning', 'midday', 'afternoon', 'evening', 'heads_up', 'tip', 'ask', 'evergreen', 'page_follow',
 ]
 
+// Chrome label translations for the promoter dashboard. Prompts and
+// captions stay in Spanish everywhere because 99% of border-crossing
+// FB group culture is Spanish — this toggle is only for the panel
+// chrome so English-dominant promoters can navigate without guessing
+// at labels. The copy-to-clipboard output is ALWAYS Spanish.
+const T = {
+  backToApp: { es: '← Cruzar', en: '← Cruzar' },
+  panelTitle: { es: 'Panel del promotor', en: 'Promoter panel' },
+  panelSub:   { es: 'Tu link, tu contenido, tus números.', en: 'Your link, your content, your numbers.' },
+  refLinkLabel:    { es: 'Tu link único', en: 'Your unique link' },
+  copy:            { es: 'Copiar', en: 'Copy' },
+  copied:          { es: 'Copiado', en: 'Copied' },
+  refLinkCaveat: {
+    es: 'Cada usuario que se registre por este link queda atribuido a ti. No cambies el link, no lo acortes — se rompe el tracking.',
+    en: 'Every user who signs up through this link is attributed to you. Do not modify or shorten the link — it breaks tracking.',
+  },
+  shareCenter:      { es: '🚀 Share Center', en: '🚀 Share Center' },
+  currentPostLabel: { es: 'Publicación actual', en: 'Current post' },
+  currentPostSub: {
+    es: 'Esta es la publicación que Cruzar está posteando en FB ahorita mismo. Cópiala y pégala directo en los grupos.',
+    en: 'This is the post Cruzar is publishing to FB right now. Copy it and paste directly into groups.',
+  },
+  copyCaption:    { es: 'Copiar caption', en: 'Copy caption' },
+  couldntLoad:    { es: 'No se pudo cargar la publicación actual.', en: 'Could not load the current post.' },
+  fbPageLabel:    { es: 'Página de Cruzar en FB', en: 'Cruzar FB page' },
+  fbPageSub: {
+    es: 'Compártela pa\' que la gente le dé follow y reciba notificaciones con los tiempos.',
+    en: 'Share it so people follow the page and receive notifications with the wait times.',
+  },
+  copyUrl:        { es: 'Copiar URL', en: 'Copy URL' },
+  copyFullPitch:  { es: 'Copiar pitch completo (texto + link)', en: 'Copy full pitch (text + link)' },
+  pitchCopied:    { es: 'Pitch copiado', en: 'Pitch copied' },
+  shareFooter: {
+    es: 'Cada clic se cuenta como un share en tus números. Copia, abre un grupo abajo, pega, y repite.',
+    en: 'Every click counts as a share in your stats. Copy, open a group below, paste, repeat.',
+  },
+  statsPosts:    { es: 'Posts',      en: 'Posts' },
+  statsSignups:  { es: 'Signups',    en: 'Signups' },
+  statsReports:  { es: 'Reportes',   en: 'Reports' },
+  stats7day:     { es: '7 días',     en: '7 days' },
+  libraryTitle:  { es: '📝 Textos listos pa\' copiar', en: '📝 Ready-to-copy posts' },
+  templatesCount: { es: 'plantillas', en: 'templates' },
+  allLabel: { es: 'Todos', en: 'All' },
+  englishHint: { es: '', en: 'English translation (not posted):' },
+  groupsTitle:  { es: '📘 Grupos para postear', en: '📘 Groups to post in' },
+  groupsCount:  { es: 'grupos', en: 'groups' },
+  openAllGroups: { es: 'Abrir los grupos en pestañas', en: 'Open groups in tabs' },
+  openAllGroupsHint: {
+    es: 'Si el navegador bloquea los pop-ups, permítelos para cruzar.app una vez y vuelve a intentar.',
+    en: 'If your browser blocks pop-ups, allow them for cruzar.app once and try again.',
+  },
+  allRegions: { es: '🌎 Todos', en: '🌎 All' },
+  notAuthTitle: { es: 'Panel del promotor', en: 'Promoter panel' },
+  notAuthSub:   { es: 'Necesitas iniciar sesión con la cuenta de promotor.', en: 'Sign in with your promoter account.' },
+  signIn:       { es: 'Iniciar sesión', en: 'Sign in' },
+  noAccessTitle: { es: 'Sin acceso', en: 'No access' },
+  noAccessSub: {
+    es: 'Esta cuenta no es una cuenta de promotor. Contacta a Diego si crees que deberías tener acceso.',
+    en: 'This account is not a promoter account. Contact Diego if you think you should have access.',
+  },
+  back: { es: '← Regresar', en: '← Go back' },
+}
+
 export function PromoterDashboard() {
   const { user, loading: authLoading } = useAuth()
+  const { lang, toggle: toggleLang } = useLang()
+  const en = lang === 'en'
+  const t = (key: keyof typeof T) => T[key][en ? 'en' : 'es']
   const [displayName, setDisplayName] = useState('')
   const [stats, setStats] = useState<Stats | null>(null)
   const [accessError, setAccessError] = useState<string | null>(null)
@@ -57,6 +124,8 @@ export function PromoterDashboard() {
 
   const refLink = user ? `https://cruzar.app/?ref=${user.id}` : 'https://cruzar.app'
   const fbPageUrl = 'https://www.facebook.com/cruzar'
+  // Page recruitment pitch stays in Spanish — this is what gets
+  // pasted into groups. The language toggle only affects chrome.
   const pagePitch = `Raza, síganse a Cruzar en Facebook — publica los tiempos de los puentes 4 veces al día (mañana, mediodía, tarde, noche). Les llega una notificación directo al teléfono, ya no tienen que andar buscando en los grupos 👉 ${fbPageUrl}`
 
   // Load stats on mount
@@ -164,6 +233,21 @@ export function PromoterDashboard() {
     } catch { /* ignore */ }
   }
 
+  // Blast mode: open every visible group in a new tab with one click.
+  // Browsers block multiple window.open() calls from a single gesture
+  // by default — we stagger them slightly and rely on the user
+  // allowing pop-ups for cruzar.app. Each open logs a share event
+  // so the stats reflect the blast.
+  function bulkOpenGroups() {
+    if (visibleGroups.length === 0) return
+    visibleGroups.forEach((group, idx) => {
+      setTimeout(() => {
+        window.open(group.url, `_blank_${group.url}`, 'noopener,noreferrer')
+        logShare('bulk-open', 'evergreen', 'bulk_open', group.name)
+      }, idx * 150)
+    })
+  }
+
   const visibleTemplates = useMemo(() => {
     return categoryFilter === 'all'
       ? PROMOTER_TEMPLATES
@@ -190,12 +274,12 @@ export function PromoterDashboard() {
       <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
         <div className="max-w-sm w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 text-center">
           <p className="text-3xl mb-3">🔒</p>
-          <h1 className="text-lg font-black text-gray-900 dark:text-gray-100">Panel del promotor</h1>
+          <h1 className="text-lg font-black text-gray-900 dark:text-gray-100">{t('notAuthTitle')}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
-            Necesitas iniciar sesión con la cuenta de promotor.
+            {t('notAuthSub')}
           </p>
           <Link href="/login?next=/promoter" className="mt-4 block w-full bg-blue-600 text-white text-sm font-bold rounded-2xl py-3">
-            Iniciar sesión
+            {t('signIn')}
           </Link>
         </div>
       </main>
@@ -207,12 +291,12 @@ export function PromoterDashboard() {
       <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center p-6">
         <div className="max-w-sm w-full bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 text-center">
           <p className="text-3xl mb-3">🚫</p>
-          <h1 className="text-lg font-black text-gray-900 dark:text-gray-100">Sin acceso</h1>
+          <h1 className="text-lg font-black text-gray-900 dark:text-gray-100">{t('noAccessTitle')}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
-            Esta cuenta no es una cuenta de promotor. Contacta a Diego si crees que deberías tener acceso.
+            {t('noAccessSub')}
           </p>
           <Link href="/" className="mt-4 block w-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm font-bold rounded-2xl py-3">
-            ← Regresar
+            {t('back')}
           </Link>
         </div>
       </main>
@@ -223,25 +307,33 @@ export function PromoterDashboard() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-2xl mx-auto px-4 pt-6 pb-12">
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex items-start justify-between mb-4 gap-3">
+          <div className="min-w-0">
             <Link href="/" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
               <ArrowLeft className="w-3 h-3" /> Cruzar
             </Link>
             <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 mt-1">
-              Panel del promotor
+              {t('panelTitle')}
             </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {displayName && `${displayName} · `}Tu link, tu contenido, tus números.
+              {displayName && `${displayName} · `}{t('panelSub')}
             </p>
           </div>
+          <button
+            onClick={toggleLang}
+            className="flex-shrink-0 flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-[11px] font-bold text-gray-700 dark:text-gray-300 active:scale-95 transition-transform"
+            title="Toggle panel language"
+          >
+            <Languages className="w-3 h-3" />
+            {en ? 'EN' : 'ES'}
+          </button>
         </div>
 
         {/* ─── Referral link card ──────────────────────────── */}
         <div className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 rounded-2xl p-5 shadow-xl text-white mb-4 relative overflow-hidden">
           <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
           <div className="relative">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-blue-100">Tu link único</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-blue-100">{t('refLinkLabel')}</p>
             <div className="mt-2 flex items-stretch gap-2">
               <div className="flex-1 min-w-0 bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2.5 border border-white/20">
                 <p className="text-xs font-mono text-white truncate">{refLink}</p>
@@ -251,14 +343,14 @@ export function PromoterDashboard() {
                 className="flex-shrink-0 bg-white text-indigo-700 font-black text-xs px-4 rounded-xl active:scale-95 transition-transform"
               >
                 {copiedId === 'ref-link' ? (
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3" /> Copiado</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3" /> {t('copied')}</span>
                 ) : (
-                  <span className="flex items-center gap-1"><Copy className="w-3 h-3" /> Copiar</span>
+                  <span className="flex items-center gap-1"><Copy className="w-3 h-3" /> {t('copy')}</span>
                 )}
               </button>
             </div>
             <p className="text-[10px] text-blue-100 mt-2 leading-snug">
-              Cada usuario que se registre por este link queda atribuido a ti. No cambies el link, no lo acortes — se rompe el tracking.
+              {t('refLinkCaveat')}
             </p>
           </div>
         </div>
@@ -270,7 +362,7 @@ export function PromoterDashboard() {
             intro text for group shares. */}
         <section className="mb-5">
           <h2 className="text-base font-black text-gray-900 dark:text-gray-100 mb-3">
-            🚀 Share Center
+            {t('shareCenter')}
           </h2>
 
           {/* Live caption — THE current FB post */}
@@ -279,7 +371,7 @@ export function PromoterDashboard() {
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="text-sm">📝</span>
                 <p className="text-[11px] font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">
-                  Publicación actual {livePeak && `· ${livePeak.slice(0, 20)}...`}
+                  {t('currentPostLabel')} {livePeak && `· ${livePeak.slice(0, 20)}...`}
                 </p>
               </div>
               <button
@@ -292,14 +384,14 @@ export function PromoterDashboard() {
                 }`}
               >
                 {copiedId === 'live-caption' ? (
-                  <><Check className="w-3 h-3" /> Copiado</>
+                  <><Check className="w-3 h-3" /> {t('copied')}</>
                 ) : (
-                  <><Copy className="w-3 h-3" /> Copiar caption</>
+                  <><Copy className="w-3 h-3" /> {t('copyCaption')}</>
                 )}
               </button>
             </div>
             <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-snug mb-2">
-              Esta es la publicación que Cruzar está posteando en FB ahorita mismo. Cópiala y pégala directo en los grupos.
+              {t('currentPostSub')}
             </p>
             {liveLoading ? (
               <div className="h-20 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
@@ -311,7 +403,7 @@ export function PromoterDashboard() {
               </div>
             ) : (
               <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-center">
-                <p className="text-[11px] text-gray-400">No se pudo cargar la publicación actual.</p>
+                <p className="text-[11px] text-gray-400">{t('couldntLoad')}</p>
               </div>
             )}
           </div>
@@ -322,7 +414,7 @@ export function PromoterDashboard() {
               <div className="flex items-center gap-1.5">
                 <span className="text-sm">📘</span>
                 <p className="text-[11px] font-black uppercase tracking-wider">
-                  Página de Cruzar en FB
+                  {t('fbPageLabel')}
                 </p>
               </div>
               <button
@@ -334,14 +426,14 @@ export function PromoterDashboard() {
                 }`}
               >
                 {copiedId === 'page-url' ? (
-                  <><Check className="w-3 h-3" /> Copiado</>
+                  <><Check className="w-3 h-3" /> {t('copied')}</>
                 ) : (
-                  <><Copy className="w-3 h-3" /> Copiar URL</>
+                  <><Copy className="w-3 h-3" /> {t('copyUrl')}</>
                 )}
               </button>
             </div>
             <p className="text-[11px] text-blue-100 mb-2 leading-snug">
-              Compártela pa\' que la gente le dé follow y reciba notificaciones con los tiempos.
+              {t('fbPageSub')}
             </p>
             <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20 mb-2">
               <p className="text-xs font-mono text-white truncate">{fbPageUrl}</p>
@@ -355,25 +447,25 @@ export function PromoterDashboard() {
               }`}
             >
               {copiedId === 'page-pitch' ? (
-                <><Check className="w-3 h-3" /> Pitch copiado</>
+                <><Check className="w-3 h-3" /> {t('pitchCopied')}</>
               ) : (
-                <><Copy className="w-3 h-3" /> Copiar pitch completo (texto + link)</>
+                <><Copy className="w-3 h-3" /> {t('copyFullPitch')}</>
               )}
             </button>
           </div>
 
           <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug px-1">
-            Cada clic se cuenta como un share en tus números. Copia, abre un grupo abajo, pega, y repite.
+            {t('shareFooter')}
           </p>
         </section>
 
         {/* ─── Stats row ───────────────────────────────────── */}
         {stats && (
           <div className="grid grid-cols-4 gap-2 mb-6">
-            <StatTile icon={<Share2 className="w-4 h-4" />} label="Posts" value={stats.shares} color="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300" />
-            <StatTile icon={<Users className="w-4 h-4" />} label="Signups" value={stats.signups} color="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" />
-            <StatTile icon={<MessageSquare className="w-4 h-4" />} label="Reportes" value={stats.reports} color="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300" />
-            <StatTile icon={<TrendingUp className="w-4 h-4" />} label="7 días" value={stats.weeklySignups} color="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300" />
+            <StatTile icon={<Share2 className="w-4 h-4" />} label={t('statsPosts')} value={stats.shares} color="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300" />
+            <StatTile icon={<Users className="w-4 h-4" />} label={t('statsSignups')} value={stats.signups} color="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" />
+            <StatTile icon={<MessageSquare className="w-4 h-4" />} label={t('statsReports')} value={stats.reports} color="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300" />
+            <StatTile icon={<TrendingUp className="w-4 h-4" />} label={t('stats7day')} value={stats.weeklySignups} color="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300" />
           </div>
         )}
 
@@ -381,9 +473,9 @@ export function PromoterDashboard() {
         <section className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
-              📝 Textos listos pa\' copiar
+              {t('libraryTitle')}
             </h2>
-            <span className="text-[10px] text-gray-400">{visibleTemplates.length} plantillas</span>
+            <span className="text-[10px] text-gray-400">{visibleTemplates.length} {t('templatesCount')}</span>
           </div>
 
           {/* Category tabs */}
@@ -396,7 +488,7 @@ export function PromoterDashboard() {
                   : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
               }`}
             >
-              Todos
+              {t('allLabel')}
             </button>
             {ALL_CATEGORIES.map((cat) => {
               const meta = CATEGORY_META[cat]
@@ -441,12 +533,26 @@ export function PromoterDashboard() {
                           : 'bg-blue-600 text-white hover:bg-blue-700'
                       }`}
                     >
-                      {isCopied ? <><Check className="w-3 h-3" /> Copiado</> : <><Copy className="w-3 h-3" /> Copiar</>}
+                      {isCopied ? <><Check className="w-3 h-3" /> {t('copied')}</> : <><Copy className="w-3 h-3" /> {t('copy')}</>}
                     </button>
                   </div>
                   <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-snug">
                     {rendered}
                   </p>
+                  {/* English comprehension hint — only rendered when the
+                      promoter has flipped the chrome language to English.
+                      This is NOT posted. The copy button still grabs
+                      the Spanish text above. */}
+                  {en && (
+                    <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider leading-none mb-1">
+                        {t('englishHint')}
+                      </p>
+                      <p className="text-[11px] italic text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">
+                        {template.translationEn.replace(/\{\{refLink\}\}/g, refLink)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -457,10 +563,27 @@ export function PromoterDashboard() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-black text-gray-900 dark:text-gray-100">
-              📘 Grupos para postear
+              {t('groupsTitle')}
             </h2>
-            <span className="text-[10px] text-gray-400">{visibleGroups.length} grupos</span>
+            <span className="text-[10px] text-gray-400">{visibleGroups.length} {t('groupsCount')}</span>
           </div>
+
+          {/* Bulk open button — fires window.open for every visible group
+              with a slight stagger so pop-up blockers have a chance to
+              allow them through. User still has to paste + post in each
+              tab manually (FB API blocks true auto-post to groups), but
+              this removes the "hunt for the next group" friction. */}
+          <button
+            onClick={bulkOpenGroups}
+            disabled={visibleGroups.length === 0}
+            className="w-full mb-2 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white font-black text-sm rounded-2xl py-3 shadow-sm active:scale-[0.98] transition-transform disabled:opacity-40"
+          >
+            <Zap className="w-4 h-4" />
+            {t('openAllGroups')} ({visibleGroups.length})
+          </button>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug px-1 mb-3">
+            {t('openAllGroupsHint')}
+          </p>
 
           {/* Region tabs */}
           <div className="flex flex-wrap gap-1.5 mb-3">
@@ -472,7 +595,7 @@ export function PromoterDashboard() {
                   : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
               }`}
             >
-              🌎 Todos
+              {t('allRegions')}
             </button>
             {(Object.keys(REGION_LABELS) as FbGroupRegion[]).map((r) => {
               const meta = REGION_LABELS[r]
