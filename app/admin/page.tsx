@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
 import { Copy, Check, ExternalLink, RefreshCw } from 'lucide-react'
 import { HeroGenerator } from '@/components/admin/HeroGenerator'
+import { DataExplorer } from '@/components/admin/DataExplorer'
 import { ViralLoopDetail } from '@/components/admin/ViralLoopDetail'
 import { DivergenceTile } from '@/components/admin/DivergenceTile'
 import { GrowthEventsTile } from '@/components/admin/GrowthEventsTile'
@@ -96,9 +97,9 @@ interface Subscription {
 export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  type AdminTab = 'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest' | 'ports' | 'hero'
+  type AdminTab = 'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest' | 'ports' | 'hero' | 'moat'
   type AdminSection = 'observe' | 'users' | 'content' | 'ai'
-  const [tab, setTab] = useState<AdminTab>('stats')
+  const [tab, setTab] = useState<AdminTab>('moat')
   const [section, setSection] = useState<AdminSection>('observe')
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
   const [subs, setSubs] = useState<Subscription[]>([])
@@ -512,7 +513,7 @@ export default function AdminPage() {
             Each section shows only its 2-3 relevant sub-tabs. */}
         <div className="flex gap-1 mb-3 overflow-x-auto">
           {([
-            { id: 'observe' as const, label: '📊 Observe',  tabs: ['stats', 'ingest', 'cron'] as AdminTab[] },
+            { id: 'observe' as const, label: '📊 Observe',  tabs: ['moat', 'stats', 'ingest', 'cron'] as AdminTab[] },
             { id: 'users'   as const, label: '👥 Accounts', tabs: ['users', 'subs', 'advertisers'] as AdminTab[] },
             { id: 'content' as const, label: '🌉 Content',  tabs: ['groups', 'ports', 'hero'] as AdminTab[] },
             { id: 'ai'      as const, label: '🤖 AI Tools', tabs: ['post', 'reply', 'blast'] as AdminTab[] },
@@ -540,7 +541,7 @@ export default function AdminPage() {
         <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 mb-5">
           {(() => {
             const SECTION_TABS: Record<AdminSection, AdminTab[]> = {
-              observe: ['stats', 'ingest', 'cron'],
+              observe: ['moat', 'stats', 'ingest', 'cron'],
               users:   ['users', 'subs', 'advertisers'],
               content: ['groups', 'ports', 'hero'],
               ai:      ['post', 'reply', 'blast'],
@@ -548,7 +549,8 @@ export default function AdminPage() {
             return SECTION_TABS[section].map((t) => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors capitalize ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
-                {t === 'stats'       ? '📊 Stats' :
+                {t === 'moat'        ? '💎 Moat' :
+                 t === 'stats'       ? '📊 Stats' :
                  t === 'ingest'      ? '📥 Ingest' :
                  t === 'users'       ? '👥 Users' :
                  t === 'ports'       ? '🌉 Ports' :
@@ -564,6 +566,9 @@ export default function AdminPage() {
             ))
           })()}
         </div>
+
+        {/* Data Explorer — the moat made visible */}
+        {tab === 'moat' && <DataExplorer />}
 
         {/* Hero Generator */}
         {tab === 'hero' && <HeroGenerator />}
