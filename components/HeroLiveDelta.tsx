@@ -337,45 +337,43 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
 
             {/* Loss-aversion microcopy: staying = uncertainty, signing up = certainty.
                 Only shown to guests — logged-in users have already committed. */}
-            {!user && (
-              <p className="mt-2 text-[11px] text-amber-200 font-semibold leading-snug cruzar-rise cruzar-rise-delay-1">
-                {es
-                  ? '⚠️ Esta espera cambia cada 5 minutos. Te puede subir 20 min sin avisarte.'
-                  : '⚠️ This wait changes every 5 min. It can jump 20 min without warning.'}
-              </p>
-            )}
+            <p className="mt-2 text-[11px] text-amber-200 font-semibold leading-snug cruzar-rise cruzar-rise-delay-1">
+              {es
+                ? '⚠️ Esta espera cambia cada 5 minutos. Te puede subir 20 min sin avisarte.'
+                : '⚠️ This wait changes every 5 min. It can jump 20 min without warning.'}
+            </p>
           </div>
 
-          {/* Fake notification preview — shows GUESTS the product they get.
-              This is the climax of the card: "here's literally what arrives
-              on your phone when you sign up." Hidden for logged-in users. */}
-          {!user && (
-            <div className="mt-4 bg-white rounded-2xl px-3 py-2.5 shadow-xl cruzar-rise cruzar-rise-delay-2 border border-white/40">
-              <div className="flex items-start gap-2.5">
-                <img
-                  src="/logo-icon.svg"
-                  alt=""
-                  width={32}
-                  height={32}
-                  className="flex-shrink-0 rounded-lg"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide truncate">Cruzar</p>
-                    <p className="text-[9px] text-gray-400 flex-shrink-0">{es ? 'ahora' : 'now'}</p>
-                  </div>
-                  <p className="text-[11px] font-bold text-gray-900 leading-snug truncate">
-                    🌉 {headlineName} — {Math.max(5, headlineWait - 15)} min
-                  </p>
-                  <p className="text-[10px] text-gray-600 leading-snug">
-                    {es
-                      ? 'La espera bajó. Es tu mejor momento pa\' cruzar.'
-                      : 'The wait just dropped. Your best window to cross.'}
-                  </p>
+          {/* Fake notification preview — shows users the product they get
+              when alerts are enabled. This is the climax of the card:
+              "here's literally what arrives on your phone." Visible to
+              everyone (guests AND signed-in users) so signed-in users
+              who haven't set up alerts yet still see the value prop. */}
+          <div className="mt-4 bg-white rounded-2xl px-3 py-2.5 shadow-xl cruzar-rise cruzar-rise-delay-2 border border-white/40">
+            <div className="flex items-start gap-2.5">
+              <img
+                src="/logo-icon.svg"
+                alt=""
+                width={32}
+                height={32}
+                className="flex-shrink-0 rounded-lg"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide truncate">Cruzar</p>
+                  <p className="text-[9px] text-gray-400 flex-shrink-0">{es ? 'ahora' : 'now'}</p>
                 </div>
+                <p className="text-[11px] font-bold text-gray-900 leading-snug truncate">
+                  🌉 {headlineName} — {Math.max(5, headlineWait - 15)} min
+                </p>
+                <p className="text-[10px] text-gray-600 leading-snug">
+                  {es
+                    ? 'La espera bajó. Es tu mejor momento pa\' cruzar.'
+                    : 'The wait just dropped. Your best window to cross.'}
+                </p>
               </div>
             </div>
-          )}
+          </div>
 
           {/* The CTA button — now the visual climax, not a passive stripe */}
           <div className="mt-3 cruzar-rise cruzar-rise-delay-2">

@@ -6,6 +6,7 @@ import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { getPortMeta } from '@/lib/portMeta'
 import { formatWaitLabel } from '@/lib/formatWait'
+import { PortSearch } from '@/components/PortSearch'
 import type { PortWaitTime } from '@/types'
 
 // Analytics tab. Pro-gated. Houses everything we used to stack on
@@ -90,24 +91,16 @@ export default function DatosPage() {
         ) : (
           <>
             <div className="mt-3">
-              <label className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-1 block">
                 {es ? 'Puente' : 'Crossing'}
               </label>
-              <select
-                value={selectedPortId || ''}
-                onChange={(e) => { setSelectedPortId(e.target.value); setHourly(null) }}
-                className="mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-3 py-2.5 text-sm font-semibold text-gray-900 dark:text-gray-100"
-              >
-                {ports.map((p) => {
-                  const meta = getPortMeta(p.portId)
-                  const name = p.localNameOverride || meta.localName || p.portName
-                  return (
-                    <option key={p.portId} value={p.portId}>
-                      {name} — {meta.city}
-                    </option>
-                  )
-                })}
-              </select>
+              <PortSearch
+                ports={ports}
+                value={selectedPortId}
+                onChange={(portId) => { setSelectedPortId(portId); setHourly(null) }}
+                placeholder={es ? 'Busca tu puente — Hidalgo, Pharr, Juárez…' : 'Search your crossing — Hidalgo, Pharr, Juárez…'}
+                showWait={false}
+              />
             </div>
 
             {selectedPort && (
@@ -151,14 +144,31 @@ export default function DatosPage() {
               </div>
             )}
 
-            {hourly && hourly.hours && hourly.hours.length > 0 && (
-              <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-2">
-                  {es ? 'Patrón por hora' : 'Hourly pattern'}
-                </p>
-                <HourlyBarChart data={hourly.hours} />
-              </div>
-            )}
+            {hourly && hourly.hours && hourly.hours.length > 0 && (() => {
+              const hasMeaningfulData = hourly.hours.some((h) => (h.avgWait ?? 0) > 0)
+              return (
+                <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
+                  <div className="flex items-baseline justify-between mb-2">
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400">
+                      {es ? 'Patrón por hora' : 'Hourly pattern'}
+                    </p>
+                    {!hasMeaningfulData && (
+                      <p className="text-[10px] text-amber-500 font-semibold">
+                        {es ? 'Poca data aún' : 'Data still coming in'}
+                      </p>
+                    )}
+                  </div>
+                  <HourlyBarChart data={hourly.hours} />
+                  {!hasMeaningfulData && (
+                    <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                      {es
+                        ? 'Estamos recolectando lecturas de la CBP cada 15 minutos. En unos días la gráfica va a llenarse con el patrón real de este puente.'
+                        : 'We collect CBP readings every 15 minutes. Within a few days this chart will fill in with this bridge\'s real pattern.'}
+                    </p>
+                  )}
+                </div>
+              )
+            })()}
 
             {!hourly && selectedPortId && (
               <p className="mt-6 text-center text-xs text-gray-400">
@@ -182,8 +192,13 @@ function HourlyBarChart({ data }: { data: Array<{ hour: number; avgWait: number 
   return (
     <div className="flex items-end gap-0.5 h-28">
       {data.map((d) => {
-        const h = Math.max(4, (d.avgWait / max) * 100)
-        const color = d.avgWait <= 20 ? 'bg-green-500' : d.avgWait <= 45 ? 'bg-amber-500' : 'bg-red-500'
+        // Minimum bar height 10% so a hour with no-yet-data still shows
+        // as a visible stub instead of a near-invisible 4px sliver.
+        const h = Math.max(10, (d.avgWait / max) * 100)
+        const color = d.avgWait <= 0 ? 'bg-gray-200 dark:bg-gray-700'
+          : d.avgWait <= 20 ? 'bg-green-500'
+          : d.avgWait <= 45 ? 'bg-amber-500'
+          : 'bg-red-500'
         return (
           <div key={d.hour} className="flex-1 flex flex-col items-center gap-1" title={`${d.hour}:00 — ${d.avgWait} min`}>
             <div className="w-full rounded-t bg-gray-100 dark:bg-gray-700 flex-1 flex items-end">

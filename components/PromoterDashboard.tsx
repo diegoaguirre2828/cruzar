@@ -591,7 +591,7 @@ export function PromoterDashboard() {
                       : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
                   }`}
                 >
-                  {meta.emoji} {meta.es}
+                  {meta.emoji} {en ? meta.en : meta.es}
                 </button>
               )
             })}
@@ -611,7 +611,7 @@ export function PromoterDashboard() {
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm leading-none">{CATEGORY_META[template.category].emoji}</span>
                       <span className="text-[11px] font-bold text-gray-900 dark:text-gray-100 truncate">
-                        {template.label}
+                        {en ? template.labelEn : template.label}
                       </span>
                     </div>
                     <button

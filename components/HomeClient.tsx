@@ -24,7 +24,6 @@ import { InstallPill } from '@/components/InstallPill'
 import { ContributionTodayPill } from '@/components/ContributionTodayPill'
 import { HolidayOverlay } from '@/components/HolidayOverlay'
 import { ReciprocityCard } from '@/components/ReciprocityCard'
-import { DailyTip } from '@/components/DailyTip'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
@@ -187,12 +186,11 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             a standalone PWA. ContributionTodayPill only renders for
             signed-in users with at least one report today. */}
         {!isBusiness && (
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
             <RegionPicker />
             <InstallPill />
             <ExchangeRatePill />
             <WeatherHook variant="pill" />
-            <FbPagePill />
             {tier !== 'guest' && <GuardianProgressCard variant="pill" />}
             {tier !== 'guest' && <ContributionTodayPill />}
           </div>
@@ -211,14 +209,11 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             ambient content). */}
         {!isBusiness && tier !== 'guest' && <ReciprocityCard />}
 
-        {/* Hero carousel — three swipeable slides on mobile, grid on
-            desktop. Slides:
-              1. HeroLiveDelta (personalized nearest/fastest crossing)
+        {/* Hero carousel — two swipeable slides on mobile, grid on desktop:
+              1. HeroLiveDelta (personalized nearest crossing + alert CTA)
               2. LiveActivityTicker (live community reporting)
-              3. DailyTip (rotating bilingual advice)
-            Everyone gets all three regardless of auth state — the
-            carousel absorbs what used to be three separate widgets
-            that ate vertical space serially. */}
+            The third DailyTip slide was removed — it read as sparse and
+            low-value compared to the other two. */}
         {!isBusiness && authLoading && (
           <div
             aria-hidden="true"
@@ -244,12 +239,6 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
                 labelEs: 'Reportes en vivo',
                 labelEn: 'Live reports',
                 content: <LiveActivityTicker initialReports={initialReports} />,
-              },
-              {
-                key: 'tip',
-                labelEs: 'Consejo',
-                labelEn: 'Tip',
-                content: <DailyTip variant="carousel" />,
               },
             ]}
           />
@@ -307,6 +296,15 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
 
         {/* Exchange rate lives as a pill in the header now, on tap it opens
             the full widget in a bottom sheet — no big card below the list. */}
+
+        {/* FB page follow — moved out of the top header row because Diego
+            didn't want the Follow FB pill as the first thing users see.
+            Lives here as a small, non-prominent action below the main list. */}
+        {!isBusiness && (
+          <div className="mt-4 flex justify-center">
+            <FbPagePill />
+          </div>
+        )}
 
         {/* Services in Mexico banner — moved below the list */}
         {!isBusiness && (

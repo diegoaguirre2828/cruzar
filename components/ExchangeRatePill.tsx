@@ -65,6 +65,7 @@ export function ExchangeRatePill() {
       {open && (
         <div
           className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+          style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
           onClick={() => setOpen(false)}
           role="dialog"
         >
