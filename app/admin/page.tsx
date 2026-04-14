@@ -96,7 +96,10 @@ interface Subscription {
 export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest' | 'ports' | 'hero'>('groups')
+  type AdminTab = 'groups' | 'post' | 'reply' | 'cron' | 'advertisers' | 'subs' | 'stats' | 'blast' | 'users' | 'ingest' | 'ports' | 'hero'
+  type AdminSection = 'observe' | 'users' | 'content' | 'ai'
+  const [tab, setTab] = useState<AdminTab>('stats')
+  const [section, setSection] = useState<AdminSection>('observe')
   const [advertisers, setAdvertisers] = useState<Advertiser[]>([])
   const [subs, setSubs] = useState<Subscription[]>([])
   const [stats, setStats] = useState<{
@@ -503,25 +506,63 @@ export default function AdminPage() {
           <p className="text-xs text-gray-400">cruzar.app</p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-          {(['stats', 'ingest', 'users', 'ports', 'blast', 'hero', 'groups', 'post', 'reply', 'cron', 'advertisers', 'subs'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors capitalize ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
-              {t === 'stats'       ? '📊 Stats' :
-               t === 'ingest'      ? '📥 Ingest' :
-               t === 'users'       ? '👥 Users' :
-               t === 'ports'       ? '🌉 Ports' :
-               t === 'blast'       ? '📣 Blast' :
-               t === 'hero'        ? '🎨 Hero' :
-               t === 'groups'      ? `Groups (${FACEBOOK_GROUPS.length})` :
-               t === 'post'        ? '✍️ Posts' :
-               t === 'reply'       ? '💬 Reply' :
-               t === 'cron'        ? '⏰ Cron' :
-               t === 'advertisers' ? `Ads (${advertisers.length})` :
-               `Subs (${subs.length})`}
+        {/* Section picker — top-level groups that reduce the flat
+            12-tab density to 4 manageable sections. Diego's
+            2026-04-14 direction: "tab density" was the clutter source.
+            Each section shows only its 2-3 relevant sub-tabs. */}
+        <div className="flex gap-1 mb-3 overflow-x-auto">
+          {([
+            { id: 'observe' as const, label: '📊 Observe',  tabs: ['stats', 'ingest', 'cron'] as AdminTab[] },
+            { id: 'users'   as const, label: '👥 Accounts', tabs: ['users', 'subs', 'advertisers'] as AdminTab[] },
+            { id: 'content' as const, label: '🌉 Content',  tabs: ['groups', 'ports', 'hero'] as AdminTab[] },
+            { id: 'ai'      as const, label: '🤖 AI Tools', tabs: ['post', 'reply', 'blast'] as AdminTab[] },
+          ]).map((s) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                setSection(s.id)
+                // Jump to the first tab in the new section so content
+                // matches the selector state.
+                if (!s.tabs.includes(tab)) setTab(s.tabs[0])
+              }}
+              className={`flex-shrink-0 px-4 py-2 text-xs font-bold rounded-xl transition-colors whitespace-nowrap ${
+                section === s.id
+                  ? 'bg-gray-900 text-white shadow'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              {s.label}
             </button>
           ))}
+        </div>
+
+        {/* Sub-tabs — only the 2-3 tabs belonging to the active section */}
+        <div className="flex flex-wrap gap-1 bg-gray-100 rounded-xl p-1 mb-5">
+          {(() => {
+            const SECTION_TABS: Record<AdminSection, AdminTab[]> = {
+              observe: ['stats', 'ingest', 'cron'],
+              users:   ['users', 'subs', 'advertisers'],
+              content: ['groups', 'ports', 'hero'],
+              ai:      ['post', 'reply', 'blast'],
+            }
+            return SECTION_TABS[section].map((t) => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`px-4 py-2 text-xs font-medium rounded-lg transition-colors capitalize ${tab === t ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>
+                {t === 'stats'       ? '📊 Stats' :
+                 t === 'ingest'      ? '📥 Ingest' :
+                 t === 'users'       ? '👥 Users' :
+                 t === 'ports'       ? '🌉 Ports' :
+                 t === 'blast'       ? '📣 Blast' :
+                 t === 'hero'        ? '🎨 Hero' :
+                 t === 'groups'      ? `Groups (${FACEBOOK_GROUPS.length})` :
+                 t === 'post'        ? '✍️ Posts' :
+                 t === 'reply'       ? '💬 Reply' :
+                 t === 'cron'        ? '⏰ Cron' :
+                 t === 'advertisers' ? `Ads (${advertisers.length})` :
+                 `Subs (${subs.length})`}
+              </button>
+            ))
+          })()}
         </div>
 
         {/* Hero Generator */}
