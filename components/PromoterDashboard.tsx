@@ -51,8 +51,13 @@ export function PromoterDashboard() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState<TemplateCategory | 'all'>('all')
   const [regionFilter, setRegionFilter] = useState<FbGroupRegion | 'all'>('all')
+  const [liveCaption, setLiveCaption] = useState<string | null>(null)
+  const [livePeak, setLivePeak] = useState<string | null>(null)
+  const [liveLoading, setLiveLoading] = useState(true)
 
   const refLink = user ? `https://cruzar.app/?ref=${user.id}` : 'https://cruzar.app'
+  const fbPageUrl = 'https://www.facebook.com/cruzar'
+  const pagePitch = `Raza, síganse a Cruzar en Facebook — publica los tiempos de los puentes 4 veces al día (mañana, mediodía, tarde, noche). Les llega una notificación directo al teléfono, ya no tienen que andar buscando en los grupos 👉 ${fbPageUrl}`
 
   // Load stats on mount
   useEffect(() => {
@@ -83,6 +88,20 @@ export function PromoterDashboard() {
       })
       .catch(() => setAccessError('error'))
       .finally(() => setLoading(false))
+
+    // Fetch the live caption currently being posted to FB. Separate
+    // from stats so the dashboard still renders if this endpoint
+    // errors out (e.g. CBP outage).
+    fetch('/api/promoter/latest-caption')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setLiveCaption(data.caption)
+          setLivePeak(data.peak)
+        }
+      })
+      .catch(() => { /* silent */ })
+      .finally(() => setLiveLoading(false))
   }, [user, authLoading])
 
   async function logShare(templateId: string, category: string, channel: string, targetGroup?: string) {
@@ -114,6 +133,34 @@ export function PromoterDashboard() {
       await navigator.clipboard.writeText(refLink)
       setCopiedId('ref-link')
       setTimeout(() => setCopiedId(null), 2000)
+    } catch { /* ignore */ }
+  }
+
+  async function copyLiveCaption() {
+    if (!liveCaption) return
+    try {
+      await navigator.clipboard.writeText(liveCaption)
+      setCopiedId('live-caption')
+      setTimeout(() => setCopiedId(null), 2000)
+      logShare('live-caption', 'evergreen', 'copy_live_caption')
+    } catch { /* ignore */ }
+  }
+
+  async function copyPageUrl() {
+    try {
+      await navigator.clipboard.writeText(fbPageUrl)
+      setCopiedId('page-url')
+      setTimeout(() => setCopiedId(null), 2000)
+      logShare('page-url', 'page_follow', 'copy_page_url')
+    } catch { /* ignore */ }
+  }
+
+  async function copyPagePitch() {
+    try {
+      await navigator.clipboard.writeText(pagePitch)
+      setCopiedId('page-pitch')
+      setTimeout(() => setCopiedId(null), 2000)
+      logShare('page-pitch', 'page_follow', 'copy_page_pitch')
     } catch { /* ignore */ }
   }
 
@@ -215,6 +262,110 @@ export function PromoterDashboard() {
             </p>
           </div>
         </div>
+
+        {/* ─── Share Center ────────────────────────────────── */}
+        {/* Three copy actions for the manual "post in groups" workflow.
+            Live caption = same caption Make.com is posting to FB right
+            now. Page URL = recruit followers. Page pitch = ready-made
+            intro text for group shares. */}
+        <section className="mb-5">
+          <h2 className="text-base font-black text-gray-900 dark:text-gray-100 mb-3">
+            🚀 Share Center
+          </h2>
+
+          {/* Live caption — THE current FB post */}
+          <div className="bg-white dark:bg-gray-800 border-2 border-amber-300 dark:border-amber-700/50 rounded-2xl p-4 mb-2">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-sm">📝</span>
+                <p className="text-[11px] font-black text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                  Publicación actual {livePeak && `· ${livePeak.slice(0, 20)}...`}
+                </p>
+              </div>
+              <button
+                onClick={copyLiveCaption}
+                disabled={!liveCaption}
+                className={`flex-shrink-0 flex items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full transition-colors disabled:opacity-40 ${
+                  copiedId === 'live-caption'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-amber-500 text-white hover:bg-amber-600'
+                }`}
+              >
+                {copiedId === 'live-caption' ? (
+                  <><Check className="w-3 h-3" /> Copiado</>
+                ) : (
+                  <><Copy className="w-3 h-3" /> Copiar caption</>
+                )}
+              </button>
+            </div>
+            <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-snug mb-2">
+              Esta es la publicación que Cruzar está posteando en FB ahorita mismo. Cópiala y pégala directo en los grupos.
+            </p>
+            {liveLoading ? (
+              <div className="h-20 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
+            ) : liveCaption ? (
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 max-h-40 overflow-y-auto">
+                <pre className="text-[11px] text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-snug font-sans">
+                  {liveCaption}
+                </pre>
+              </div>
+            ) : (
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-center">
+                <p className="text-[11px] text-gray-400">No se pudo cargar la publicación actual.</p>
+              </div>
+            )}
+          </div>
+
+          {/* FB Page URL — recruit followers */}
+          <div className="bg-[#1877f2] rounded-2xl p-4 mb-2 text-white">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">📘</span>
+                <p className="text-[11px] font-black uppercase tracking-wider">
+                  Página de Cruzar en FB
+                </p>
+              </div>
+              <button
+                onClick={copyPageUrl}
+                className={`flex items-center gap-1 text-[10px] font-black px-3 py-1.5 rounded-full transition-colors ${
+                  copiedId === 'page-url'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-white text-[#1877f2] hover:bg-blue-50'
+                }`}
+              >
+                {copiedId === 'page-url' ? (
+                  <><Check className="w-3 h-3" /> Copiado</>
+                ) : (
+                  <><Copy className="w-3 h-3" /> Copiar URL</>
+                )}
+              </button>
+            </div>
+            <p className="text-[11px] text-blue-100 mb-2 leading-snug">
+              Compártela pa\' que la gente le dé follow y reciba notificaciones con los tiempos.
+            </p>
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20 mb-2">
+              <p className="text-xs font-mono text-white truncate">{fbPageUrl}</p>
+            </div>
+            <button
+              onClick={copyPagePitch}
+              className={`w-full flex items-center justify-center gap-1 text-[10px] font-black px-3 py-2 rounded-xl transition-colors ${
+                copiedId === 'page-pitch'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
+              }`}
+            >
+              {copiedId === 'page-pitch' ? (
+                <><Check className="w-3 h-3" /> Pitch copiado</>
+              ) : (
+                <><Copy className="w-3 h-3" /> Copiar pitch completo (texto + link)</>
+              )}
+            </button>
+          </div>
+
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug px-1">
+            Cada clic se cuenta como un share en tus números. Copia, abre un grupo abajo, pega, y repite.
+          </p>
+        </section>
 
         {/* ─── Stats row ───────────────────────────────────── */}
         {stats && (
