@@ -58,20 +58,42 @@ function WelcomeInner() {
   // flow. If they have an alert but haven't installed, route to step 2
   // directly — they need to finish the install, or their alert can't
   // actually fire on iOS.
+  //
+  // IMPORTANT — on /api/alerts fetch failure, DO NOT fall through as
+  // if the user has no alert. Returning users with saved alerts were
+  // being sent back to step 1 ("pick a bridge") on every Supabase
+  // hiccup. One retry attempt, then stay neutral.
   useEffect(() => {
     if (!user) return
     const isStandalone =
       typeof window !== 'undefined' &&
       (window.matchMedia('(display-mode: standalone)').matches ||
         (navigator as Navigator & { standalone?: boolean }).standalone === true)
-    fetch('/api/alerts').then((r) => r.json()).then((data) => {
-      const hasAlert = data?.alerts && data.alerts.length > 0
-      if (hasAlert && isStandalone) {
-        router.replace('/dashboard')
-      } else if (hasAlert && !isStandalone) {
-        setStep(2)
+    const check = async (attempt = 0): Promise<void> => {
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 4000)
+        const res = await fetch('/api/alerts', { signal: controller.signal })
+        clearTimeout(timer)
+        if (!res.ok) throw new Error(`status ${res.status}`)
+        const data = await res.json()
+        const hasAlert = data?.alerts && data.alerts.length > 0
+        if (hasAlert && isStandalone) {
+          router.replace('/dashboard')
+        } else if (hasAlert && !isStandalone) {
+          setStep(2)
+        }
+      } catch {
+        if (attempt < 1) {
+          // One retry after a short backoff before giving up
+          setTimeout(() => check(attempt + 1), 1200)
+        }
+        // If retry also fails, stay on step 1 silently — worst case the
+        // user picks a bridge they already picked, which upserts cleanly
+        // via /api/saved + /api/alerts. No data loss.
       }
-    }).catch(() => {})
+    }
+    check()
   }, [user, router])
 
   // Request geolocation — non-blocking, 4s timeout

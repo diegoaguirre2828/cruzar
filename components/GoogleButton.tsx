@@ -9,9 +9,11 @@ export function GoogleButton({
 }: { label?: string; next?: string }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [stalled, setStalled] = useState(false)
 
   async function handleGoogle() {
     setError(null)
+    setStalled(false)
     setLoading(true)
     try {
       const supabase = createClient()
@@ -32,10 +34,13 @@ export function GoogleButton({
         setLoading(false)
         return
       }
-      // Safety net: if the redirect doesn't fire within 6 seconds (popup
-      // blocker, network glitch, bad config), reset the loading state so
-      // the user isn't stuck staring at a spinner.
-      setTimeout(() => setLoading(false), 6000)
+      // Safety net: if the redirect hasn't fired in 3 seconds, surface
+      // a "stalled" hint so the user knows to tap again instead of
+      // staring at a spinner. Previously this was a silent 6s wait.
+      setTimeout(() => {
+        setLoading(false)
+        setStalled(true)
+      }, 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
       setLoading(false)
@@ -61,6 +66,11 @@ export function GoogleButton({
       {error && (
         <p className="mt-2 text-xs text-red-600 text-center">
           Google sign-in failed: {error}
+        </p>
+      )}
+      {stalled && !error && (
+        <p className="mt-2 text-xs text-amber-600 text-center">
+          Didn&apos;t redirect? Tap the button again, or try another sign-in method below.
         </p>
       )}
     </div>

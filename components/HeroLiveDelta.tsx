@@ -397,12 +397,18 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
             )}
           </div>
 
-          {/* Social proof */}
-          <p className="mt-3 text-[11px] text-blue-100 font-medium">
-            {reportCount != null && reportCount > 0
-              ? (es ? `📣 ${reportCount} reportes de la comunidad hoy` : `📣 ${reportCount} community reports today`)
-              : (es ? '📣 Sé el primero en reportar hoy' : '📣 Be the first to report today')}
-          </p>
+          {/* Social proof — "be the first" only shows to guests. Signed-in
+              users get either the count or nothing, so returning users don't
+              get nagged to report on quiet days. */}
+          {reportCount != null && reportCount > 0 ? (
+            <p className="mt-3 text-[11px] text-blue-100 font-medium">
+              {es ? `📣 ${reportCount} reportes de la comunidad hoy` : `📣 ${reportCount} community reports today`}
+            </p>
+          ) : !user ? (
+            <p className="mt-3 text-[11px] text-blue-100 font-medium">
+              {es ? '📣 Sé el primero en reportar hoy' : '📣 Be the first to report today'}
+            </p>
+          ) : null}
 
           {/* CBP cadence disclosure — kills the "la app no actualiza"
               objection by framing the 15-min cadence as CBP's rule,

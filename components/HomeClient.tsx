@@ -70,10 +70,11 @@ function SavedCrossings({ initialPorts }: { initialPorts: PortWaitTime[] | null 
   const { user } = useAuth()
   const { lang } = useLang()
   const [saved, setSaved] = useState<SavedPort[]>([])
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
 
-  useEffect(() => {
+  const load = () => {
     if (!user) return
-    // Use server-provided ports for instant render; fall back to API if absent.
+    setStatus('loading')
     const portsPromise = initialPorts
       ? Promise.resolve({ ports: initialPorts })
       : fetch('/api/ports').then(r => r.json())
@@ -86,10 +87,34 @@ function SavedCrossings({ initialPorts }: { initialPorts: PortWaitTime[] | null 
         return { port_id: s.port_id, port_name: live?.portName || s.port_id, vehicle: live?.vehicle ?? null }
       })
       setSaved(ports)
-    }).catch(() => {})
-  }, [user, initialPorts])
+      setStatus('idle')
+    }).catch(() => {
+      // Surface the failure as a retry state instead of silently
+      // hiding the rail — returning users lost their saved bridges
+      // with no indication previously.
+      setStatus('error')
+    })
+  }
 
-  if (!user || saved.length === 0) return null
+  useEffect(() => { load() }, [user, initialPorts])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!user) return null
+  if (status === 'error') {
+    return (
+      <div className="mt-3 mb-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-3 py-2 flex items-center justify-between">
+        <p className="text-[11px] text-amber-800 dark:text-amber-200 font-medium">
+          {lang === 'es' ? 'No pudimos cargar tus favoritos' : "Couldn't load your saved bridges"}
+        </p>
+        <button
+          onClick={load}
+          className="text-[11px] font-bold text-amber-700 dark:text-amber-300 underline underline-offset-2"
+        >
+          {lang === 'es' ? 'Reintentar' : 'Retry'}
+        </button>
+      </div>
+    )
+  }
+  if (saved.length === 0) return null
 
   return (
     <div className="mt-3 mb-1">

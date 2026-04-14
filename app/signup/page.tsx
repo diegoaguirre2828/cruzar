@@ -66,7 +66,7 @@ export default function SignupPage() {
       password,
       options: {
         emailRedirectTo: typeof window !== 'undefined'
-          ? `${window.location.origin}/auth/callback?next=/dashboard`
+          ? `${window.location.origin}/auth/callback?next=/welcome`
           : undefined,
       },
     })
@@ -107,7 +107,7 @@ export default function SignupPage() {
       options: {
         shouldCreateUser: true,
         emailRedirectTo: typeof window !== 'undefined'
-          ? `${window.location.origin}/auth/callback?next=/dashboard`
+          ? `${window.location.origin}/auth/callback?next=/welcome`
           : undefined,
       },
     })
