@@ -145,7 +145,7 @@ export function HourlyWaitChart({ portId }: Props) {
                   )}
                 </span>
               ) : (
-                <span className="text-gray-400">{es ? 'sin datos' : 'no data'}</span>
+                <span className="text-gray-400">{es ? 'todavía recopilando' : 'still collecting'}</span>
               )}
             </div>
           )}

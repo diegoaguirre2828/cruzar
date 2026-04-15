@@ -186,9 +186,16 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
             {es ? LANE_CONFIG[activeTab].labelEs : LANE_CONFIG[activeTab].labelEn} · {es ? 'ahora' : 'now'}
           </p>
           {currentWait == null ? (
-            <p className="text-2xl font-black mt-2">
-              {es ? 'Sin datos' : 'No data'}
-            </p>
+            <div className="mt-2">
+              <p className="text-2xl font-black leading-tight">
+                {es ? 'CBP no publicó este carril' : 'CBP didn\u2019t publish this lane'}
+              </p>
+              <p className="text-[11px] text-blue-100/80 mt-1">
+                {es
+                  ? 'Reportes de la comunidad abajo · próxima actualización en 15 min'
+                  : 'Community reports below · next update in 15 min'}
+              </p>
+            </div>
           ) : (
             <div className="mt-1 flex items-baseline gap-2">
               {(() => {

@@ -159,8 +159,8 @@ export default function GuidePage() {
           <div className="space-y-2">
             {[
               {
-                en: '📍  Tap "Near Me" on the main screen to see crossings closest to you.',
-                es: '📍  Toca "Cerca de mí" para ver los cruces más cercanos a ti.',
+                en: '📍  Your home region\u2019s bridges show up automatically on the main screen.',
+                es: '📍  Los puentes de tu zona aparecen solos en la pantalla principal.',
               },
               {
                 en: '📣  Tap any crossing → Report to share your real wait time and earn points.',

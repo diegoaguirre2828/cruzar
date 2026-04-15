@@ -47,10 +47,10 @@
   "id": "/",
   "shortcuts": [
     {
-      "name": "Near Me",
-      "short_name": "Near Me",
-      "description": "Find the nearest border crossing",
-      "url": "/?nearme=1",
+      "name": "Mi zona",
+      "short_name": "Mi zona",
+      "description": "Tu región fronteriza · Your border zone",
+      "url": "/",
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],

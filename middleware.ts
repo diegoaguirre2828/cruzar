@@ -22,24 +22,14 @@ const PUBLIC_API_PREFIXES = [
 ]
 
 // Routes that HARD-redirect to /signup when the visitor isn't
-// authenticated. Kept intentionally short — per Diego's 2026-04-14
-// late directive, guests should LAND on most routes and see a
-// rich "feature locked" preview (via LockedFeatureWall) rather
-// than bouncing to signup. That preserves the back button, lets
-// them browse the feature index, and turns the moment of highest
-// intent (they just tapped something) into a signup opportunity.
+// authenticated. Per Diego's 2026-04-14 late late directive, guests
+// only get the main page (/) — everything else bounces to signup
+// with ?next=<original path> so they return to the page they wanted
+// after creating an account.
 //
-// Pages that render LockedFeatureWall themselves — /port/[id],
-// /chat, /leaderboard, /rewards, /planner, /features — are NOT
-// in this list. They handle the guest case in-page.
-//
-// Truly-gated destinations only:
-//   - /dashboard → personal alerts + saved, requires auth
-//   - /promoter  → promoter dashboard, requires is_promoter flag
-//   - /datos     → Insights PRO, Pro-gated (still needs auth first)
-//   - /fleet     → Business tier, requires business auth
-//   - /business  → Business tier
-//   - /admin     → Diego only
+// Public surface kept intentionally tiny: home, auth pages, /mas
+// (so the bottom nav still has a "more" tab guests can browse),
+// /city/[slug] SEO landings, and the deferred-action routes (/fb /g).
 const PROTECTED_ROUTE_PREFIXES = [
   '/dashboard',
   '/promoter',
@@ -47,6 +37,17 @@ const PROTECTED_ROUTE_PREFIXES = [
   '/fleet',
   '/business',
   '/admin',
+  '/port',
+  '/planner',
+  '/chat',
+  '/rewards',
+  '/leaderboard',
+  '/negocios',
+  '/services',
+  '/guide',
+  '/insurance',
+  '/for-fleets',
+  '/features',
 ]
 
 function isProtectedPath(path: string): boolean {

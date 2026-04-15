@@ -42,6 +42,10 @@ function DatosPageInner() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    try { localStorage.setItem('cruzar_datos_visited', '1') } catch { /* ignore */ }
+  }, [])
+
+  useEffect(() => {
     fetch('/api/ports', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {

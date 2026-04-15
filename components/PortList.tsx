@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { PortCard } from './PortCard'
 import type { PortSignal } from './PortCard'
 import { saveCachedPorts, loadCachedPorts } from '@/lib/portCache'
 import type { PortWaitTime } from '@/types'
-import { RefreshCw, Navigation, X, Share2, Check } from 'lucide-react'
+import { RefreshCw, X, Share2, Check } from 'lucide-react'
 import Link from 'next/link'
 import { getPortMeta } from '@/lib/portMeta'
 import { useLang } from '@/lib/LangContext'
@@ -16,21 +15,6 @@ import { useHomeRegion, MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
 type Direction = 'entering_us' | 'entering_mexico'
-
-function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3958.8
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-function distLabel(mi: number, lang: string): string {
-  if (mi < 0.5) return lang === 'es' ? 'Muy cerca' : 'Very close'
-  return `${mi.toFixed(1)} mi`
-}
 
 const MEX_CROSSINGS = [
   // RGV – McAllen area
@@ -56,20 +40,16 @@ const MEX_CROSSINGS = [
 ]
 
 export function PortList() {
-  const router = useRouter()
   const { t, lang } = useLang()
   const { tier } = useTier()
   const { homeRegion } = useHomeRegion()
   const isBusiness = tier === 'business'
-  // Session-local bypass of the home-region scope. Set when the user
-  // taps "See all" on the scope indicator banner. Doesn't persist —
-  // on next page load the scope returns so the default behaviour is
-  // always the zone view.
-  const [scopeBypass, setScopeBypass] = useState(false)
   // Scope the visible list to the user's home mega region unless they
   // are business tier (fleets cross multiple regions and need the full
   // picture). homeRegion === null means "show all", so no scoping.
-  const scopeActive = !isBusiness && homeRegion != null && !scopeBypass
+  // Per Diego 2026-04-14 late: the home page is ONLY the user's region.
+  // To browse other regions, users tap into /mapa (read-only all bridges).
+  const scopeActive = !isBusiness && homeRegion != null
   // Hydrate from the localStorage cache on first render so even a
   // cold-offline load shows data. The network fetch below still
   // fires and replaces this with fresh data when possible.
@@ -82,19 +62,8 @@ export function PortList() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [selectedRegion, setSelectedRegion] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
-  // Map view was deleted 2026-04-14 along with the Leaflet dependency;
-  // kept a single 'list' constant so the legacy render-path comments
-  // stay readable. Will delete entirely on next PortList refactor.
   const [direction, setDirection] = useState<Direction>('entering_us')
-
-  // Proximity sort. No explicit "Near Me" button anymore — the list is
-  // auto-organized by distance when geolocation is available, and falls
-  // back to region grouping when it's not. Derived directly from userLoc:
-  // having coords means we're in proximity mode, full stop.
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
-  const nearMe = userLoc != null
 
   // Share
   const [shareLabel, setShareLabel] = useState<'idle' | 'copied'>('idle')
@@ -194,19 +163,12 @@ export function PortList() {
     }
   }, [fetchPorts])
 
-  // Auto-sort by proximity on load. If the user denies geolocation
-  // we stay in region-grouping mode — no explicit re-request button.
-  useEffect(() => {
-    if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(
-      pos => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => { /* denied — stay with region grouping */ },
-      { timeout: 6000 },
-    )
-  }, [])
-
   function handleShare() {
-    const list = (selectedRegion === 'All' ? ports : ports.filter(p => getPortMeta(p.portId).region === selectedRegion))
+    // Share what the user is actually looking at — their home region
+    // (or the full list for business tier).
+    const list = (scopeActive
+      ? ports.filter(p => getPortMeta(p.portId).megaRegion === homeRegion)
+      : ports)
       .filter(p => p.vehicle !== null && p.vehicle > 0)
       .slice(0, 8)
       .map(p => {
@@ -244,16 +206,12 @@ export function PortList() {
   }
 
   const filteredPorts = (() => {
-    // Apply home-region scoping first. Only kicks in when the user has
-    // NOT manually picked a display region (selectedRegion === 'All')
-    // AND they're not searching (search bypasses all filters) AND they
-    // aren't business tier. Prevents Mexicali users from drowning in
-    // RGV noise on first load.
+    // Home page is hard-scoped to the user's home mega-region (unless
+    // business tier). Search bypasses scope so users can still find a
+    // bridge by name across the full list.
     let list = ports
-    if (scopeActive && selectedRegion === 'All' && !searchQuery.trim()) {
+    if (scopeActive && !searchQuery.trim()) {
       list = ports.filter(p => getPortMeta(p.portId).megaRegion === homeRegion)
-    } else if (selectedRegion !== 'All') {
-      list = ports.filter(p => getPortMeta(p.portId).region === selectedRegion)
     }
     const q = searchQuery.trim().toLowerCase()
     if (q) {
@@ -273,20 +231,6 @@ export function PortList() {
     }
     return list
   })()
-
-  // "Near Me" view ranks by distance — but if the user has a home
-  // region set, we still scope the pool to that region first. A
-  // user in RGV doesn't want to see El Paso bridges ranked by
-  // distance even if Near Me is active. Business tier keeps the
-  // full pool.
-  const nearMePool = scopeActive
-    ? ports.filter(p => getPortMeta(p.portId).megaRegion === homeRegion)
-    : ports
-  const sortedByDistance = userLoc
-    ? [...nearMePool]
-        .map(p => ({ port: p, dist: haversineMi(userLoc.lat, userLoc.lng, getPortMeta(p.portId).lat, getPortMeta(p.portId).lng) }))
-        .sort((a, b) => a.dist - b.dist)
-    : []
 
   const grouped = filteredPorts.reduce<Record<string, PortWaitTime[]>>((acc, port) => {
     const region = getPortMeta(port.portId).region
@@ -532,25 +476,8 @@ export function PortList() {
             </button>
           </div>
 
-          {nearMe && userLoc && (
-            <div className="space-y-3">
-              <h2 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2 px-1 flex items-center gap-1">
-                <Navigation className="w-3 h-3" />
-                {lang === 'es' ? 'Más cercanos a ti' : 'Nearest to you'}
-              </h2>
-              {sortedByDistance.map(({ port, dist }) => (
-                <div key={`${port.portId}-${port.crossingName}`}>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 px-1 mb-1 font-medium">
-                    {distLabel(dist, lang)} · {getPortMeta(port.portId).city}
-                  </p>
-                  <PortCard port={port} signal={signals[port.portId]} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* "See all bridges" deep-link into the new read-only view
-              that replaced the map tab. Users stuck in their region
+          {/* "See all bridges" deep-link into the read-only /mapa view
+              that replaced the Leaflet map. Users stuck in their region
               who want to peek at the whole border can still do so. */}
           {scopeActive && !searchQuery.trim() && homeRegion && (
             <div className="mb-3 flex items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2">
@@ -568,24 +495,22 @@ export function PortList() {
             </div>
           )}
 
-          {!nearMe && (
-            <div className="space-y-5">
-              {Object.entries(grouped).map(([region, regionPorts]) => (
-                <div key={region}>
-                  <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
-                    {region === 'Other' ? (lang === 'es' ? 'Otros' : 'Other') : region}
-                  </h2>
-                  <div className="space-y-3">
-                    {regionPorts.map(port => (
-                      <PortCard key={`${port.portId}-${port.crossingName}`} port={port} />
-                    ))}
-                  </div>
+          <div className="space-y-5">
+            {Object.entries(grouped).map(([region, regionPorts]) => (
+              <div key={region}>
+                <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
+                  {region === 'Other' ? (lang === 'es' ? 'Otros' : 'Other') : region}
+                </h2>
+                <div className="space-y-3">
+                  {regionPorts.map(port => (
+                    <PortCard key={`${port.portId}-${port.crossingName}`} port={port} signal={signals[port.portId]} />
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
 
-          {filteredPorts.length === 0 && !loading && !nearMe && (
+          {filteredPorts.length === 0 && !loading && (
             <p className="text-center text-gray-600 mt-10">No port data available.</p>
           )}
 

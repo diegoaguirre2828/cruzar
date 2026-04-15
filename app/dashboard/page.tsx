@@ -127,6 +127,9 @@ export default function DashboardPage() {
         if (portIdParam) setNewAlertPortId(portIdParam)
         if (thresholdParam) setNewAlertThreshold(Number(thresholdParam))
         window.history.replaceState({}, '', '/dashboard')
+      } else if (tabParam === 'circle' || tabParam === 'route' || tabParam === 'crossings') {
+        setTab(tabParam)
+        window.history.replaceState({}, '', '/dashboard')
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
