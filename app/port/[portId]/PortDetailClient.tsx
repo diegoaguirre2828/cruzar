@@ -20,6 +20,8 @@ import { ReportForm } from '@/components/ReportForm'
 import { ReportsFeed } from '@/components/ReportsFeed'
 import { BridgeCameras } from '@/components/BridgeCameras'
 import { CommunityBridgePhotos } from '@/components/CommunityBridgePhotos'
+import { PortFAQ } from '@/components/PortFAQ'
+import { cityForPortId } from '@/lib/cityMeta'
 import { PortDetailHero } from '@/components/PortDetailHero'
 import { PingCircleButton } from '@/components/PingCircleButton'
 import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
@@ -817,6 +819,10 @@ export function PortDetailClient({ port, portId }: Props) {
       </div>
 
       {/* Guest alert CTA — make this crossing the hook */}
+      {/* Bilingual FAQ with FAQPage JSON-LD. City-scoped if the port
+          belongs to a known rollup city, otherwise shared-only. */}
+      <PortFAQ citySlug={cityForPortId(portId) ?? undefined} />
+
       {!user && (
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 text-center shadow-sm">
           <p className="text-base font-bold text-white">
