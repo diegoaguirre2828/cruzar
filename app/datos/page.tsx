@@ -22,7 +22,7 @@ import type { PortWaitTime } from '@/types'
 interface HourlyResponse {
   peak: { hour: number; avgWait: number } | null
   best: { hour: number; avgWait: number } | null
-  hours: Array<{ hour: number; avgWait: number }>
+  hours: Array<{ hour: number; avgWait: number | null }>
 }
 
 function formatHour(h: number): string {
@@ -67,10 +67,22 @@ function DatosPageInner() {
 
   useEffect(() => {
     if (!selectedPortId || !isPro) return
-    fetch(`/api/ports/${encodeURIComponent(selectedPortId)}/hourly`)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    fetch(`/api/ports/${encodeURIComponent(selectedPortId)}/hourly`, { signal: controller.signal })
       .then((r) => r.json())
-      .then((d) => setHourly(d))
-      .catch(() => setHourly(null))
+      .then((d) => {
+        // API may return { error: ... } on a 500 — treat as empty so the
+        // skeleton chart still renders instead of disappearing the block.
+        if (d && Array.isArray(d.hours)) {
+          setHourly(d)
+        } else {
+          setHourly({ peak: null, best: null, hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, avgWait: null })) })
+        }
+      })
+      .catch(() => setHourly({ peak: null, best: null, hours: Array.from({ length: 24 }, (_, h) => ({ hour: h, avgWait: null })) }))
+      .finally(() => clearTimeout(timer))
+    return () => { controller.abort(); clearTimeout(timer) }
   }, [selectedPortId, isPro])
 
   const selectedPort = useMemo(
@@ -158,8 +170,17 @@ function DatosPageInner() {
               </div>
             )}
 
-            {hourly && hourly.hours && hourly.hours.length > 0 && (() => {
-              const hasMeaningfulData = hourly.hours.some((h) => (h.avgWait ?? 0) > 0)
+            {selectedPortId && (() => {
+              // Always backfill 24 buckets so the chart renders even when the
+              // API has nothing for this bridge. Diego flagged that the chart
+              // "doesn't show anything" — root cause was the previous gate
+              // (`hourly && hourly.hours.length > 0`) hiding the whole block
+              // on empty data. Skeleton always, message inline.
+              const hours: Array<{ hour: number; avgWait: number | null }> = hourly?.hours
+                && hourly.hours.length === 24
+                ? hourly.hours
+                : Array.from({ length: 24 }, (_, h) => ({ hour: h, avgWait: hourly?.hours?.find(x => x.hour === h)?.avgWait ?? null }))
+              const hasMeaningfulData = hours.some((h) => (h.avgWait ?? 0) > 0)
               return (
                 <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
                   <div className="flex items-baseline justify-between mb-2">
@@ -168,27 +189,21 @@ function DatosPageInner() {
                     </p>
                     {!hasMeaningfulData && (
                       <p className="text-[10px] text-amber-500 font-semibold">
-                        {es ? 'Poca data aún' : 'Data still coming in'}
+                        {es ? 'Recopilando…' : 'Still collecting'}
                       </p>
                     )}
                   </div>
-                  <HourlyBarChart data={hourly.hours} />
+                  <HourlyBarChart data={hours} />
                   {!hasMeaningfulData && (
                     <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
                       {es
-                        ? 'Estamos recolectando lecturas de la CBP cada 15 minutos. En unos días la gráfica va a llenarse con el patrón real de este puente.'
-                        : 'We collect CBP readings every 15 minutes. Within a few days this chart will fill in with this bridge\'s real pattern.'}
+                        ? 'Recolectamos lecturas de la CBP cada 15 minutos. En unos días la gráfica se va a llenar con el patrón real de este puente.'
+                        : 'We collect CBP readings every 15 minutes. Within a few days this chart will fill in with this bridge\u2019s real pattern.'}
                     </p>
                   )}
                 </div>
               )
             })()}
-
-            {!hourly && selectedPortId && (
-              <p className="mt-6 text-center text-xs text-gray-400">
-                {loading ? (es ? 'Cargando…' : 'Loading…') : (es ? 'Sin datos históricos pa\' este puente' : 'No historical data for this crossing')}
-              </p>
-            )}
 
             {selectedPortId && <SentriBreakevenCard portId={selectedPortId} es={es} />}
             {selectedPortId && <AccidentImpactCard portId={selectedPortId} es={es} />}

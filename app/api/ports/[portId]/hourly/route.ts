@@ -50,8 +50,9 @@ export async function GET(
   const peak = valid.length > 0 ? valid.reduce((a, b) => (b.avgWait > a.avgWait ? b : a)) : null
   const best = valid.length > 0 ? valid.reduce((a, b) => (b.avgWait < a.avgWait ? b : a)) : null
 
+  const totalSamples = hourBuckets.reduce((s, b) => s + b.count, 0)
   return NextResponse.json(
-    { hours, peak, best, totalSamples: valid.reduce((s, h) => s + 0, 0) },
+    { hours, peak, best, totalSamples },
     { headers: { 'Cache-Control': 's-maxage=600, stale-while-revalidate=1800' } }
   )
 }

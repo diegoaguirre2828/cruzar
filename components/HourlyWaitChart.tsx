@@ -49,11 +49,13 @@ export function HourlyWaitChart({ portId }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/ports/${encodeURIComponent(portId)}/hourly`)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    fetch(`/api/ports/${encodeURIComponent(portId)}/hourly`, { signal: controller.signal })
       .then(r => r.json())
       .then(d => {
         if (cancelled) return
-        setHours(d.hours || [])
+        setHours(Array.isArray(d.hours) ? d.hours : [])
         setPeak(d.peak || null)
         setBest(d.best || null)
         setLoading(false)
@@ -62,14 +64,25 @@ export function HourlyWaitChart({ portId }: Props) {
         if (cancelled) return
         setLoading(false)
       })
-    return () => { cancelled = true }
+      .finally(() => clearTimeout(timer))
+    return () => { cancelled = true; controller.abort(); clearTimeout(timer) }
   }, [portId])
 
-  const validCount = hours.filter(h => h.avgWait != null).length
-  const maxWait = hours.reduce((m, h) => (h.avgWait != null && h.avgWait > m ? h.avgWait : m), 0)
+  // Always render 24 buckets so the skeleton is visible even when the
+  // API returns nothing. Diego flagged in round 4 #9 that the chart
+  // "doesn't show anything" — root cause was an early-return on
+  // validCount < 4 that swallowed the whole feature on quiet bridges.
+  const filledHours: HourBucket[] = hours.length === 24
+    ? hours
+    : Array.from({ length: 24 }, (_, h) => {
+        const existing = hours.find(x => x.hour === h)
+        return existing ?? { hour: h, avgWait: null, todayAvg: null, samples: 0 }
+      })
+  const validCount = filledHours.filter(h => h.avgWait != null).length
+  const maxWait = filledHours.reduce((m, h) => (h.avgWait != null && h.avgWait > m ? h.avgWait : m), 0)
   const currentHour = new Date().getHours()
   const focusHour = hovered ?? currentHour
-  const focusBucket = hours[focusHour]
+  const focusBucket = filledHours[focusHour]
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
@@ -87,14 +100,10 @@ export function HourlyWaitChart({ portId }: Props) {
 
       {loading ? (
         <div className="h-40 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
-      ) : validCount < 4 ? (
-        <p className="text-sm text-gray-400 text-center py-8">
-          {es ? 'Aún no hay suficientes datos. Vuelve en unos días.' : 'Not enough history yet. Check back in a few days.'}
-        </p>
       ) : (
         <>
           <div className="flex items-end gap-[3px] h-32">
-            {hours.map((h) => {
+            {filledHours.map((h) => {
               const heightPct = h.avgWait != null && maxWait > 0 ? Math.max(8, (h.avgWait / maxWait) * 100) : 6
               const isCurrent = h.hour === currentHour
               const isHovered = h.hour === hovered
@@ -127,6 +136,14 @@ export function HourlyWaitChart({ portId }: Props) {
             <span>6p</span>
             <span>11p</span>
           </div>
+
+          {validCount < 4 && (
+            <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 text-center">
+              {es
+                ? 'Recopilando el patrón de este puente — vuelve en unos días.'
+                : 'Still building this bridge\u2019s pattern — check back in a few days.'}
+            </p>
+          )}
 
           {focusBucket && (
             <div className="mt-3 flex items-center justify-between text-xs">
