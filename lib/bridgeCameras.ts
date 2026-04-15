@@ -258,6 +258,54 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
     },
   ],
 
+  // ─── Texas RGV — Brownsville / Matamoros (Comtodo via ipcamlive) ─
+  // Verified live 2026-04-14 pass-3 research. Direct JPEG snapshot
+  // endpoint, CORS-open, no-cache headers — identical gold-standard
+  // pattern to Caltrans / openlaredo. Publisher: Comtodo (Matamoros
+  // ISP). Pass-2 had flagged these as JS-locked; that was wrong —
+  // the cameras were two iframe tags in static HTML the whole time,
+  // and ipcamlive exposes a CORS-open JPEG snapshot endpoint we can
+  // use directly.
+
+  '535501': [
+    {
+      kind: 'image',
+      src: 'https://g3.ipcamlive.com/player/snapshot.php?alias=5df59f3827371',
+      credit: 'Comtodo',
+      creditUrl: 'https://comtodo.com/camaras/',
+      note: 'Puente Viejo (B&M) — vista desde Matamoros',
+      label: 'MX · Viejo',
+    },
+  ],
+
+  '535504': [
+    {
+      kind: 'image',
+      src: 'https://g3.ipcamlive.com/player/snapshot.php?alias=61af904e45b24',
+      credit: 'Comtodo',
+      creditUrl: 'https://comtodo.com/camaras/',
+      note: 'Puente Nuevo / Gateway International — vista desde Matamoros',
+      label: 'MX · Nuevo',
+    },
+  ],
+
+  // ─── Texas RGV — Pharr-Reynosa (City of Pharr YouTube live) ─────
+  // 24/7 YouTube live stream by Pharr.IT (City of Pharr IT dept).
+  // Verified live 2026-04-14 (isLiveNow:true, streaming since
+  // 2026-02-17). Video ID can rotate — if this goes 404, re-check
+  // channel UCYUv0nRbGf6LnGGtx34hcZw / live.
+
+  '230502': [
+    {
+      kind: 'youtube',
+      src: 'T1as39NDW7o',
+      credit: 'City of Pharr',
+      creditUrl: 'https://bridge.pharr-tx.gov/live-bridge-camera/',
+      note: 'Pharr-Reynosa International Bridge — live 24/7',
+      label: 'US · Live',
+    },
+  ],
+
   // ─── El Paso — City of El Paso zoocam HLS streams ───────────────
   // CORS-open .m3u8 streams. Rendered via hls.js into a <video> tag.
   // Publisher: zoocams.elpasozoo.org (City of El Paso)

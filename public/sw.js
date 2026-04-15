@@ -14,8 +14,8 @@
 //   - Page navigations      → network-first, fall back to cached shell
 //   - Static assets         → cache-first, network fallback
 
-const CACHE = 'cruzar-v4'
-const API_CACHE = 'cruzar-api-v4'
+const CACHE = 'cruzar-v5'
+const API_CACHE = 'cruzar-api-v5'
 const SHELL = ['/']
 
 // API routes that are safe to serve stale-while-revalidate. These are
@@ -96,11 +96,44 @@ self.addEventListener('fetch', e => {
     return
   }
 
-  // Pages + static assets: network-first, cache fallback.
+  // Page navigations (documents) → cache-first with background refresh.
+  // PREVIOUS strategy was network-first, which hung 20-30s on spotty
+  // border cell service because fetch() doesn't error fast when the
+  // network is unreachable. Cache-first makes PWA launches INSTANT
+  // when there's any cached version, and backgrounds the refresh so
+  // next launch has the latest HTML. Trade-off: one-launch lag for
+  // fresh deploys, acceptable because SWR on the /api/* layer still
+  // pulls fresh data into the rendered shell within 1-2 seconds.
+  if (request.destination === 'document') {
+    e.respondWith(
+      (async () => {
+        const cached = await caches.match(request) || await caches.match('/')
+        const networkPromise = fetch(request)
+          .then(res => {
+            if (res && res.ok) {
+              const clone = res.clone()
+              caches.open(CACHE).then(c => c.put(request, clone)).catch(() => {})
+            }
+            return res
+          })
+          .catch(() => null)
+        if (cached) return cached
+        const networkRes = await networkPromise
+        return networkRes || new Response('Offline', { status: 503 })
+      })()
+    )
+    return
+  }
+
+  // Static assets (images, scripts, styles) → network-first, cache
+  // fallback. Unchanged from the previous strategy because these are
+  // hashed by Next.js and rarely change, so the cache hit rate is
+  // high and the network failure path is fast (asset 404 errors
+  // immediately, unlike hung document fetches).
   e.respondWith(
     fetch(request)
       .then(res => {
-        if (res.ok && (request.destination === 'document' || request.destination === 'image')) {
+        if (res.ok && request.destination === 'image') {
           const clone = res.clone()
           caches.open(CACHE).then(c => c.put(request, clone)).catch(() => {})
         }
@@ -109,9 +142,6 @@ self.addEventListener('fetch', e => {
       .catch(async () => {
         const cached = await caches.match(request)
         if (cached) return cached
-        if (request.destination === 'document') {
-          return (await caches.match('/')) || new Response('Offline', { status: 503 })
-        }
       })
   )
 })
