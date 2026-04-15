@@ -191,6 +191,12 @@ function WelcomeInner() {
         setAlertedPortName(chosenPort.localNameOverride || chosenPort.portName || '')
       }
 
+      // First-1000 launch promo: claim 3 months of Pro access as part
+      // of the welcome flow. No-op if the user already has it, or if
+      // the 1000 cap is reached. Non-blocking — we still navigate to
+      // dashboard even if the claim fails.
+      fetch('/api/promo/claim-first-1000', { method: 'POST' }).catch(() => { /* silent */ })
+
       // The reversal means bridge-pick is now the FINAL welcome step.
       // Navigate straight to /dashboard after successful alert setup.
       const next = params?.get('next') || '/dashboard?welcomed=1'

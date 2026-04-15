@@ -116,13 +116,21 @@ export default function AdminPage() {
     id: string; email: string; display_name: string | null; tier: string; points: number
     reports_count: number; last_report_at: string | null; last_sign_in_at: string | null
     created_at: string | null; badges: string[]; sub_status: string | null; sub_tier: string | null
+    home_region: string | null; last_seen_at: string | null; last_seen_age_days: number | null
+    last_seen_device: string | null; last_seen_os: string | null; last_seen_browser: string | null
+    install_state: string | null; first_seen_at: string | null
   }
   const [usersRows, setUsersRows] = useState<AdminUserRow[]>([])
   const [usersTotal, setUsersTotal] = useState(0)
   const [usersPage, setUsersPage] = useState(1)
   const [usersSearch, setUsersSearch] = useState('')
   const [usersTier, setUsersTier] = useState<'all' | 'free' | 'pro' | 'business'>('all')
-  const [usersSort, setUsersSort] = useState<'created_desc' | 'reports_desc' | 'points_desc' | 'last_active_desc' | 'last_signin_desc'>('created_desc')
+  const [usersSort, setUsersSort] = useState<'created_desc' | 'reports_desc' | 'points_desc' | 'last_active_desc' | 'last_signin_desc' | 'last_seen_desc'>('created_desc')
+  const [usersOs, setUsersOs] = useState<'all' | 'ios' | 'android' | 'windows' | 'macos' | 'linux' | 'other'>('all')
+  const [usersDevice, setUsersDevice] = useState<'all' | 'mobile' | 'tablet' | 'desktop'>('all')
+  const [usersInstall, setUsersInstall] = useState<'all' | 'web' | 'pwa' | 'twa' | 'capacitor' | 'installed'>('all')
+  const [usersRegion, setUsersRegion] = useState<'all' | 'unset' | 'rgv' | 'coahuila-tx' | 'sonora-az' | 'cali-baja' | 'el-paso-cd-juarez' | 'laredo-nuevo-laredo'>('all')
+  const [usersActivity, setUsersActivity] = useState<'all' | '24h' | '7d' | '30d' | 'inactive'>('all')
   const [usersLoading, setUsersLoading] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   type AdminUserDetail = {
@@ -395,6 +403,11 @@ export default function AdminPage() {
       tier: usersTier,
       sort: usersSort,
       search: usersSearch,
+      os: usersOs,
+      device: usersDevice,
+      install_state: usersInstall,
+      home_region: usersRegion,
+      activity: usersActivity,
     })
     fetch(`/api/admin/users?${params}`)
       .then(r => r.json())
@@ -403,7 +416,7 @@ export default function AdminPage() {
         setUsersTotal(d.total || 0)
       })
       .finally(() => setUsersLoading(false))
-  }, [user, tab, usersPage, usersTier, usersSort, usersSearch])
+  }, [user, tab, usersPage, usersTier, usersSort, usersSearch, usersOs, usersDevice, usersInstall, usersRegion, usersActivity])
 
   useEffect(() => {
     if (!selectedUserId) { setUserDetail(null); return }
@@ -1783,10 +1796,75 @@ export default function AdminPage() {
                 className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
               >
                 <option value="created_desc">Newest first</option>
+                <option value="last_seen_desc">Last seen (any page)</option>
                 <option value="last_signin_desc">Last sign-in</option>
                 <option value="last_active_desc">Last report</option>
                 <option value="reports_desc">Most reports</option>
                 <option value="points_desc">Most points</option>
+              </select>
+            </div>
+
+            {/* Device / install / region / activity filters — v27 */}
+            <div className="mb-4 grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <select
+                value={usersOs}
+                onChange={e => { setUsersOs(e.target.value as typeof usersOs); setUsersPage(1) }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+              >
+                <option value="all">All OS</option>
+                <option value="ios">iOS</option>
+                <option value="android">Android</option>
+                <option value="windows">Windows</option>
+                <option value="macos">macOS</option>
+                <option value="linux">Linux</option>
+                <option value="other">Other</option>
+              </select>
+              <select
+                value={usersDevice}
+                onChange={e => { setUsersDevice(e.target.value as typeof usersDevice); setUsersPage(1) }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+              >
+                <option value="all">All devices</option>
+                <option value="mobile">Mobile</option>
+                <option value="tablet">Tablet</option>
+                <option value="desktop">Desktop</option>
+              </select>
+              <select
+                value={usersInstall}
+                onChange={e => { setUsersInstall(e.target.value as typeof usersInstall); setUsersPage(1) }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+              >
+                <option value="all">All install states</option>
+                <option value="installed">Any install (PWA/TWA/Capacitor)</option>
+                <option value="web">Web (browser tab)</option>
+                <option value="pwa">PWA installed</option>
+                <option value="twa">TWA (Play Store)</option>
+                <option value="capacitor">Capacitor (App Store)</option>
+              </select>
+              <select
+                value={usersRegion}
+                onChange={e => { setUsersRegion(e.target.value as typeof usersRegion); setUsersPage(1) }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+              >
+                <option value="all">All regions</option>
+                <option value="unset">Unset (no region picked)</option>
+                <option value="rgv">RGV</option>
+                <option value="laredo-nuevo-laredo">Laredo · Nuevo Laredo</option>
+                <option value="el-paso-cd-juarez">El Paso · Cd. Juárez</option>
+                <option value="coahuila-tx">Coahuila · Texas</option>
+                <option value="sonora-az">Sonora · Arizona</option>
+                <option value="cali-baja">Cali · Baja</option>
+              </select>
+              <select
+                value={usersActivity}
+                onChange={e => { setUsersActivity(e.target.value as typeof usersActivity); setUsersPage(1) }}
+                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+              >
+                <option value="all">Any activity</option>
+                <option value="24h">Last 24h</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="inactive">Inactive 30d+</option>
               </select>
             </div>
 
@@ -1814,18 +1892,30 @@ export default function AdminPage() {
 
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="hidden sm:grid sm:grid-cols-12 px-4 py-2 bg-gray-50 text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
-                <div className="col-span-4">User</div>
-                <div className="col-span-2">Tier</div>
-                <div className="col-span-1 text-right">Pts</div>
+                <div className="col-span-3">User</div>
+                <div className="col-span-1">Tier</div>
+                <div className="col-span-2">Device · OS</div>
+                <div className="col-span-1">Install</div>
+                <div className="col-span-1">Region</div>
                 <div className="col-span-1 text-right">Rpts</div>
-                <div className="col-span-2">Signed up</div>
+                <div className="col-span-1 text-right">Pts</div>
                 <div className="col-span-2">Last seen</div>
               </div>
               {usersRows.length === 0 && !usersLoading && (
                 <p className="text-gray-400 text-sm p-6 text-center">No users match.</p>
               )}
               {usersRows.map(u => {
-                const lastSeen = u.last_sign_in_at || u.last_report_at
+                // Prefer last_seen_at (any page) over last_sign_in_at (auth-only)
+                // over last_report_at (only users who report). Falls back
+                // cleanly when the migration hasn't been applied yet.
+                const lastSeen = u.last_seen_at || u.last_sign_in_at || u.last_report_at
+                const osIcon = u.last_seen_os === 'ios' ? '🍎' : u.last_seen_os === 'android' ? '🤖' : u.last_seen_os === 'windows' ? '🪟' : u.last_seen_os === 'macos' ? '💻' : '·'
+                const installBadge =
+                  u.install_state === 'pwa' ? { label: 'PWA', cls: 'bg-emerald-100 text-emerald-700' }
+                  : u.install_state === 'twa' ? { label: 'Play', cls: 'bg-green-100 text-green-700' }
+                  : u.install_state === 'capacitor' ? { label: 'App', cls: 'bg-blue-100 text-blue-700' }
+                  : u.install_state === 'web' ? { label: 'Web', cls: 'bg-gray-100 text-gray-500' }
+                  : { label: '—', cls: 'bg-gray-50 text-gray-400' }
                 return (
                   <button
                     key={u.id}
@@ -1833,29 +1923,46 @@ export default function AdminPage() {
                     className="w-full text-left border-t border-gray-100 hover:bg-gray-50 transition-colors"
                   >
                     <div className="sm:grid sm:grid-cols-12 px-4 py-3 items-center text-sm">
-                      <div className="col-span-4">
+                      <div className="col-span-3">
                         <p className="font-medium text-gray-900 truncate">{u.email || '(no email)'}</p>
                         {u.display_name && u.display_name !== u.email && (
                           <p className="text-xs text-gray-500 truncate">{u.display_name}</p>
                         )}
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           u.tier === 'business' ? 'bg-purple-100 text-purple-700' :
                           u.tier === 'pro'      ? 'bg-blue-100 text-blue-700' :
                                                   'bg-gray-100 text-gray-600'
                         }`}>{u.tier}</span>
-                        {u.sub_status && u.sub_status !== 'active' && (
-                          <span className="ml-1 text-[10px] text-red-500">{u.sub_status}</span>
+                      </div>
+                      <div className="col-span-2 text-xs text-gray-600">
+                        {u.last_seen_os ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span>{osIcon}</span>
+                            <span className="capitalize">{u.last_seen_device || '—'}</span>
+                            <span className="text-gray-400">·</span>
+                            <span className="uppercase">{u.last_seen_os}</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
                         )}
                       </div>
-                      <div className="col-span-1 text-right text-gray-700">{u.points}</div>
-                      <div className="col-span-1 text-right text-gray-700">{u.reports_count}</div>
-                      <div className="col-span-2 text-xs text-gray-500">
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                      <div className="col-span-1">
+                        <span className={`inline-block text-[9px] font-semibold px-1.5 py-0.5 rounded ${installBadge.cls}`}>
+                          {installBadge.label}
+                        </span>
                       </div>
+                      <div className="col-span-1 text-[10px] text-gray-500 uppercase tracking-wide">
+                        {u.home_region || '—'}
+                      </div>
+                      <div className="col-span-1 text-right text-gray-700">{u.reports_count}</div>
+                      <div className="col-span-1 text-right text-gray-700">{u.points}</div>
                       <div className="col-span-2 text-xs text-gray-500">
                         {lastSeen ? new Date(lastSeen).toLocaleDateString() : 'never'}
+                        {u.last_seen_age_days != null && u.last_seen_age_days < 1 && (
+                          <span className="ml-1 text-emerald-600 font-semibold">· now</span>
+                        )}
                       </div>
                     </div>
                   </button>

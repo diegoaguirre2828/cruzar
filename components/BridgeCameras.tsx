@@ -7,6 +7,74 @@ import { useTier } from '@/lib/useTier'
 import { useLang } from '@/lib/LangContext'
 import { getBridgeCameras, type CameraFeed } from '@/lib/bridgeCameras'
 
+// Polled-image player. Municipal webcam sources almost universally serve
+// a JPEG URL that the server rewrites every 10-30 seconds — NOT a video
+// stream. Without a refresh loop the browser caches the first fetch and
+// the image sits frozen forever, which is the "live feed is static"
+// bug Diego reported 2026-04-15. This component appends a cache-busting
+// query param on an interval so each tick pulls a fresh JPEG and the
+// viewer sees the image tick forward every N seconds.
+//
+// 12s interval is the sweet spot: fast enough that the lanes look live,
+// slow enough that we don't hammer a free municipal server or blow the
+// mobile user's data. "Updated Xs ago" chip gives the user honest
+// context on the cadence.
+function PolledImage({ src, alt, intervalMs = 12000 }: { src: string; alt: string; intervalMs?: number }) {
+  const [tick, setTick] = useState(() => Date.now())
+  const [loaded, setLoaded] = useState(false)
+  const [secondsAgo, setSecondsAgo] = useState(0)
+
+  useEffect(() => {
+    // Reset state when the upstream src prop changes (different camera tab).
+    setTick(Date.now())
+    setLoaded(false)
+    setSecondsAgo(0)
+  }, [src])
+
+  useEffect(() => {
+    const poll = setInterval(() => {
+      setTick(Date.now())
+      setSecondsAgo(0)
+    }, intervalMs)
+    const age = setInterval(() => {
+      setSecondsAgo((s) => s + 1)
+    }, 1000)
+    return () => {
+      clearInterval(poll)
+      clearInterval(age)
+    }
+  }, [intervalMs])
+
+  // Cache-busting param — avoids the service worker AND the browser HTTP
+  // cache both. Named `_cruzar_t` so it's obvious in dev tools.
+  const separator = src.includes('?') ? '&' : '?'
+  const busted = `${src}${separator}_cruzar_t=${tick}`
+
+  return (
+    <div className="relative w-full h-full">
+      <img
+        key={tick}
+        src={busted}
+        alt={alt}
+        className="w-full h-full object-cover"
+        onLoad={() => setLoaded(true)}
+      />
+      {!loaded && (
+        <div className="absolute inset-0 bg-gray-900 animate-pulse" />
+      )}
+      <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-black/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-white">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+        </span>
+        <span className="tabular-nums">
+          {secondsAgo === 0 ? 'actualizada' : `hace ${secondsAgo}s`}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // HLS video player sub-component. Dynamically imports hls.js ONLY when
 // a video element mounts with an hls-kind feed, so guest/free/non-hls
 // users never download the library. Safari natively supports HLS via
@@ -83,13 +151,7 @@ function FeedPlayer({ feed, portName }: { feed: CameraFeed; portName: string }) 
     )
   }
   if (feed.kind === 'image') {
-    return (
-      <img
-        src={feed.src}
-        alt={`${portName} live camera`}
-        className="w-full h-full object-cover"
-      />
-    )
+    return <PolledImage src={feed.src} alt={`${portName} live camera`} />
   }
   if (feed.kind === 'hls') {
     return <HlsVideo src={feed.src} title={`${portName} live camera`} />

@@ -14,6 +14,7 @@ import { PortSearch } from '@/components/PortSearch'
 import { DashboardInstallBanner } from '@/components/DashboardInstallBanner'
 import { PostWelcomeTour } from '@/components/PostWelcomeTour'
 import { PostUpgradeTour } from '@/components/PostUpgradeTour'
+import { InstallGateModal, useInstallGate, needsInstallGate } from '@/components/InstallGateModal'
 import { usePushNotifications } from '@/lib/usePushNotifications'
 import type { PortWaitTime } from '@/types'
 
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const [pushBannerDismissed, setPushBannerDismissed] = useState(false)
   const [pushJustEnabled, setPushJustEnabled] = useState(false)
   const [alertLimitHit, setAlertLimitHit] = useState(false)
+  const installGate = useInstallGate()
 
   const loadData = useCallback(async () => {
     // First, reconcile the DB tier against Stripe reality. This is the
@@ -144,6 +146,15 @@ export default function DashboardPage() {
 
   async function addAlert() {
     if (!newAlertPortId) return
+    // Push-install gate — alerts only actually deliver on PWA-installed
+    // phones (push notifications require standalone mode on iOS and
+    // work unreliably in desktop Chrome tabs). Intercept the flow with
+    // the install walkthrough BEFORE writing the alert row, so users
+    // don't create silent alerts that never fire.
+    if (needsInstallGate()) {
+      installGate.show('alerts')
+      return
+    }
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -208,6 +219,14 @@ export default function DashboardPage() {
           Full feature surface: alerts, cameras, best-time, history,
           route optimizer, weekly digest. */}
       <PostUpgradeTour />
+      {/* Push-install gate — fires when a user tries to add an alert
+          and they're not in a standalone PWA. Walks them through the
+          iOS/Android install steps. */}
+      <InstallGateModal
+        open={installGate.state.open}
+        reason={installGate.state.reason}
+        onClose={installGate.close}
+      />
       <div className="max-w-lg mx-auto px-4 pb-10">
 
         {/* Header */}

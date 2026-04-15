@@ -30,9 +30,11 @@ import { HomeForecast } from '@/components/HomeForecast'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
+import { useSessionPing } from '@/lib/useSessionPing'
 import { GuestSignupBanner } from '@/components/GuestSignupBanner'
 import { GuestStickyStrip } from '@/components/GuestStickyStrip'
 import { PwaFirstLaunchWelcome } from '@/components/PwaFirstLaunchWelcome'
+import { SocialProofStrip } from '@/components/SocialProofStrip'
 import { armNudge } from '@/lib/useNudge'
 import { trackEvent } from '@/lib/trackEvent'
 import type { PortWaitTime } from '@/types'
@@ -171,6 +173,10 @@ interface Props {
 }
 
 export function HomeClient({ initialPorts, initialReports }: Props) {
+  // Ping /api/user/touch once per session with device + install_state so
+  // the admin panel can slice users by device / OS / PWA state. No-op
+  // for guests.
+  useSessionPing()
   const { t, lang } = useLang()
   const { tier } = useTier()
   const { user, loading: authLoading } = useAuth()
@@ -423,6 +429,11 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             "they need more incentive to log in other than us hoping
             that want to click something." */}
         {!isBusiness && !authLoading && tier === 'guest' && <GuestSignupBanner />}
+
+        {/* Social proof strip — real community numbers + first-1000 promo.
+            Sits above the port list so guests see live evidence before
+            scrolling. Data from /api/stats/community, 60s edge-cached. */}
+        {!isBusiness && <SocialProofStrip />}
 
         {/* Nudge: just-saved-a-bridge → set an alert. Appears only for
             signed-in non-business users with at least one saved bridge
