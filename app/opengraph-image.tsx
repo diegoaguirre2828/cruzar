@@ -1,58 +1,18 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const revalidate = 900 // regenerate every 15 min
-export const alt = 'Cruzar – Live US-Mexico Border Wait Times'
+export const alt = 'Cruzar — Tiempos de espera en los puentes US-México en vivo'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
-const FEATURED = ['230501', '230502', '230503', '230901', '535501', '230401']
-const PORT_NAMES: Record<string, string> = {
-  '230501': 'Hidalgo / McAllen',
-  '230502': 'Pharr–Reynosa',
-  '230503': 'Anzaldúas',
-  '230901': 'Progreso',
-  '535501': 'Brownsville Gateway',
-  '230401': 'Laredo I',
-}
-
-export default async function OGImage() {
-  let crossings: { name: string; wait: number; level: string }[] = []
-  try {
-    const res = await fetch('https://cruzar.app/api/ports', { cache: 'no-store' })
-    const { ports } = await res.json()
-    crossings = FEATURED
-      .map(id => {
-        const p = ports?.find((x: { portId: string; vehicle: number | null }) => x.portId === id)
-        const wait = p?.vehicle ?? null
-        const level = !wait || wait <= 0 ? 'low' : wait <= 20 ? 'low' : wait <= 45 ? 'medium' : 'high'
-        return { name: PORT_NAMES[id] || id, wait: wait ?? 0, level }
-      })
-      .filter(c => c.wait > 0)
-  } catch {
-    crossings = [
-      { name: 'Hidalgo / McAllen', wait: 12, level: 'low' },
-      { name: 'Pharr–Reynosa', wait: 28, level: 'medium' },
-      { name: 'Anzaldúas', wait: 8, level: 'low' },
-      { name: 'Progreso', wait: 45, level: 'medium' },
-      { name: 'Brownsville Gateway', wait: 15, level: 'low' },
-      { name: 'Laredo I', wait: 55, level: 'high' },
-    ]
-  }
-
-  const now = new Date().toLocaleTimeString('es-MX', {
-    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago',
-  })
-
-  const dotColor = (level: string) =>
-    level === 'low' ? '#22c55e' : level === 'medium' ? '#f59e0b' : '#ef4444'
-
-  const badgeBg = (level: string) =>
-    level === 'low' ? '#14532d' : level === 'medium' ? '#713f12' : '#7f1d1d'
-
-  const badgeText = (level: string) =>
-    level === 'low' ? '#4ade80' : level === 'medium' ? '#fbbf24' : '#f87171'
-
+// Evergreen OG image. Previous version fetched live /api/ports data
+// and rendered a "EN VIVO · {time}" pill, but Facebook caches OG
+// images aggressively — the cached PNG would show a stale timestamp
+// and stale bridge numbers hours or days after first crawl, which
+// undermines the "real time" pitch the image was supposed to sell.
+// This version commits to permanent facts about the product only,
+// so the image stays accurate forever without cache churn.
+export default function OGImage() {
   return new ImageResponse(
     (
       <div
@@ -62,137 +22,132 @@ export default async function OGImage() {
           background: '#0f172a',
           display: 'flex',
           flexDirection: 'column',
-          padding: '60px 72px',
+          padding: '56px 72px',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
-        {/* Header — real logo rendered via Satori-compatible JSX.
-            Dark navy square with a white arch-bridge mark (deck +
-            pillars). Arch curve itself is approximated by the
-            varying pillar heights since Satori doesn't render
-            curved SVG paths. Matches public/logo-icon.svg and the
-            home page header wordmark. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 12 }}>
+        {/* Header — div-positioned bridge logo matching public/logo-icon.svg.
+            Satori doesn't render curved SVG paths, so the arch is
+            approximated by varying pillar heights. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <div
             style={{
-              width: 100,
-              height: 100,
+              width: 96,
+              height: 96,
               background: '#0f172a',
               borderRadius: 22,
               position: 'relative',
               display: 'flex',
+              border: '2px solid rgba(255,255,255,0.14)',
             }}
           >
-            {/* Horizontal deck spanning the width */}
-            <div style={{ position: 'absolute', left: 14, right: 14, top: 68, height: 4, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            {/* Short support legs under the deck */}
-            <div style={{ position: 'absolute', left: 17, top: 72, width: 2, height: 8, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', right: 17, top: 72, width: 2, height: 8, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            {/* Vertical pillars. Heights approximate the arch curve
-                so the tops form an implied arch shape. */}
-            <div style={{ position: 'absolute', left: 21, top: 56, width: 2, height: 12, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', left: 29, top: 41, width: 2, height: 27, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', left: 39, top: 30, width: 2, height: 38, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', left: 49, top: 26, width: 2.5, height: 42, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', left: 59, top: 30, width: 2, height: 38, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', left: 69, top: 41, width: 2, height: 27, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
-            <div style={{ position: 'absolute', left: 77, top: 56, width: 2, height: 12, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 13, right: 13, top: 66, height: 4, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 16, top: 70, width: 2, height: 8, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', right: 16, top: 70, width: 2, height: 8, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 20, top: 54, width: 2, height: 12, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 28, top: 39, width: 2, height: 27, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 38, top: 28, width: 2, height: 38, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 47, top: 24, width: 2.5, height: 42, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 57, top: 28, width: 2, height: 38, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 67, top: 39, width: 2, height: 27, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
+            <div style={{ position: 'absolute', left: 75, top: 54, width: 2, height: 12, background: '#ffffff', borderRadius: 1, display: 'flex' }} />
           </div>
-          <span style={{ color: '#ffffff', fontSize: 72, fontWeight: 700, letterSpacing: -2, textTransform: 'lowercase' }}>
+          <span style={{ color: '#ffffff', fontSize: 80, fontWeight: 800, letterSpacing: -3, textTransform: 'lowercase' }}>
             cruzar
           </span>
-          <div style={{
-            marginLeft: 12,
-            background: '#22c55e',
-            color: '#fff',
-            fontSize: 18,
-            fontWeight: 700,
-            padding: '6px 16px',
-            borderRadius: 100,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-            <div style={{ width: 8, height: 8, background: '#fff', borderRadius: '50%' }} />
-            EN VIVO · {now.toUpperCase()}
+        </div>
+
+        {/* Main headline — the three-beat pain point hook */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          marginTop: 32,
+          marginBottom: 8,
+        }}>
+          <div style={{ color: '#ffffff', fontSize: 68, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05, display: 'flex' }}>
+            Todos los puentes.
+          </div>
+          <div style={{ color: '#ffffff', fontSize: 68, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05, display: 'flex' }}>
+            En vivo. <span style={{ color: '#22c55e' }}>Sin adivinar.</span>
           </div>
         </div>
 
-        <div style={{ color: '#94a3b8', fontSize: 22, marginBottom: 40, fontWeight: 400 }}>
-          Tiempos de espera US–México en tiempo real · Gratis para todos
+        <div style={{
+          color: '#94a3b8',
+          fontSize: 24,
+          fontWeight: 400,
+          marginTop: 20,
+          marginBottom: 28,
+          display: 'flex',
+        }}>
+          Cámaras, historial, alertas y reportes de la comunidad — en un solo lugar.
         </div>
 
-        {/* Crossing cards grid */}
+        {/* 4 feature tiles — evergreen value prop, no stale data */}
         <div style={{
           display: 'flex',
-          flexWrap: 'wrap',
           gap: 12,
           flex: 1,
         }}>
-          {crossings.map((c) => (
+          {[
+            { icon: '🎥', label: 'Cámaras en vivo' },
+            { icon: '📊', label: 'Historial por hora' },
+            { icon: '🔔', label: 'Alertas de inspecciones' },
+            { icon: '🤝', label: 'Reportes de la raza' },
+          ].map(f => (
             <div
-              key={c.name}
+              key={f.label}
               style={{
+                flex: 1,
                 background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.10)',
-                borderRadius: 16,
-                padding: '16px 20px',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 18,
+                padding: '20px 18px',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                gap: 24,
-                width: 'calc(50% - 6px)',
+                gap: 10,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  background: dotColor(c.level),
-                  flexShrink: 0,
-                }} />
-                <span style={{ color: '#e2e8f0', fontSize: 18, fontWeight: 600 }}>
-                  {c.name}
-                </span>
-              </div>
+              <div style={{ fontSize: 40, display: 'flex' }}>{f.icon}</div>
               <div style={{
-                background: badgeBg(c.level),
-                color: badgeText(c.level),
+                color: '#e2e8f0',
                 fontSize: 20,
-                fontWeight: 800,
-                padding: '4px 14px',
-                borderRadius: 100,
+                fontWeight: 700,
+                lineHeight: 1.2,
                 display: 'flex',
               }}>
-                {c.wait}m
+                {f.label}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Footer */}
+        {/* Footer — permanent facts, no timestamps */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginTop: 32,
-          paddingTop: 24,
-          borderTop: '1px solid rgba(255,255,255,0.08)',
+          marginTop: 24,
+          paddingTop: 20,
+          borderTop: '1px solid rgba(255,255,255,0.10)',
         }}>
-          <span style={{ color: '#475569', fontSize: 18 }}>
+          <span style={{ color: '#ffffff', fontSize: 22, fontWeight: 700, letterSpacing: -0.3 }}>
             cruzar.app
           </span>
-          <div style={{ display: 'flex', gap: 20 }}>
-            {['52 puentes', 'Cada 15 min', 'Gratis'].map(tag => (
+          <div style={{ display: 'flex', gap: 12 }}>
+            {['52 puentes', 'US ↔ MX', 'Gratis'].map(tag => (
               <div
                 key={tag}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  color: '#94a3b8',
-                  fontSize: 15,
-                  padding: '6px 14px',
+                  background: 'rgba(34,197,94,0.14)',
+                  color: '#4ade80',
+                  fontSize: 16,
+                  fontWeight: 700,
+                  padding: '8px 16px',
                   borderRadius: 100,
+                  border: '1px solid rgba(34,197,94,0.28)',
                   display: 'flex',
                 }}
               >
