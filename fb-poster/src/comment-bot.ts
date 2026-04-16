@@ -207,16 +207,35 @@ interface ScannedPost {
 async function scanFeed(page: Page, limit: number): Promise<ScannedPost[]> {
   const results: ScannedPost[] = []
 
+  // Wait for the feed to render before scrolling — without this we
+  // race FB's lazy loader and end up with 0 articles every run.
+  const feedReady = await page.locator('[role="feed"], [data-pagelet*="GroupFeed"], div[role="article"]')
+    .first()
+    .waitFor({ state: 'attached', timeout: 15_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (!feedReady) {
+    console.log('[SCAN] No feed/articles rendered after 15s — skipping group')
+    return results
+  }
+
   // Scroll down a couple of times to load more posts
   for (let i = 0; i < 3; i++) {
     await page.evaluate(() => window.scrollBy(0, window.innerHeight * 0.8))
     await sleep(randBetween(1500, 3000))
   }
 
-  // FB groups render posts inside div[role="article"] or div with data-ad-preview
-  // We look for role="article" which wraps each group post.
-  const articles = page.locator('div[role="article"]')
-  const count = await articles.count()
+  // Try role="article" first, fall back through DOM variants.
+  let articles = page.locator('div[role="article"]')
+  let count = await articles.count()
+  if (count === 0) {
+    articles = page.locator('[data-pagelet*="GroupFeed"] > div > div')
+    count = await articles.count()
+  }
+  if (count === 0) {
+    articles = page.locator('[role="feed"] > div')
+    count = await articles.count()
+  }
   const postCount = Math.min(count, 10) // scan at most 10 posts
 
   console.log(`[SCAN] Found ${count} articles, scanning first ${postCount}`)

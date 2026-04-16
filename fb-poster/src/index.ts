@@ -54,13 +54,43 @@ function sleep(ms: number): Promise<void> {
 const lastPostedAt = new Map<string, number>()
 const MIN_GROUP_GAP_MS = 6 * 60 * 60 * 1000
 
+// Pending-approval tracker — persisted across restarts. When a group's
+// admins require approval, our submit "succeeds" but the post is
+// invisible (pending). No point retrying for ~7 days; either an admin
+// approves us or never. Keeps the cycle from wasting time on dead-ends.
+const PENDING_PATH = './pending-groups.json'
+const PENDING_RETRY_MS = 7 * 24 * 60 * 60 * 1000
+interface PendingEntry { url: string; firstSeenAt: number }
+function loadPending(): Map<string, number> {
+  try {
+    if (!existsSync(PENDING_PATH)) return new Map()
+    const arr: PendingEntry[] = JSON.parse(readFileSync(PENDING_PATH, 'utf8'))
+    const cutoff = Date.now() - PENDING_RETRY_MS
+    return new Map(arr.filter((e) => e.firstSeenAt > cutoff).map((e) => [e.url, e.firstSeenAt]))
+  } catch { return new Map() }
+}
+function savePending(map: Map<string, number>): void {
+  const arr: PendingEntry[] = [...map.entries()].map(([url, firstSeenAt]) => ({ url, firstSeenAt }))
+  writeFileSync(PENDING_PATH, JSON.stringify(arr, null, 2))
+}
+const pendingGroups = loadPending()
+
 function canPostToGroup(group: TargetGroup): boolean {
+  if (pendingGroups.has(group.url)) return false
   const last = lastPostedAt.get(group.url) || 0
   return Date.now() - last >= MIN_GROUP_GAP_MS
 }
 
 function markPosted(group: TargetGroup): void {
   lastPostedAt.set(group.url, Date.now())
+}
+
+function markPending(group: TargetGroup): void {
+  if (!pendingGroups.has(group.url)) {
+    pendingGroups.set(group.url, Date.now())
+    savePending(pendingGroups)
+    console.log(`[PENDING] ${group.name} requires admin approval — backing off ${PENDING_RETRY_MS / 86_400_000}d`)
+  }
 }
 
 // CAPTCHA / challenge detection
@@ -222,6 +252,35 @@ async function postToGroup(
       await alertOnChallenge(group, page.url())
       return { ok: false, reason: 'challenged_after_post' }
     }
+
+    // Detect "pending admin approval" banner that FB shows after
+    // submitting to admin-moderated groups. Mark the group so we skip
+    // it for ~7 days instead of wasting cycles re-posting invisibly.
+    const pendingPhrases = [
+      'pending approval',
+      'pending admin',
+      'waiting for approval',
+      'awaiting approval',
+      'esperando aprobación',
+      'esperando aprobacion',
+      'en espera de aprobación',
+      'pendiente de aprobación',
+      'pendiente de aprobacion',
+      'pendiente de revisión',
+      'pendiente de revision',
+      'admin will review',
+      'visible solo para ti',
+      'only visible to you',
+    ]
+    try {
+      const postSubmitText = (await page.textContent('body').catch(() => '') || '').toLowerCase()
+      const hit = pendingPhrases.find((p) => postSubmitText.includes(p))
+      if (hit) {
+        try { await page.screenshot({ path: `pending-${group.region}-${Date.now()}.png` }) } catch {}
+        markPending(group)
+        return { ok: false, reason: `pending_approval (${hit})` }
+      }
+    } catch { /* if we can't read text, fall through and treat as ok */ }
 
     console.log(`[OK] Posted to ${group.name}`)
     return { ok: true }

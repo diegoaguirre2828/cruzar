@@ -200,14 +200,33 @@ async function scrapeGroup(
       return { extracted: 0, submitted: 0 }
     }
 
+    // Wait for FB to render the group feed before scrolling. Without
+    // this we race the lazy-loader and end up with 0 articles. Try the
+    // feed wrapper first (most reliable), fall back to any post-like
+    // node, and just press on if both time out.
+    const feedReady = await page.locator('[role="feed"], [data-pagelet*="GroupFeed"], div[role="article"]')
+      .first()
+      .waitFor({ state: 'attached', timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false)
+    if (!feedReady) {
+      console.log(`[SKIP] No feed/articles rendered for ${group.name} after 15s`)
+      try { await page.screenshot({ path: `scrape-noload-${group.region}-${Date.now()}.png` }) } catch {}
+      return { extracted: 0, submitted: 0 }
+    }
+
     // Scroll to load more posts
     for (let i = 0; i < 4; i++) {
       await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.5))
       await sleep(randBetween(2000, 4000))
     }
 
-    // Grab post text from article elements
-    const articles = await page.$$('div[role="article"]')
+    // Grab post text. Try role="article" first (modern desktop FB),
+    // then a few fallbacks for DOM variants we've seen.
+    let articles = await page.$$('div[role="article"]')
+    if (articles.length === 0) articles = await page.$$('[data-pagelet*="GroupFeed"] > div > div')
+    if (articles.length === 0) articles = await page.$$('[role="feed"] > div')
+    console.log(`[SCAN] ${group.name}: ${articles.length} articles found`)
     const postsToProcess = articles.slice(0, 15) // Max 15 posts per group
 
     for (const article of postsToProcess) {
