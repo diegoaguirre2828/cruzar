@@ -90,7 +90,7 @@ export function HomeForecast({ favoritePortId }: Props) {
       href={`/port/${encodeURIComponent(favoritePortId)}`}
       className="mt-3 block bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 active:scale-[0.98] transition-transform"
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <p className="text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300">
@@ -101,6 +101,9 @@ export function HomeForecast({ favoritePortId }: Props) {
           {portLabel}
         </p>
       </div>
+      <p className="text-[9px] text-gray-400 dark:text-gray-500 mb-3">
+        {es ? 'Estimado según historial de este día' : 'Estimated from past trends for this day'}
+      </p>
 
       {/* 5-hour forecast rail */}
       <div className="flex gap-1.5">
@@ -116,7 +119,11 @@ export function HomeForecast({ favoritePortId }: Props) {
               className={`flex-1 rounded-xl border px-1 py-2 text-center ${color} ${isNow ? 'ring-2 ring-indigo-500' : ''}`}
             >
               <p className="text-[8px] font-black uppercase tracking-wider opacity-70">
-                {isNow ? (es ? 'Ahora' : 'Now') : f.delta}
+                {isNow
+                  ? (es ? 'Ahora' : 'Now')
+                  : es
+                    ? `en ${f.delta.replace('+', '').replace('H', ' hr')}`
+                    : `in ${f.delta.replace('+', '').replace('H', ' hr')}`}
               </p>
               <p className="text-sm font-black tabular-nums mt-0.5">
                 {f.avgWait == null ? '—' : `${f.avgWait}m`}

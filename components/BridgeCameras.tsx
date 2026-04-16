@@ -63,12 +63,9 @@ function PolledImage({ src, alt, intervalMs = 12000 }: { src: string; alt: strin
         <div className="absolute inset-0 bg-gray-900 animate-pulse" />
       )}
       <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-black/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[9px] font-bold text-white">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-        </span>
+        <span className="inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
         <span className="tabular-nums">
-          {secondsAgo === 0 ? 'actualizada' : `hace ${secondsAgo}s`}
+          {secondsAgo === 0 ? 'nueva foto' : `hace ${secondsAgo}s`}
         </span>
       </div>
     </div>
@@ -214,23 +211,33 @@ export function BridgeCameras({ portId, portName }: Props) {
   const safeIdx = Math.min(activeIdx, feeds.length - 1)
   const activeFeed = feeds[safeIdx]
   const hasTabs = feeds.length > 1
+  const isLiveVideo = activeFeed.kind === 'youtube' || activeFeed.kind === 'hls'
 
   // State 2 — feeds + Pro
   if (isPro) {
     return (
       <div className="bg-gray-900 dark:bg-black rounded-2xl border border-gray-700 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
-          <Camera className="w-4 h-4 text-green-400" />
+          <Camera className={`w-4 h-4 ${isLiveVideo ? 'text-green-400' : 'text-blue-400'}`} />
           <h2 className="text-sm font-bold text-white">
-            {es ? 'Cámara en vivo' : 'Live camera'}
+            {isLiveVideo
+              ? (es ? 'Cámara en vivo' : 'Live camera')
+              : (es ? 'Webcam del puente' : 'Bridge webcam')}
           </h2>
-          <span className="flex items-center gap-1 text-[10px] font-semibold text-green-400 ml-auto">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          {isLiveVideo ? (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-green-400 ml-auto">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              {es ? 'EN VIVO' : 'LIVE'}
             </span>
-            {es ? 'EN VIVO' : 'LIVE'}
-          </span>
+          ) : (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 ml-auto">
+              <span className="inline-flex rounded-full h-2 w-2 bg-green-500" />
+              {es ? 'Foto cada ~12s' : 'Photo every ~12s'}
+            </span>
+          )}
         </div>
 
         {hasTabs && (

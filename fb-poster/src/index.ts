@@ -21,6 +21,15 @@ const ENABLED = process.env.FB_GROUP_AUTOMATION_ENABLED !== 'false'
 const COOKIES_PATH = process.env.FB_COOKIES_PATH || './cookies.json'
 const RUN_ONCE = process.env.RUN_ONCE === '1'
 
+// Bootstrap cookies from env var if the file doesn't exist yet.
+// This lets Railway (or any host) work without a persistent volume —
+// just base64-encode cookies.json and set FB_COOKIES_B64.
+if (!existsSync(COOKIES_PATH) && process.env.FB_COOKIES_B64) {
+  const decoded = Buffer.from(process.env.FB_COOKIES_B64, 'base64').toString('utf8')
+  writeFileSync(COOKIES_PATH, decoded)
+  console.log(`[BOOT] Wrote cookies from FB_COOKIES_B64 → ${COOKIES_PATH}`)
+}
+
 // Randomized delays (milliseconds)
 const MIN_DELAY_BETWEEN_GROUPS = 45_000  // 45s
 const MAX_DELAY_BETWEEN_GROUPS = 90_000  // 90s

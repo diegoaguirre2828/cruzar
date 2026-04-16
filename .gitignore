@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# fb-poster secrets
+fb-poster/cookies.json
+fb-poster/.env
+fb-poster/node_modules

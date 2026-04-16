@@ -338,14 +338,25 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
           </div>
         )}
 
-        {/* Forward forecast cards */}
+        {/* Forward forecast cards — label + cards */}
+        {forecast?.forecast.some((f) => f.avgWait != null) && (
+          <div className="flex-shrink-0 flex items-center self-end pb-1">
+            <p className="text-[8px] font-bold text-gray-400 dark:text-gray-500 leading-tight max-w-[60px] text-center">
+              {es ? 'Estimado según historial' : 'Based on past trends'}
+            </p>
+          </div>
+        )}
         {forecast?.forecast.map((f) => (
           <CompactCard
             key={f.delta}
             accent={f.avgWait == null ? 'gray' : f.avgWait <= 20 ? 'green' : f.avgWait <= 45 ? 'amber' : 'red'}
           >
             <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-              {f.delta === 'NOW' ? (es ? 'Ahora' : 'Now') : f.delta}
+              {f.delta === 'NOW'
+                ? (es ? 'Ahora' : 'Now')
+                : es
+                  ? `en ${f.delta.replace('+', '').replace('H', ' hr')}`
+                  : `in ${f.delta.replace('+', '').replace('H', ' hr')}`}
             </p>
             <p className="text-sm font-black text-gray-900 dark:text-gray-100 leading-tight mt-0.5">
               {formatHour(f.hour)}
