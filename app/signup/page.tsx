@@ -45,6 +45,28 @@ function friendlyError(raw: string, lang: 'es' | 'en'): string {
   return raw
 }
 
+// Lightweight funnel tracking — fire-and-forget, non-blocking.
+function trackFunnel(event: string, meta?: Record<string, unknown>) {
+  const sessionId = typeof window !== 'undefined'
+    ? (sessionStorage.getItem('cruzar_sid') || (() => {
+        const id = Math.random().toString(36).slice(2)
+        sessionStorage.setItem('cruzar_sid', id)
+        return id
+      })())
+    : null
+  fetch('/api/funnel', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      event,
+      page: typeof window !== 'undefined' ? window.location.pathname : null,
+      referrer: typeof document !== 'undefined' ? document.referrer : null,
+      sessionId,
+      meta,
+    }),
+  }).catch(() => {})
+}
+
 export default function SignupPage() {
   const router = useRouter()
   const { lang } = useLang()
@@ -55,6 +77,9 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [magicSent, setMagicSent] = useState(false)
+
+  // Track page view on mount
+  useState(() => { trackFunnel('signup_page_view') })
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
@@ -86,10 +111,7 @@ export default function SignupPage() {
         })
       } catch { /* non-critical */ }
     }
-    // New users land on /welcome for the mandatory activation step (pick a
-    // bridge + set an alert), not straight to the dashboard. This fixes the
-    // 49% signup→dashboard leak — every new account now has at least one
-    // saved crossing + one alert before they see the full app.
+    trackFunnel('signup_complete', { method: mode })
     const nextParam = typeof window !== 'undefined'
       ? new URLSearchParams(window.location.search).get('next')
       : null
@@ -140,7 +162,7 @@ export default function SignupPage() {
         </div>
 
         {/* Google — dominant fast path */}
-        <div className="mb-4">
+        <div className="mb-4" onClick={() => trackFunnel('signup_method_click', { method: 'google' })}>
           <GoogleButton label={es ? 'Continuar con Google' : 'Continue with Google'} />
         </div>
 
@@ -159,7 +181,7 @@ export default function SignupPage() {
           {PHONE_AUTH_ENABLED && (
             <button
               type="button"
-              onClick={() => { setMode('phone'); setMagicSent(false); setError('') }}
+              onClick={() => { setMode('phone'); setMagicSent(false); setError(''); trackFunnel('signup_method_click', { method: 'phone' }) }}
               className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold rounded-xl border-2 transition-all ${
                 mode === 'phone'
                   ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
@@ -172,7 +194,7 @@ export default function SignupPage() {
           )}
           <button
             type="button"
-            onClick={() => { setMode('password'); setMagicSent(false); setError('') }}
+            onClick={() => { setMode('password'); setMagicSent(false); setError(''); trackFunnel('signup_method_click', { method: 'password' }) }}
             className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold rounded-xl border-2 transition-all ${
               mode === 'password'
                 ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
@@ -184,7 +206,7 @@ export default function SignupPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setMode('magic'); setMagicSent(false); setError('') }}
+            onClick={() => { setMode('magic'); setMagicSent(false); setError(''); trackFunnel('signup_method_click', { method: 'magic' }) }}
             className={`flex flex-col items-center gap-0.5 py-2 text-[11px] font-bold rounded-xl border-2 transition-all ${
               mode === 'magic'
                 ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-300'
