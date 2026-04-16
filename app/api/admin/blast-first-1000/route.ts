@@ -19,6 +19,37 @@ const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
  * Body: { dryRun?: boolean } -- set dryRun:true to preview without sending
  */
 
+export async function GET() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll() } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.email !== ADMIN_EMAIL) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+  return new Response(`<!DOCTYPE html>
+<html><head><title>Blast First 1000</title><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:system-ui;max-width:500px;margin:40px auto;padding:20px">
+<h1>Re-engagement Email Blast</h1>
+<p>Sends the "3 meses Pro gratis" email to all eligible users.</p>
+<button id="dry" style="padding:12px 24px;font-size:16px;margin:8px 4px;cursor:pointer;border-radius:8px;border:2px solid #2563eb;background:white;color:#2563eb;font-weight:700">Preview (dry run)</button>
+<button id="send" style="padding:12px 24px;font-size:16px;margin:8px 4px;cursor:pointer;border-radius:8px;border:none;background:#2563eb;color:white;font-weight:700">Send for real</button>
+<pre id="out" style="background:#f1f5f9;padding:16px;border-radius:8px;margin-top:16px;white-space:pre-wrap;font-size:13px"></pre>
+<script>
+async function go(dryRun){
+  document.getElementById('out').textContent='Loading...'
+  const r=await fetch('/api/admin/blast-first-1000',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dryRun})})
+  document.getElementById('out').textContent=JSON.stringify(await r.json(),null,2)
+}
+document.getElementById('dry').onclick=()=>go(true)
+document.getElementById('send').onclick=()=>{if(confirm('Send emails for real?'))go(false)}
+</script>
+</body></html>`, { headers: { 'Content-Type': 'text/html' } })
+}
+
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
   const supabase = createServerClient(

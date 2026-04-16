@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --loader tsx src/index.ts",
-    "run-once": "RUN_ONCE=1 node --loader tsx src/index.ts",
-    "capture-session": "node --loader tsx src/capture-session.ts",
+    "start": "node --import tsx src/index.ts",
+    "run-once": "RUN_ONCE=1 node --import tsx src/index.ts",
+    "capture-session": "node --import tsx src/capture-session.ts",
     "build": "tsc --noEmit"
   },
   "dependencies": {
