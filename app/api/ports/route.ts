@@ -68,14 +68,37 @@ export async function GET() {
       // portMeta.localName if no override row exists.
       db.from('port_overrides').select('port_id, local_name'),
     ])
-    // Historical averages were temporarily moved OUT of this hot path.
-    // The wait_time_readings.hour_of_day column has no supporting index,
-    // so `eq('hour_of_day', N)` was doing a full table scan on every
-    // /api/ports request, saturating Supabase's connection pool and
-    // triggering MIDDLEWARE_INVOCATION_TIMEOUT cascade failures on
-    // 2026-04-14. A separate cached endpoint (`/api/ports/historical`)
-    // will repopulate this once an index exists on (hour_of_day, port_id).
+    // Historical averages — re-enabled 2026-04-16 after adding
+    // idx_wait_time_readings_hour_port + idx_wait_time_readings_dow_hour_port.
+    // Query scoped to current day_of_week + hour_of_day, last 30 days only.
     const historicalByPort = new Map<string, number>()
+    try {
+      const nowCT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }))
+      const dow = nowCT.getDay()
+      const hour = nowCT.getHours()
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: histRows } = await db
+        .from('wait_time_readings')
+        .select('port_id, vehicle_wait')
+        .eq('day_of_week', dow)
+        .eq('hour_of_day', hour)
+        .gte('recorded_at', thirtyDaysAgo)
+        .not('vehicle_wait', 'is', null)
+      if (histRows) {
+        const sums = new Map<string, { total: number; count: number }>()
+        for (const r of histRows) {
+          const s = sums.get(r.port_id) ?? { total: 0, count: 0 }
+          s.total += r.vehicle_wait
+          s.count++
+          sums.set(r.port_id, s)
+        }
+        for (const [pid, s] of sums) {
+          if (s.count >= 3) historicalByPort.set(pid, Math.round(s.total / s.count))
+        }
+      }
+    } catch {
+      // Non-critical — if historical query fails, cards just won't show historical fallback
+    }
 
     const overrideMap = new Map<string, string>()
     for (const o of overridesRes.data || []) {

@@ -371,17 +371,20 @@ export function PortCard({ port, signal }: Props) {
           </div>
         ) : (
           // Last resort: no live data AND no historical pattern yet.
-          // Neutral copy — not alarming, not begging for a report.
+          // Be honest about why — CBP sensors aren't reporting and we
+          // don't have enough history for this hour to estimate.
           <div
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/port/${port.portId}?report=1` }}
             className="mt-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {lang === 'es' ? '⏳ Sin tiempos de espera ahora' : '⏳ No wait times right now'}
+                {lang === 'es' ? 'CBP no reporta datos ahorita' : 'CBP not reporting data right now'}
               </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                {lang === 'es' ? 'Reporta y ayuda a la comunidad' : 'Report and help the community'}
+                {lang === 'es'
+                  ? 'El sensor puede estar fuera de línea o el puente cerrado · reporta si estás ahí'
+                  : 'Sensor may be offline or bridge may be closed · report if you\'re there'}
               </p>
             </div>
             <span className="text-xs font-bold text-white bg-gray-700 dark:bg-gray-600 rounded-lg px-3 py-1.5 whitespace-nowrap">
