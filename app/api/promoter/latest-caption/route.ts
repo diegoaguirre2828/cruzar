@@ -48,8 +48,11 @@ export async function GET() {
   }
 
   try {
+    // force=1: this is a READ, not a post — bypass the dedupe gap so
+    // the promoter dashboard always sees the live caption regardless
+    // of whether Make.com just posted to the FB Page.
     const res = await fetch(
-      `https://www.cruzar.app/api/social/next-post?secret=${cronSecret}`,
+      `https://www.cruzar.app/api/social/next-post?secret=${cronSecret}&force=1`,
       { cache: 'no-store' },
     )
     if (!res.ok) {

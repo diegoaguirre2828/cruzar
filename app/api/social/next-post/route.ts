@@ -131,17 +131,21 @@ ${hashtags}`
   // Record this post BEFORE returning so the next call dedupes against it.
   // If the row insert fails we still return the caption (don't block posting),
   // but log so we can fix the dedupe gap.
-  try {
-    await db.from('social_posts').insert({
-      platform: 'facebook_page',
-      caption,
-      caption_hash: hash,
-      video_url: videoUrl,
-      image_url: imageUrl,
-      landing_url: utmUrl,
-    })
-  } catch (err) {
-    console.error('[next-post] Failed to record social_posts row:', err)
+  // force=1 is reserved for read-only probes (e.g. the promoter dashboard
+  // preview) — don't record those, or they'd fake out the dedupe window.
+  if (!force) {
+    try {
+      await db.from('social_posts').insert({
+        platform: 'facebook_page',
+        caption,
+        caption_hash: hash,
+        video_url: videoUrl,
+        image_url: imageUrl,
+        landing_url: utmUrl,
+      })
+    } catch (err) {
+      console.error('[next-post] Failed to record social_posts row:', err)
+    }
   }
 
   return NextResponse.json({
