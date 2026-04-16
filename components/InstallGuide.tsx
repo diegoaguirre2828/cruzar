@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useLang } from '@/lib/LangContext'
+import { trackEvent } from '@/lib/trackEvent'
 
 // Reusable install instructions block. Used by /welcome step 2 and the
 // dashboard nag banner. Auto-detects the platform and renders the right
@@ -41,21 +42,34 @@ export function InstallGuide({ onInstalled, variant = 'welcome' }: Props) {
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as DeferredPromptEvent)
+      // Telemetry: browser offered the install prompt. Gives us the
+      // denominator for the install conversion rate.
+      trackEvent('install_prompt_available', { variant, platform: isAndroid ? 'android' : isIos ? 'ios' : 'desktop' })
     }
-    const installed = () => onInstalled?.()
+    const installed = () => {
+      // Telemetry: user actually completed the install. Numerator for
+      // the accepted-install conversion rate.
+      trackEvent('install_completed', { variant })
+      onInstalled?.()
+    }
     window.addEventListener('beforeinstallprompt', handler)
     window.addEventListener('appinstalled', installed)
     return () => {
       window.removeEventListener('beforeinstallprompt', handler)
       window.removeEventListener('appinstalled', installed)
     }
-  }, [onInstalled])
+  }, [onInstalled, variant])
 
   async function triggerInstall() {
     if (!deferredPrompt) return
+    // Telemetry: user tapped our "install" button. Diego needs this to
+    // know whether the install gap is people never tapping (awareness)
+    // or tapping-but-cancelling (friction).
+    trackEvent('install_button_tapped', { variant })
     deferredPrompt.prompt()
     try {
       const { outcome } = await deferredPrompt.userChoice
+      trackEvent('install_prompt_choice', { variant, outcome })
       if (outcome === 'accepted') onInstalled?.()
     } catch { /* user dismissed */ }
   }

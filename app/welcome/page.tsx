@@ -8,6 +8,7 @@ import { usePushNotifications } from '@/lib/usePushNotifications'
 import { InstallGuide } from '@/components/InstallGuide'
 import { getPortMeta } from '@/lib/portMeta'
 import { haversineKm } from '@/lib/geo'
+import { createClient } from '@/lib/auth'
 import type { PortWaitTime } from '@/types'
 
 // Forced activation flow. Every new signup lands here before the dashboard.
@@ -189,6 +190,25 @@ function WelcomeInner() {
       const chosenPort = ports.find((p) => p.portId === selected)
       if (chosenPort) {
         setAlertedPortName(chosenPort.localNameOverride || chosenPort.portName || '')
+      }
+
+      // Derive home_region from the bridge they committed to — this
+      // fixes the 88% "home_region unset" leak I found in the admin
+      // dashboard 2026-04-15. If they pick Hidalgo, they're RGV. If
+      // they pick Laredo II, they're Laredo. Silent, automatic, no
+      // extra UI friction. On return visits the home page PortList
+      // scopes to this region by default.
+      try {
+        const meta = getPortMeta(selected)
+        if (meta?.megaRegion && user) {
+          const supabase = createClient()
+          await supabase
+            .from('profiles')
+            .update({ home_region: meta.megaRegion })
+            .eq('id', user.id)
+        }
+      } catch {
+        /* non-blocking — home region is a nice-to-have, not critical */
       }
 
       // First-1000 launch promo: claim 3 months of Pro access as part

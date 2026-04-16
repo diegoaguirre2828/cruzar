@@ -68,14 +68,22 @@ jobs:
           echo "Sleeping $JITTER seconds ($(($JITTER / 60))m $(($JITTER % 60))s) for anti-pattern jitter"
           sleep $JITTER
 
-      - name: Install Chrome for Puppeteer/Remotion
+      - name: Install system libs for headless Chrome
+        # Remotion v4 auto-downloads Chromium to node_modules on first
+        # renderMedia() call, so we don't need to install Chrome manually.
+        # We DO need the shared libraries Chromium links against — these
+        # are typically pre-installed on ubuntu-latest but we force them
+        # just in case a runner image is minimal.
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgbm1 \
             libasound2t64 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+            libxkbcommon0 libpango-1.0-0 libcairo2 || \
+          sudo apt-get install -y --no-install-recommends \
+            libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgbm1 \
+            libasound2 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
             libxkbcommon0 libpango-1.0-0 libcairo2
-          npx --yes @remotion/cli@4.0.0 browser ensure
 
       - name: Render video(s)
         working-directory: video-generator
