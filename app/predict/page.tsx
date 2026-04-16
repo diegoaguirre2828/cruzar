@@ -409,17 +409,17 @@ export default function PredictPage() {
                           <p className="text-xs text-gray-400 mb-1.5">
                             {es ? `Espera por hora (${fullLabels[selectedDay]})` : `Wait by hour (${fullLabels[selectedDay]})`}
                           </p>
-                          <div className="flex items-end gap-0.5 h-12">
+                          <div className="flex items-end gap-0.5" style={{ height: 48 }}>
                             {HOURS.map(hour => {
                               const a = getAvg(result, selectedDay, hour)
-                              const barH = a !== null ? Math.min((a / 60) * 100, 100) : 0
+                              const heightPx = a !== null ? Math.max(4, Math.round((Math.min(a, 60) / 60) * 44)) : 2
                               const color = a === null ? 'bg-gray-100 dark:bg-gray-700' : a < 20 ? 'bg-green-400' : a < 45 ? 'bg-yellow-400' : 'bg-red-400'
                               const isCurrent = hour === new Date().getHours()
                               return (
-                                <div key={hour} className="flex-1 flex flex-col items-center justify-end">
+                                <div key={hour} className="flex-1 flex flex-col items-center justify-end" style={{ height: 48 }}>
                                   <div
                                     className={`w-full rounded-t-sm ${color} ${isCurrent ? 'ring-1 ring-blue-400' : ''}`}
-                                    style={{ height: `${Math.max(barH, a !== null ? 4 : 1)}%` }}
+                                    style={{ height: heightPx }}
                                     title={a !== null ? `${formatHour(hour)}: ~${a}m` : `${formatHour(hour)}: ${es ? 'sin datos' : 'no data'}`}
                                   />
                                 </div>

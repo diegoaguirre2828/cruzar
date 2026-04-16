@@ -1,0 +1,9 @@
+node_modules/
+debug-*.png
+pre-post-*.png
+post-failed-*.png
+cookies.json
+tiktok-cookies.json
+commented-posts.json
+scraped-posts.json
+.env

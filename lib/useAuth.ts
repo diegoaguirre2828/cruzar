@@ -17,9 +17,20 @@ import { createClient } from './auth'
 //      and let pages render their signed-out state instead of hanging.
 //   4. Keep onAuthStateChange as the live truth source after mount.
 
+// Cache whether we had a session last time. This prevents the flash
+// of guest UI ("create account") on every page load for logged-in users.
+// The flag is set when we confirm a user, cleared on sign-out.
+function wasLoggedIn(): boolean {
+  if (typeof window === 'undefined') return false
+  try { return localStorage.getItem('cruzar_has_session') === '1' } catch { return false }
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  // If user was logged in last time, start with loading=true so guest
+  // UI stays hidden until auth resolves. If never logged in, set
+  // loading=false immediately so guest UI renders without delay.
+  const [loading, setLoading] = useState(wasLoggedIn)
 
   useEffect(() => {
     const supabase = createClient()
@@ -36,8 +47,13 @@ export function useAuth() {
     supabase.auth.getSession()
       .then(({ data }) => {
         if (cancelled) return
-        setUser(data.session?.user ?? null)
+        const u = data.session?.user ?? null
+        setUser(u)
         setLoading(false)
+        try {
+          if (u) localStorage.setItem('cruzar_has_session', '1')
+          else localStorage.removeItem('cruzar_has_session')
+        } catch {}
       })
       .catch(() => {
         if (!cancelled) setLoading(false)
@@ -57,8 +73,13 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (cancelled) return
-      setUser(session?.user ?? null)
+      const u = session?.user ?? null
+      setUser(u)
       setLoading(false)
+      try {
+        if (u) localStorage.setItem('cruzar_has_session', '1')
+        else localStorage.removeItem('cruzar_has_session')
+      } catch {}
     })
 
     return () => {

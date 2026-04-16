@@ -252,7 +252,7 @@ export async function GET(req: NextRequest) {
 
   const regionFilter = req.nextUrl.searchParams.get('region') || 'rgv'
 
-  const portsRes = await fetch('https://cruzar.app/api/ports', { cache: 'no-store' })
+  const portsRes = await fetch('https://www.cruzar.app/api/ports', { cache: 'no-store' })
   const { ports } = await portsRes.json()
 
   const portList: RegionPort[] = regionFilter === 'all'

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
+import { usePorts } from '@/lib/usePorts'
 import { getPortMeta } from '@/lib/portMeta'
 import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import type { PortWaitTime, WaitLevel } from '@/types'
@@ -59,25 +60,7 @@ const LEVEL_TEXT: Record<WaitLevel, string> = {
 export default function MapaPage() {
   const { lang } = useLang()
   const es = lang === 'es'
-  const [ports, setPorts] = useState<PortWaitTime[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 8000)
-    fetch('/api/ports', { cache: 'no-store', signal: controller.signal })
-      .then((r) => r.json())
-      .then((d) => {
-        setPorts(d.ports || [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-      .finally(() => clearTimeout(timer))
-    return () => {
-      clearTimeout(timer)
-      controller.abort()
-    }
-  }, [])
+  const { ports, loading } = usePorts()
 
   // Group by mega region for a scannable read-only view.
   const sections = useMemo<Section[]>(() => {

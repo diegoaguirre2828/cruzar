@@ -336,10 +336,10 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
               </p>
               <span className="text-[8px] font-bold text-indigo-500">→</span>
             </div>
-            <div className="h-10 flex items-end gap-[1px]">
+            <div className="flex items-end gap-[1px]" style={{ height: 40 }}>
               {forecast.todayPattern.map((h) => {
                 const max = Math.max(...forecast.todayPattern.map((hh) => hh.avgWait ?? 0), 1)
-                const height = Math.max(6, (((h.avgWait ?? 0) as number) / max) * 100)
+                const heightPx = Math.max(3, Math.round((((h.avgWait ?? 0) as number) / max) * 36))
                 const color = h.avgWait == null ? 'bg-gray-200 dark:bg-gray-700'
                   : (h.avgWait as number) <= 20 ? 'bg-green-400'
                   : (h.avgWait as number) <= 45 ? 'bg-amber-400'
@@ -348,7 +348,7 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
                   <div
                     key={h.hour}
                     className={`flex-1 ${color} rounded-t`}
-                    style={{ height: `${height}%` }}
+                    style={{ height: heightPx }}
                     title={`${formatHour(h.hour)}: ${h.avgWait == null ? '—' : h.avgWait + 'm'}`}
                   />
                 )

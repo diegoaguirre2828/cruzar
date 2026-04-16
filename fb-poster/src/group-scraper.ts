@@ -20,7 +20,7 @@ import { TARGET_GROUPS, type TargetGroup } from './groups.js'
 
 const ENABLED = process.env.FB_GROUP_AUTOMATION_ENABLED !== 'false'
 const COOKIES_PATH = process.env.FB_COOKIES_PATH || './cookies.json'
-const CRUZAR_API = process.env.CRUZAR_API_URL || 'https://cruzar.app'
+const CRUZAR_API = process.env.CRUZAR_API_URL || 'https://www.cruzar.app'
 const CRON_SECRET = process.env.CRON_SECRET || ''
 const SCRAPED_PATH = './scraped-posts.json'
 
@@ -193,6 +193,13 @@ async function scrapeGroup(
       return { extracted: 0, submitted: 0 }
     }
 
+    // Not a member check
+    const bodyText = await page.textContent('body').catch(() => '') || ''
+    if (bodyText.includes("This content isn't available") || bodyText.includes('Este contenido no está disponible')) {
+      console.log(`[SKIP] Not a member of ${group.name}`)
+      return { extracted: 0, submitted: 0 }
+    }
+
     // Scroll to load more posts
     for (let i = 0; i < 4; i++) {
       await page.evaluate(() => window.scrollBy(0, window.innerHeight * 1.5))
@@ -270,8 +277,8 @@ async function main() {
   })
 
   const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.280 Mobile Safari/537.36',
-    viewport: { width: 412, height: 915 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 800 },
     locale: 'es-MX',
     timezoneId: 'America/Chicago',
   })

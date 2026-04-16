@@ -146,6 +146,95 @@ export const CITY_META: Record<string, CityMeta> = {
     },
     hashtags: '#Nogales #Sonora #Arizona #DeConcini #Mariposa',
   },
+
+  // ---- US-side SEO pages ----
+  // People in Texas search "mcallen bridge wait times", not "reynosa".
+  // These duplicate the same ports but with English-optimized metadata
+  // so Google ranks us for both sides of the border.
+
+  mcallen: {
+    slug: 'mcallen',
+    mxName: 'Reynosa',
+    usName: 'McAllen',
+    displayName: { es: 'McAllen ↔ Reynosa', en: 'McAllen ↔ Reynosa' },
+    megaRegion: 'rgv',
+    ports: ['230501', '230502', '230503'],
+    blurb: {
+      es: 'Tiempos de espera en vivo de los 3 puentes cerca de McAllen: Hidalgo, Pharr y Anzaldúas. Compara antes de salir.',
+      en: 'Live wait times for all 3 bridges near McAllen, TX: Hidalgo, Pharr, and Anzaldúas. Compare before you leave — cross at the fastest one.',
+    },
+    hashtags: '#McAllen #Hidalgo #Pharr #Anzalduas #RGV #BorderCrossing',
+  },
+
+  brownsville: {
+    slug: 'brownsville',
+    mxName: 'Matamoros',
+    usName: 'Brownsville',
+    displayName: { es: 'Brownsville ↔ Matamoros', en: 'Brownsville ↔ Matamoros' },
+    megaRegion: 'rgv',
+    ports: ['535501', '535502', '535503'],
+    blurb: {
+      es: 'Los 3 puentes de Brownsville a Matamoros en una vista: Gateway, Veterans y Los Tomates. Tiempos en vivo cada 15 minutos.',
+      en: 'All 3 Brownsville-Matamoros bridges on one page: Gateway, Veterans, and Los Tomates. Live wait times updated every 15 minutes.',
+    },
+    hashtags: '#Brownsville #Matamoros #Gateway #Veterans #LosTomatoes',
+  },
+
+  laredo: {
+    slug: 'laredo',
+    mxName: 'Nuevo Laredo',
+    usName: 'Laredo',
+    displayName: { es: 'Laredo ↔ Nuevo Laredo', en: 'Laredo ↔ Nuevo Laredo' },
+    megaRegion: 'laredo',
+    ports: ['230401', '230402', '230403', '230404'],
+    blurb: {
+      es: 'Los 4 puentes entre Laredo TX y Nuevo Laredo: Gateway to Americas, Juárez-Lincoln, Colombia Solidarity y World Trade. El cruce comercial más grande de la frontera.',
+      en: 'All 4 Laredo-Nuevo Laredo bridges: Gateway to Americas, Juárez-Lincoln, Colombia Solidarity, and World Trade. The busiest commercial crossing on the entire US-Mexico border.',
+    },
+    hashtags: '#Laredo #NuevoLaredo #WorldTradeBridge #BorderCrossing',
+  },
+
+  'el-paso': {
+    slug: 'el-paso',
+    mxName: 'Ciudad Juárez',
+    usName: 'El Paso',
+    displayName: { es: 'El Paso ↔ Ciudad Juárez', en: 'El Paso ↔ Ciudad Juárez' },
+    megaRegion: 'el-paso',
+    ports: ['240201', '240204', '240221'],
+    blurb: {
+      es: 'Todos los cruces entre El Paso TX y Ciudad Juárez: BOTA, Paso del Norte y Ysleta-Zaragoza. Tiempos en vivo, reportes y cámaras.',
+      en: 'All El Paso-Juárez crossings: Bridge of the Americas (BOTA), Paso del Norte (Santa Fe), and Ysleta-Zaragoza. Live wait times, community reports, and cameras.',
+    },
+    hashtags: '#ElPaso #CiudadJuarez #BOTA #PasoDelNorte #Ysleta',
+  },
+
+  'san-ysidro': {
+    slug: 'san-ysidro',
+    mxName: 'Tijuana',
+    usName: 'San Ysidro',
+    displayName: { es: 'San Ysidro ↔ Tijuana', en: 'San Ysidro ↔ Tijuana' },
+    megaRegion: 'baja',
+    ports: ['250401', '250501', '250407', '250409'],
+    blurb: {
+      es: 'Tiempos de espera en San Ysidro (La Línea), Otay Mesa, PedWest y Cross Border Xpress. El cruce más transitado del mundo.',
+      en: 'Wait times at San Ysidro (the busiest land border crossing in the world), Otay Mesa, PedWest, and Cross Border Xpress. Live data updated every 15 minutes.',
+    },
+    hashtags: '#SanYsidro #Tijuana #OtayMesa #LaLinea #CBX',
+  },
+
+  'eagle-pass': {
+    slug: 'eagle-pass',
+    mxName: 'Piedras Negras',
+    usName: 'Eagle Pass',
+    displayName: { es: 'Eagle Pass ↔ Piedras Negras', en: 'Eagle Pass ↔ Piedras Negras' },
+    megaRegion: 'coahuila-tx',
+    ports: ['240102'],
+    blurb: {
+      es: 'Tiempo de espera en Eagle Pass / Piedras Negras en vivo. Reportes de la comunidad y datos oficiales de CBP actualizados cada 15 minutos.',
+      en: 'Live wait time at the Eagle Pass-Piedras Negras international bridge. Community reports and official CBP data updated every 15 minutes.',
+    },
+    hashtags: '#EaglePass #PiedrasNegras #BorderCrossing',
+  },
 }
 
 export const ALL_CITY_SLUGS = Object.keys(CITY_META)

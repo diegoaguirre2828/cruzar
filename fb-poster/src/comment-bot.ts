@@ -157,7 +157,7 @@ interface FastestBridge {
 }
 
 async function fetchFastestBridge(): Promise<FastestBridge | null> {
-  const apiBase = process.env.CRUZAR_API_URL || 'https://cruzar.app'
+  const apiBase = process.env.CRUZAR_API_URL || 'https://www.cruzar.app'
   try {
     const res = await fetch(`${apiBase}/api/ports`)
     const json = (await res.json()) as { ports?: PortData[] }
@@ -418,9 +418,8 @@ async function runCommentCycle(): Promise<void> {
   })
 
   const context = await browser.newContext({
-    userAgent:
-      'Mozilla/5.0 (Linux; Android 14; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.280 Mobile Safari/537.36',
-    viewport: { width: 412, height: 915 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 800 },
     locale: 'es-MX',
     timezoneId: 'America/Chicago',
   })
@@ -454,6 +453,13 @@ async function runCommentCycle(): Promise<void> {
         await alertOnChallenge(group, page.url())
         challenged = true
         break
+      }
+
+      // Not a member check
+      const bodyText = await page.textContent('body').catch(() => '') || ''
+      if (bodyText.includes("This content isn't available") || bodyText.includes('Este contenido no está disponible')) {
+        console.log(`[SKIP] Not a member of ${group.name}`)
+        continue
       }
 
       // Fake human behavior: scroll, hover

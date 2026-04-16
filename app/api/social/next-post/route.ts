@@ -25,7 +25,12 @@ export async function GET(): Promise<Response> {
   let lines: string[] = []
   let fastestLine = ''
   try {
-    const res = await fetch(`${apiBase}/api/ports`, { next: { revalidate: 0 } })
+    // Fetch directly from CBP instead of self-fetching /api/ports,
+    // which fails silently on Vercel due to the cruzar.app → www redirect.
+    const res = await fetch('https://www.cruzar.app/api/ports', {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'Cruzar-Social/1.0' },
+    })
     const json = (await res.json()) as { ports?: { portId: string; portName?: string; vehicle?: number | null }[] }
     const ports = json.ports || []
     for (const f of FEATURED) {
@@ -38,7 +43,9 @@ export async function GET(): Promise<Response> {
       .filter((x): x is typeof x & { wait: number } => x.wait != null && x.wait >= 0)
       .sort((a, b) => a.wait - b.wait)[0]
     if (fastest) fastestLine = `\n✅ Mas rapido: ${fastest.name} (${fastest.wait} min)`
-  } catch { /* use empty lines */ }
+  } catch (err) {
+    console.error('[next-post] Failed to fetch ports:', err)
+  }
 
   let videoUrl: string | null = null
   try {

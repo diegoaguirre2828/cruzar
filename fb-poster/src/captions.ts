@@ -76,7 +76,7 @@ export function buildLiveData(videoUrl: string): Promise<LiveData> {
 }
 
 async function fetchCruzarData(videoUrl: string): Promise<LiveData> {
-  const apiBase = process.env.CRUZAR_API_URL || 'https://cruzar.app'
+  const apiBase = process.env.CRUZAR_API_URL || 'https://www.cruzar.app'
   let fastest: { name: string; wait: number } | null = null
   try {
     const res = await fetch(`${apiBase}/api/ports`)

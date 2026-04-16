@@ -3,6 +3,7 @@ import { chromium, type BrowserContext, type Page } from 'playwright'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { TARGET_GROUPS, type TargetGroup } from './groups.js'
 import { buildCaption, pickVariantIndex, buildLiveData, type LiveData } from './captions.js'
+import { ensureCookies } from './auto-login.js'
 
 // Cruzar FB Group Auto-Poster
 //
@@ -112,6 +113,14 @@ async function postToGroup(
     if (isChallenged(page)) {
       await alertOnChallenge(group, page.url())
       return { ok: false, reason: 'challenged' }
+    }
+
+    // Check for "This content isn't available" — means we're not a
+    // member or the group doesn't exist. Skip cleanly.
+    const pageText = await page.textContent('body').catch(() => '') || ''
+    if (pageText.includes("This content isn't available") || pageText.includes('Este contenido no está disponible')) {
+      console.log(`[SKIP] Not a member of ${group.name} — "content not available"`)
+      return { ok: false, reason: 'not_member' }
     }
 
     // Fake human behavior: scroll a bit, hover randomly
@@ -315,6 +324,17 @@ async function runPostingCycle(): Promise<void> {
 // how Railway containers work (always-on, container restart = cold start).
 async function main() {
   console.log(`Cruzar FB Poster starting. ENABLED=${ENABLED}, RUN_ONCE=${RUN_ONCE}`)
+
+  // Auto-login: ensure we have valid cookies before doing anything.
+  // If no cookies exist and FB_EMAIL/FB_PASSWORD are set, logs in
+  // automatically. If cookies exist, skips. If login requires 2FA,
+  // emails Diego and proceeds with whatever cookies we have.
+  const hasCookies = await ensureCookies()
+  if (!hasCookies) {
+    console.error('[FATAL] No valid cookies. Set FB_COOKIES_JSON or FB_EMAIL+FB_PASSWORD.')
+    // Don't exit — keep the health check server alive so Railway
+    // doesn't restart-loop, and wait for cookies to be provided.
+  }
 
   if (RUN_ONCE) {
     await runPostingCycle()

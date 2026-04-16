@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
+import { usePorts } from '@/lib/usePorts'
 import { getPortMeta } from '@/lib/portMeta'
 import { formatWaitLabel } from '@/lib/formatWait'
 import { PortSearch } from '@/components/PortSearch'
@@ -36,34 +37,28 @@ function DatosPageInner() {
   const es = lang === 'es'
   const isPro = tier === 'pro' || tier === 'business'
 
-  const [ports, setPorts] = useState<PortWaitTime[]>([])
+  const { ports: allPorts, loading: portsLoading } = usePorts()
+  const ports = useMemo(
+    () => allPorts.filter((p: PortWaitTime) => !p.isClosed && p.vehicle != null),
+    [allPorts],
+  )
   const [selectedPortId, setSelectedPortId] = useState<string | null>(null)
   const [hourly, setHourly] = useState<HourlyResponse | null>(null)
-  const [loading, setLoading] = useState(true)
+  const loading = portsLoading
 
   useEffect(() => {
     try { localStorage.setItem('cruzar_datos_visited', '1') } catch { /* ignore */ }
   }, [])
 
   useEffect(() => {
-    fetch('/api/ports', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        const list: PortWaitTime[] = (d.ports || []).filter((p: PortWaitTime) => !p.isClosed && p.vehicle != null)
-        setPorts(list)
-        if (list.length > 0 && !selectedPortId) {
-          // Honor ?port= query param so /port/[id]/advanced can deep-link
-          // into this page pre-scoped to a specific bridge.
-          const portFromQuery = searchParams?.get('port')
-          const preferred = portFromQuery && list.find((p) => p.portId === portFromQuery)
-            ? portFromQuery
-            : list[0].portId
-          setSelectedPortId(preferred)
-        }
-      })
-      .catch(() => { /* ignore */ })
-      .finally(() => setLoading(false))
-  }, [selectedPortId, searchParams])
+    if (ports.length > 0 && !selectedPortId) {
+      const portFromQuery = searchParams?.get('port')
+      const preferred = portFromQuery && ports.find((p) => p.portId === portFromQuery)
+        ? portFromQuery
+        : ports[0].portId
+      setSelectedPortId(preferred)
+    }
+  }, [ports, selectedPortId, searchParams])
 
   useEffect(() => {
     if (!selectedPortId || !isPro) return
@@ -129,85 +124,117 @@ function DatosPageInner() {
               />
             </div>
 
-            {selectedPort && (
-              <div className="mt-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-4 text-white shadow-lg">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-blue-100">
-                  {es ? 'Ahorita' : 'Right now'}
-                </p>
-                <p className="text-2xl font-black mt-0.5">
-                  {selectedName}
-                </p>
-                <p className="mt-1 text-3xl font-black tabular-nums">
-                  {formatWaitLabel(selectedPort.vehicle ?? null, es ? 'es' : 'en')}
-                </p>
-              </div>
-            )}
+            {selectedPort && hourly && (() => {
+              const currentHour = new Date().getHours()
+              const currentBucket = hourly.hours?.find((h) => h.hour === currentHour)
+              const currentAvg = currentBucket?.avgWait ?? null
+              const liveWait = selectedPort.vehicle ?? null
+              const vsAvg = liveWait != null && currentAvg != null ? liveWait - currentAvg : null
 
-            {hourly && hourly.peak && hourly.best && (
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-3">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-red-700 dark:text-red-300">
-                    {es ? 'Hora pico' : 'Peak hour'}
-                  </p>
-                  <p className="text-xl font-black text-red-800 dark:text-red-200 mt-0.5 tabular-nums">
-                    {formatHour(hourly.peak.hour)}
-                  </p>
-                  <p className="text-[11px] text-red-700 dark:text-red-300 font-semibold">
-                    ~{formatWaitLabel(hourly.peak.avgWait, es ? 'es' : 'en')}
-                  </p>
-                </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-3">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-700 dark:text-emerald-300">
-                    {es ? 'Mejor hora' : 'Best hour'}
-                  </p>
-                  <p className="text-xl font-black text-emerald-800 dark:text-emerald-200 mt-0.5 tabular-nums">
-                    {formatHour(hourly.best.hour)}
-                  </p>
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                    ~{formatWaitLabel(hourly.best.avgWait, es ? 'es' : 'en')}
-                  </p>
-                </div>
-              </div>
-            )}
+              // Find the best window in the next 6 hours
+              const upcomingBest = (() => {
+                if (!hourly.hours) return null
+                let best: { hour: number; avgWait: number } | null = null
+                for (let i = 1; i <= 6; i++) {
+                  const h = (currentHour + i) % 24
+                  const bucket = hourly.hours.find((b) => b.hour === h)
+                  if (bucket?.avgWait != null && (best === null || bucket.avgWait < best.avgWait)) {
+                    best = { hour: h, avgWait: bucket.avgWait }
+                  }
+                }
+                return best
+              })()
+              const savingsMin = liveWait != null && upcomingBest ? liveWait - upcomingBest.avgWait : null
 
-            {selectedPortId && (() => {
-              // Always backfill 24 buckets so the chart renders even when the
-              // API has nothing for this bridge. Diego flagged that the chart
-              // "doesn't show anything" — root cause was the previous gate
-              // (`hourly && hourly.hours.length > 0`) hiding the whole block
-              // on empty data. Skeleton always, message inline.
-              const hours: Array<{ hour: number; avgWait: number | null }> = hourly?.hours
-                && hourly.hours.length === 24
-                ? hourly.hours
-                : Array.from({ length: 24 }, (_, h) => ({ hour: h, avgWait: hourly?.hours?.find(x => x.hour === h)?.avgWait ?? null }))
-              const hasMeaningfulData = hours.some((h) => (h.avgWait ?? 0) > 0)
               return (
-                <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
-                  <div className="flex items-baseline justify-between mb-2">
-                    <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400">
-                      {es ? 'Patrón por hora' : 'Hourly pattern'}
+                <>
+                  {/* Recommendation card — the most valuable thing on this page */}
+                  <div className={`mt-4 rounded-2xl p-4 shadow-lg ${
+                    vsAvg != null && vsAvg > 15
+                      ? 'bg-gradient-to-br from-red-600 to-orange-700 text-white'
+                      : vsAvg != null && vsAvg < -10
+                        ? 'bg-gradient-to-br from-emerald-600 to-green-700 text-white'
+                        : 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white'
+                  }`}>
+                    <p className="text-[10px] uppercase tracking-widest font-bold opacity-70">
+                      {selectedName}
                     </p>
-                    {!hasMeaningfulData && (
-                      <p className="text-[10px] text-amber-500 font-semibold">
-                        {es ? 'Recopilando…' : 'Still collecting'}
+                    <div className="flex items-baseline gap-3 mt-1">
+                      <p className="text-4xl font-black tabular-nums">
+                        {formatWaitLabel(liveWait, es ? 'es' : 'en')}
+                      </p>
+                      {vsAvg != null && Math.abs(vsAvg) >= 5 && (
+                        <p className="text-sm font-bold opacity-80">
+                          {vsAvg > 0
+                            ? (es ? `+${vsAvg} min vs promedio` : `+${vsAvg} min vs average`)
+                            : (es ? `${vsAvg} min vs promedio` : `${vsAvg} min vs average`)}
+                        </p>
+                      )}
+                    </div>
+                    {savingsMin != null && savingsMin >= 10 && upcomingBest && (
+                      <div className="mt-3 bg-white/15 rounded-xl px-3 py-2">
+                        <p className="text-sm font-black">
+                          {es
+                            ? `Espera a las ${formatHour(upcomingBest.hour)} — ahorras ~${savingsMin} min`
+                            : `Wait until ${formatHour(upcomingBest.hour)} — save ~${savingsMin} min`}
+                        </p>
+                        <p className="text-[11px] opacity-70 mt-0.5">
+                          {es
+                            ? `Promedio a esa hora: ~${upcomingBest.avgWait} min`
+                            : `Average at that hour: ~${upcomingBest.avgWait} min`}
+                        </p>
+                      </div>
+                    )}
+                    {savingsMin != null && savingsMin < 10 && (
+                      <p className="mt-2 text-sm font-bold opacity-80">
+                        {es
+                          ? 'Las próximas horas se ven parejas — cruza cuando puedas'
+                          : 'Next few hours look similar — cross when you can'}
                       </p>
                     )}
                   </div>
-                  <HourlyBarChart data={hours} />
-                  {!hasMeaningfulData && (
-                    <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
-                      {es
-                        ? 'Recolectamos lecturas de la CBP cada 15 minutos. En unos días la gráfica se va a llenar con el patrón real de este puente.'
-                        : 'We collect CBP readings every 15 minutes. Within a few days this chart will fill in with this bridge\u2019s real pattern.'}
-                    </p>
+
+                  {/* Peak vs Best — with actual useful context */}
+                  {hourly.peak && hourly.best && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-3">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-red-700 dark:text-red-300">
+                          {es ? 'Evita' : 'Avoid'}
+                        </p>
+                        <p className="text-xl font-black text-red-800 dark:text-red-200 mt-0.5 tabular-nums">
+                          {formatHour(hourly.peak.hour)}
+                        </p>
+                        <p className="text-[11px] text-red-700 dark:text-red-300 font-semibold">
+                          ~{formatWaitLabel(hourly.peak.avgWait, es ? 'es' : 'en')} {es ? 'promedio' : 'avg'}
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-3">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-700 dark:text-emerald-300">
+                          {es ? 'Mejor hora' : 'Best hour'}
+                        </p>
+                        <p className="text-xl font-black text-emerald-800 dark:text-emerald-200 mt-0.5 tabular-nums">
+                          {formatHour(hourly.best.hour)}
+                        </p>
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">
+                          ~{formatWaitLabel(hourly.best.avgWait, es ? 'es' : 'en')} {es ? 'promedio' : 'avg'}
+                        </p>
+                      </div>
+                    </div>
                   )}
-                </div>
+                </>
               )
             })()}
 
+            {/* Interactive hourly chart — tap any bar to see details */}
+            {selectedPortId && <DetailedHourlyChart hourly={hourly} es={es} />}
+
+            {/* Weekly intelligence — the stuff that actually justifies Pro */}
+            {selectedPortId && <WeeklyInsights portId={selectedPortId} es={es} />}
+
+            {/* Bridge alternatives — which bridge should I use? */}
+            {selectedPortId && <BridgeAlternatives currentPortId={selectedPortId} ports={ports} es={es} />}
+
             {selectedPortId && <SentriBreakevenCard portId={selectedPortId} es={es} />}
-            {selectedPortId && <AccidentImpactCard portId={selectedPortId} es={es} />}
-            {selectedPortId && <LaneStatsCard portId={selectedPortId} es={es} />}
             {selectedPortId && <WeatherImpactCard portId={selectedPortId} es={es} />}
           </>
         )}
@@ -227,43 +254,127 @@ export default function DatosPage() {
   )
 }
 
-function HourlyBarChart({ data }: { data: Array<{ hour: number; avgWait: number | null }> }) {
-  // CRITICAL: the API returns avgWait: null for hours with no samples.
-  // The previous implementation did Math.max(...data.map(d => d.avgWait), 1)
-  // which returns NaN when any element is null, which made EVERY bar
-  // height compute to NaN%, which is invalid CSS, which rendered nothing
-  // at all. Symptom: Diego said "hourly pattern doesn't show anything."
-  // Fix: coerce nulls to 0 BEFORE Math.max, and always render a visible
-  // stub for empty hours so users see the full 24-hour spec.
-  const numeric = data.map((d) => d.avgWait ?? 0)
+function DetailedHourlyChart({ hourly, es }: { hourly: HourlyResponse | null; es: boolean }) {
+  const [tapped, setTapped] = useState<number | null>(null)
+  const currentHour = new Date().getHours()
+
+  const hours = hourly?.hours && hourly.hours.length === 24
+    ? hourly.hours
+    : Array.from({ length: 24 }, (_, h) => ({ hour: h, avgWait: null }))
+  const hasMeaningfulData = hours.some((h) => (h.avgWait ?? 0) > 0)
+  const numeric = hours.map((d) => d.avgWait ?? 0)
   const max = Math.max(...numeric, 1)
+
+  const focusHour = tapped ?? currentHour
+  const focusBucket = hours[focusHour]
+
+  if (!hasMeaningfulData) {
+    return (
+      <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 text-center">
+        <p className="text-sm font-bold text-gray-500 dark:text-gray-400">
+          {es ? 'Recopilando datos de este puente...' : 'Collecting data for this bridge...'}
+        </p>
+        <p className="text-[11px] text-gray-400 mt-1">
+          {es
+            ? 'Tomamos lecturas cada 15 min. En 2-3 días ya verás el patrón completo.'
+            : 'We take readings every 15 min. In 2-3 days you\'ll see the full pattern.'}
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="flex items-end gap-0.5 h-28">
-      {data.map((d) => {
-        const value = d.avgWait ?? 0
-        // Minimum 12% so empty hours are still visible as grey stubs
-        // and users see the 24-hour spec even when data is sparse.
-        const h = Math.max(12, (value / max) * 100)
-        const color = value <= 0
-          ? 'bg-gray-300 dark:bg-gray-500'
-          : value <= 20
-            ? 'bg-green-500'
-            : value <= 45
-              ? 'bg-amber-500'
-              : 'bg-red-500'
-        return (
-          <div
-            key={d.hour}
-            className="flex-1 flex flex-col items-center gap-1"
-            title={`${d.hour}:00 — ${d.avgWait != null ? `${d.avgWait} min` : 'sin datos'}`}
+    <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400">
+          {es ? 'Espera promedio por hora' : 'Average wait by hour'}
+        </p>
+        <p className="text-[10px] text-gray-400">{es ? 'últimos 14 días' : 'last 14 days'}</p>
+      </div>
+
+      {/* Tapped/current hour detail */}
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {tapped == null
+            ? (es ? 'Ahora' : 'Now')
+            : formatHour(focusHour)}
+          {focusBucket?.avgWait != null && (
+            <span className="ml-1 font-black text-gray-900 dark:text-gray-100">
+              ~{focusBucket.avgWait} min {es ? 'promedio' : 'avg'}
+            </span>
+          )}
+        </p>
+        {tapped != null && (
+          <button
+            onClick={() => setTapped(null)}
+            className="text-[10px] text-blue-500 font-bold"
           >
-            <div className="w-full rounded-t bg-gray-100 dark:bg-gray-700 flex-1 flex items-end">
-              <div className={`w-full ${color} rounded-t`} style={{ height: `${h}%` }} />
-            </div>
-            <span className="text-[8px] text-gray-400 font-mono">{d.hour}</span>
-          </div>
-        )
-      })}
+            {es ? 'Ver ahora' : 'Show now'}
+          </button>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 mb-3 text-[9px] font-semibold text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-emerald-500" />{es ? 'Rápido' : 'Fast'} &le;20m</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-amber-500" />{es ? 'Moderado' : 'Medium'} 21-45m</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-red-500" />{es ? 'Lento' : 'Slow'} 45m+</span>
+      </div>
+
+      {/* Chart with labeled bars */}
+      <div className="flex items-end gap-[2px]" style={{ height: 120 }}>
+        {hours.map((d) => {
+          const value = d.avgWait ?? 0
+          const heightPx = value > 0 ? Math.max(8, Math.round((value / max) * 100)) : 4
+          const isCurrent = d.hour === currentHour
+          const isTapped = d.hour === tapped
+          const color = value <= 0
+            ? 'bg-gray-300 dark:bg-gray-600'
+            : value <= 20
+              ? 'bg-emerald-500'
+              : value <= 45
+                ? 'bg-amber-500'
+                : 'bg-red-500'
+          return (
+            <button
+              key={d.hour}
+              type="button"
+              onClick={() => setTapped(d.hour === tapped ? null : d.hour)}
+              className="flex-1 flex flex-col justify-end items-center relative"
+              style={{ height: 120 }}
+            >
+              {/* Wait time label on top of bar for every 3rd hour or tapped/current */}
+              {d.avgWait != null && (d.hour % 3 === 0 || isCurrent || isTapped) && (
+                <span className={`text-[7px] font-bold mb-0.5 tabular-nums leading-none ${
+                  isCurrent || isTapped ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'
+                }`}>
+                  {d.avgWait}m
+                </span>
+              )}
+              <div
+                className={`w-full rounded-t-sm ${color} ${
+                  isCurrent ? 'ring-2 ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-gray-800' : ''
+                } ${isTapped ? 'ring-2 ring-indigo-400' : ''}`}
+                style={{ height: heightPx }}
+              />
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Time axis labels */}
+      <div className="flex justify-between mt-1 text-[8px] text-gray-400 font-medium">
+        <span>12am</span>
+        <span>6am</span>
+        <span>12pm</span>
+        <span>6pm</span>
+        <span>11pm</span>
+      </div>
+
+      {/* Tap hint */}
+      <p className="mt-2 text-center text-[10px] text-gray-400">
+        {es ? 'Toca una barra para ver el detalle de esa hora' : 'Tap a bar to see that hour\'s detail'}
+      </p>
     </div>
   )
 }
@@ -503,6 +614,229 @@ function WeatherImpactCard({ portId, es }: { portId: string; es: boolean }) {
           ? `${data.samples} lecturas de los últimos 30 días.`
           : `${data.samples} readings from the last 30 days.`}
       </p>
+    </div>
+  )
+}
+
+// Weekly intelligence — day-of-week patterns, rush windows, time blocks.
+// This is the core of what makes Pro worth paying for.
+function WeeklyInsights({ portId, es }: { portId: string; es: boolean }) {
+  const [data, setData] = useState<{
+    days: Array<{ dow: number; nameEn: string; nameEs: string; avgWait: number | null; samples: number }>
+    bestDay: { dow: number; nameEn: string; nameEs: string; avgWait: number } | null
+    worstDay: { dow: number; nameEn: string; nameEs: string; avgWait: number } | null
+    rushWindows: Array<{ startHour: number; endHour: number; avgWait: number }>
+    timeBlocks: Array<{ key: string; labelEn: string; labelEs: string; avgWait: number | null }>
+    weekdayAvg: number | null
+    weekendAvg: number | null
+    totalSamples: number
+  } | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/ports/${encodeURIComponent(portId)}/weekly`)
+      .then(r => r.json())
+      .then(d => { if (d.days) setData(d) })
+      .catch(() => {})
+  }, [portId])
+
+  if (!data || data.totalSamples < 50) return null
+
+  const todayDow = new Date().getDay()
+
+  return (
+    <>
+      {/* Rush windows — avoid these times */}
+      {data.rushWindows.length > 0 && (
+        <div className="mt-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-2xl p-4">
+          <p className="text-[10px] uppercase tracking-widest font-black text-red-700 dark:text-red-400">
+            {es ? 'Ventanas de tráfico pesado' : 'Rush windows to avoid'}
+          </p>
+          <div className="mt-2 space-y-2">
+            {data.rushWindows.map((w, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <p className="text-sm font-black text-red-800 dark:text-red-200">
+                  {formatHour(w.startHour)} – {formatHour(w.endHour + 1)}
+                </p>
+                <p className="text-xs font-bold text-red-700 dark:text-red-300">
+                  ~{w.avgWait} min {es ? 'promedio' : 'avg'}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[10px] text-red-600 dark:text-red-400 leading-snug">
+            {es
+              ? 'Basado en los últimos 30 días. Horas donde la espera pasa de 40 min consistentemente.'
+              : 'Based on the last 30 days. Hours where wait consistently exceeds 40 min.'}
+          </p>
+        </div>
+      )}
+
+      {/* Time block comparison — morning vs afternoon vs evening */}
+      {data.timeBlocks.some(b => b.avgWait != null) && (
+        <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-3">
+            {es ? 'Mejor momento del día' : 'Best time of day'}
+          </p>
+          <div className="space-y-2">
+            {data.timeBlocks.filter(b => b.avgWait != null).map(block => {
+              const isLowest = data.timeBlocks.every(
+                b => b.avgWait == null || b.avgWait >= block.avgWait!
+              )
+              return (
+                <div key={block.key} className="flex items-center gap-3">
+                  <div className={`flex-1 rounded-xl px-3 py-2 ${
+                    isLowest
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-gray-50 dark:bg-gray-700/50'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-xs font-bold ${
+                        isLowest ? 'text-emerald-800 dark:text-emerald-200' : 'text-gray-700 dark:text-gray-300'
+                      }`}>
+                        {es ? block.labelEs : block.labelEn}
+                        {isLowest && <span className="ml-1.5 text-[9px]">{es ? '(mejor)' : '(best)'}</span>}
+                      </p>
+                      <p className={`text-sm font-black tabular-nums ${
+                        isLowest ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-400'
+                      }`}>
+                        ~{block.avgWait} min
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Day of week breakdown — which days are fastest */}
+      <div className="mt-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-gray-500 dark:text-gray-400 mb-1">
+          {es ? 'Promedio por día de la semana' : 'Average by day of week'}
+        </p>
+        {data.weekdayAvg != null && data.weekendAvg != null && (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
+            {es
+              ? `Entre semana ~${data.weekdayAvg} min · Fin de semana ~${data.weekendAvg} min`
+              : `Weekdays ~${data.weekdayAvg} min · Weekends ~${data.weekendAvg} min`}
+          </p>
+        )}
+        <div className="space-y-1.5">
+          {data.days.map(day => {
+            if (day.avgWait == null) return null
+            const isBest = data.bestDay?.dow === day.dow
+            const isWorst = data.worstDay?.dow === day.dow
+            const isToday = day.dow === todayDow
+            const maxDayWait = Math.max(...data.days.map(d => d.avgWait ?? 0), 1)
+            const barWidth = Math.max(8, Math.round((day.avgWait / maxDayWait) * 100))
+            return (
+              <div key={day.dow} className="flex items-center gap-2">
+                <span className={`text-[11px] font-bold w-12 flex-shrink-0 ${
+                  isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
+                }`}>
+                  {(es ? day.nameEs : day.nameEn).slice(0, 3)}
+                  {isToday && <span className="text-[8px] ml-0.5">{es ? 'hoy' : 'today'}</span>}
+                </span>
+                <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${
+                      isBest ? 'bg-emerald-500' : isWorst ? 'bg-red-500' : 'bg-blue-400 dark:bg-blue-500'
+                    }`}
+                    style={{ width: `${barWidth}%` }}
+                  />
+                </div>
+                <span className={`text-[11px] font-black tabular-nums w-12 text-right flex-shrink-0 ${
+                  isBest ? 'text-emerald-600 dark:text-emerald-400'
+                    : isWorst ? 'text-red-600 dark:text-red-400'
+                    : 'text-gray-700 dark:text-gray-300'
+                }`}>
+                  ~{day.avgWait}m
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        {data.bestDay && data.worstDay && (
+          <p className="mt-3 text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+            {es
+              ? `Mejor día: ${data.bestDay.nameEs} (~${data.bestDay.avgWait} min). Peor: ${data.worstDay.nameEs} (~${data.worstDay.avgWait} min). Diferencia de ${data.worstDay.avgWait - data.bestDay.avgWait} min.`
+              : `Best day: ${data.bestDay.nameEn} (~${data.bestDay.avgWait} min). Worst: ${data.worstDay.nameEn} (~${data.worstDay.avgWait} min). ${data.worstDay.avgWait - data.bestDay.avgWait} min difference.`}
+          </p>
+        )}
+      </div>
+    </>
+  )
+}
+
+// Bridge alternatives — show nearby bridges that are faster right now
+function BridgeAlternatives({ currentPortId, ports, es }: {
+  currentPortId: string
+  ports: PortWaitTime[]
+  es: boolean
+}) {
+  const currentPort = ports.find(p => p.portId === currentPortId)
+  if (!currentPort || currentPort.vehicle == null) return null
+
+  const currentMeta = getPortMeta(currentPortId)
+
+  // Find ports in the same mega region that are faster
+  const alternatives = ports
+    .filter(p => {
+      if (p.portId === currentPortId) return false
+      if (p.vehicle == null) return false
+      const meta = getPortMeta(p.portId)
+      return meta.megaRegion === currentMeta.megaRegion
+    })
+    .sort((a, b) => (a.vehicle ?? 999) - (b.vehicle ?? 999))
+    .slice(0, 3)
+
+  if (alternatives.length === 0) return null
+
+  const fasterExists = alternatives.some(a => (a.vehicle ?? 999) < (currentPort.vehicle ?? 0) - 5)
+
+  return (
+    <div className={`mt-3 rounded-2xl p-4 border ${
+      fasterExists
+        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+    }`}>
+      <p className="text-[10px] uppercase tracking-widest font-black text-gray-500 dark:text-gray-400">
+        {es ? 'Puentes cercanos ahorita' : 'Nearby bridges right now'}
+      </p>
+      {fasterExists && (
+        <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 mt-0.5">
+          {es ? 'Hay opciones más rápidas cerca' : 'There are faster options nearby'}
+        </p>
+      )}
+      <div className="mt-2 space-y-1.5">
+        {alternatives.map(alt => {
+          const name = alt.localNameOverride || getPortMeta(alt.portId).localName || alt.portName
+          const diff = (currentPort.vehicle ?? 0) - (alt.vehicle ?? 0)
+          const isFaster = diff > 5
+          return (
+            <div key={alt.portId} className="flex items-center justify-between">
+              <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate flex-1 mr-2">
+                {name}
+              </p>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-sm font-black tabular-nums ${
+                  (alt.vehicle ?? 0) <= 20 ? 'text-emerald-600 dark:text-emerald-400'
+                    : (alt.vehicle ?? 0) <= 45 ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {alt.vehicle} min
+                </span>
+                {isFaster && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                    -{diff}m
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

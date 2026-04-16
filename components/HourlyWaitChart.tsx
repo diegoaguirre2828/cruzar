@@ -118,9 +118,9 @@ export function HourlyWaitChart({ portId }: Props) {
         <div className="h-40 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
       ) : (
         <>
-          <div className="flex items-end gap-[3px] h-32">
+          <div className="flex items-end gap-[3px]" style={{ height: 128 }}>
             {filledHours.map((h) => {
-              const heightPct = h.avgWait != null && maxWait > 0 ? Math.max(8, (h.avgWait / maxWait) * 100) : 6
+              const heightPx = h.avgWait != null && maxWait > 0 ? Math.max(8, Math.round((h.avgWait / maxWait) * 120)) : 4
               const isCurrent = h.hour === currentHour
               const isHovered = h.hour === hovered
               return (
@@ -131,14 +131,15 @@ export function HourlyWaitChart({ portId }: Props) {
                   onMouseLeave={() => setHovered(null)}
                   onFocus={() => setHovered(h.hour)}
                   onBlur={() => setHovered(null)}
-                  className="flex-1 h-full flex flex-col justify-end items-center group relative"
+                  className="flex-1 flex flex-col justify-end items-center group relative"
+                  style={{ height: 128 }}
                   aria-label={`${formatHour(h.hour, es)}: ${h.avgWait != null ? formatWaitLabel(h.avgWait, es ? 'es' : 'en') : 'sin datos'}`}
                 >
                   <div
                     className={`w-full rounded-t-sm transition-all ${colorFor(h.avgWait)} ${
                       isCurrent ? 'ring-2 ring-blue-500 ring-offset-1 ring-offset-white dark:ring-offset-gray-800' : ''
                     } ${isHovered ? 'opacity-100' : ''}`}
-                    style={{ height: `${heightPct}%` }}
+                    style={{ height: heightPx }}
                   />
                 </button>
               )

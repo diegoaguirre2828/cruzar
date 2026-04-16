@@ -55,7 +55,7 @@ const INFO_ITEMS: MenuItem[] = [
 
 export default function MasPage() {
   const { lang } = useLang()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const { tier } = useTier()
   const router = useRouter()
   const es = lang === 'es'
@@ -112,7 +112,7 @@ export default function MasPage() {
           </div>
         )}
 
-        {!user && (
+        {!user && !loading && (
           <Link
             href="/signup"
             className="mb-4 block bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl px-4 py-4 text-white shadow-sm active:scale-[0.98] transition-transform"

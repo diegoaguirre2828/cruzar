@@ -6,15 +6,25 @@ import { createClient } from './auth'
 
 export type Tier = 'guest' | 'free' | 'pro' | 'business'
 
+function readCachedTier(): Tier {
+  if (typeof window === 'undefined') return 'guest'
+  try {
+    const v = localStorage.getItem('cruzar_tier')
+    if (v === 'free' || v === 'pro' || v === 'business') return v
+  } catch { /* SSR or private browsing */ }
+  return 'guest'
+}
+
 export function useTier(): { tier: Tier; loading: boolean } {
   const { user, loading: authLoading } = useAuth()
-  const [tier, setTier] = useState<Tier>('guest')
+  const [tier, setTier] = useState<Tier>(readCachedTier)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (authLoading) return
     if (!user) {
       setTier('guest')
+      try { localStorage.removeItem('cruzar_tier') } catch {}
       setLoading(false)
       return
     }
@@ -46,7 +56,9 @@ export function useTier(): { tier: Tier; loading: boolean } {
             const res = await fetch('/api/profile/sync-tier', { method: 'POST' })
             if (res.ok) {
               const { tier: syncedTier } = await res.json()
-              setTier((syncedTier as Tier) || 'free')
+              const resolved = (syncedTier as Tier) || 'free'
+              setTier(resolved)
+              try { localStorage.setItem('cruzar_tier', resolved) } catch {}
               setLoading(false)
               return
             }
@@ -63,6 +75,7 @@ export function useTier(): { tier: Tier; loading: boolean } {
             : dbTier
 
         setTier(effective)
+        try { localStorage.setItem('cruzar_tier', effective) } catch {}
         setLoading(false)
       })
   }, [user, authLoading])

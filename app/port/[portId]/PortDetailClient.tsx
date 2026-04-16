@@ -398,6 +398,9 @@ export function PortDetailClient({ port, portId }: Props) {
           full hourly pattern) now live at /port/[id]/advanced which
           redirects to /datos?port=X. See
           memory/project_cruzar_port_detail_redesign.md */}
+      {/* Quick verdict — one-line recommendation so user knows immediately */}
+      <CrossingVerdict port={port} portId={portId} es={es} />
+
       <PortDetailHero
         port={port}
         portId={portId}
@@ -823,7 +826,7 @@ export function PortDetailClient({ port, portId }: Props) {
           belongs to a known rollup city, otherwise shared-only. */}
       <PortFAQ citySlug={cityForPortId(portId) ?? undefined} />
 
-      {!user && (
+      {!user && !authLoading && (
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-5 text-center shadow-sm">
           <p className="text-base font-bold text-white">
             {es
@@ -842,6 +845,73 @@ export function PortDetailClient({ port, portId }: Props) {
             {es ? 'Activar mi alerta gratis →' : 'Turn on my free alert →'}
           </a>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Quick crossing verdict — fetches the forecast and compares current
+// wait to the historical average for this hour. Shows a one-sentence
+// recommendation so the user immediately knows what to do.
+function CrossingVerdict({ port, portId, es }: { port: PortWaitTime; portId: string; es: boolean }) {
+  const [forecast, setForecast] = useState<{
+    bestHour: { hour: number; avgWait: number } | null
+    forecast: Array<{ hour: number; avgWait: number | null; delta: string }>
+  } | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/ports/${encodeURIComponent(portId)}/forecast?lane=standard`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setForecast(d))
+      .catch(() => {})
+  }, [portId])
+
+  if (!forecast || !port.vehicle) return null
+
+  const liveWait = port.vehicle
+  const nowSlot = forecast.forecast?.[0]
+  const avgNow = nowSlot?.avgWait
+  const diff = avgNow != null ? liveWait - avgNow : null
+
+  // Find best upcoming slot
+  const upcoming = forecast.forecast?.slice(1).filter(f => f.avgWait != null) ?? []
+  const bestUpcoming = upcoming.length > 0
+    ? upcoming.reduce((a, b) => (b.avgWait ?? 999) < (a.avgWait ?? 999) ? b : a)
+    : null
+  const savingsMin = bestUpcoming?.avgWait != null ? liveWait - bestUpcoming.avgWait : null
+
+  let verdict: string
+  let color: string
+
+  if (liveWait <= 10) {
+    verdict = es ? 'Cruza ya — está rápido' : 'Cross now — it\'s fast'
+    color = 'bg-emerald-600'
+  } else if (savingsMin != null && savingsMin >= 15 && bestUpcoming) {
+    const hr = formatHour(bestUpcoming.hour)
+    verdict = es
+      ? `Espera a las ${hr} — ahorras ~${savingsMin} min`
+      : `Wait until ${hr} — save ~${savingsMin} min`
+    color = 'bg-amber-600'
+  } else if (diff != null && diff > 20) {
+    verdict = es ? 'Más lento de lo normal — espera si puedes' : 'Slower than normal — wait if you can'
+    color = 'bg-red-600'
+  } else if (diff != null && diff < -10) {
+    verdict = es ? 'Más rápido de lo normal — buen momento' : 'Faster than normal — good time to cross'
+    color = 'bg-emerald-600'
+  } else {
+    verdict = es ? 'Espera normal para esta hora' : 'Normal wait for this hour'
+    color = 'bg-blue-600'
+  }
+
+  return (
+    <div className={`${color} rounded-2xl px-4 py-3 mb-3`}>
+      <p className="text-white text-sm font-black text-center">{verdict}</p>
+      {diff != null && Math.abs(diff) >= 5 && (
+        <p className="text-white/70 text-[11px] text-center mt-0.5">
+          {diff > 0
+            ? (es ? `+${diff} min arriba del promedio` : `+${diff} min above average`)
+            : (es ? `${diff} min abajo del promedio` : `${diff} min below average`)}
+        </p>
       )}
     </div>
   )

@@ -52,7 +52,7 @@ export default function LeaderboardPage() {
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [loading, setLoading] = useState(true)
   const { lang } = useLang()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   useEffect(() => {
     fetch('/api/leaderboard')
@@ -90,7 +90,7 @@ export default function LeaderboardPage() {
             preview accessible, heavy signup recommendation. Guests
             scroll past this to see the leaderboard but the lock is
             the first thing they see. */}
-        {!user && (
+        {!user && !authLoading && (
           <div className="mb-5">
             <LockedFeatureWall
               nextPath="/leaderboard"

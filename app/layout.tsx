@@ -5,6 +5,7 @@ import { LangProvider } from "@/lib/LangContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
 import { Footer } from "@/components/Footer";
 import { BottomNav } from "@/components/BottomNav";
+import { SWRProvider } from "@/components/SWRProvider";
 import { CruzFab } from "@/components/CruzFab";
 import { ReactionsWelcomeToast } from "@/components/ReactionsWelcomeToast";
 import { FirstVisitInstallSheet } from "@/components/FirstVisitInstallSheet";
@@ -86,6 +87,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <LangProvider>
+          <SWRProvider>
             {/* Bottom padding on mobile so content clears the tab bar.
                 The calc() form accounts for Android gesture-nav phones
                 where env(safe-area-inset-bottom) adds real height to
@@ -103,6 +105,7 @@ export default function RootLayout({
             <PWASetup />
             <ClaimProInPwa />
             <PwaGrantCelebration />
+          </SWRProvider>
           </LangProvider>
         </ThemeProvider>
         <Analytics />

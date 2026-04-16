@@ -43,7 +43,7 @@ const ALL_PORTS_LABEL: Record<string, string> = {
 }
 
 export default function RewardsPage() {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { lang } = useLang()
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [deals, setDeals] = useState<Deal[]>([])
@@ -129,7 +129,7 @@ export default function RewardsPage() {
             preview accessible, heavy signup recommendation. Guests
             see the rewards system as a teaser with a prominent
             signup CTA at the top. */}
-        {!user && (
+        {!user && !authLoading && (
           <div className="mb-5">
             <LockedFeatureWall
               nextPath="/rewards"
@@ -167,7 +167,7 @@ export default function RewardsPage() {
           </div>
         </div>
 
-        {!user && (
+        {!user && !authLoading && (
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-4 flex items-center gap-3">
             <Lock className="w-5 h-5 text-gray-400 flex-shrink-0" />
             <div className="flex-1">
