@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Camera } from 'lucide-react'
+import { Camera, Lock } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
-import { getBridgeCameras, type CameraFeed } from '@/lib/bridgeCameras'
+import { useTier } from '@/lib/useTier'
+import { getBridgeCameras, isProFeed, type CameraFeed } from '@/lib/bridgeCameras'
 
 // Polled-image player. Municipal webcam sources almost universally serve
 // a JPEG URL that the server rewrites every 10-30 seconds — NOT a video
@@ -160,19 +161,28 @@ interface Props {
   portName: string
 }
 
-// Port detail camera section. Two states:
+// Port detail camera section. Three states:
 //   1. No feeds registered for this port → "próximamente" card
-//   2. Feeds exist                        → live embed with tab picker if multi
+//   2. Feeds exist, active is free or user has Pro → live embed + tabs
+//   3. Active feed is Pro-gated and user is free → lock overlay with
+//      "3 months Pro free — just install the app" CTA (ties the camera
+//      gate directly to the PWA-install acquisition loop).
 //
-// Cameras are FREE 2026-04-17 — the /camaras hub was already public,
-// keeping them Pro-only on port detail was inconsistent and blunted
-// acquisition. Pro's value prop lives elsewhere (alerts, predictions,
-// historical patterns, route optimizer).
+// Split locked 2026-04-17 per Diego's F)b pick: snapshots (JPEG feeds)
+// stay free as /camaras acquisition surface; real live video (HLS,
+// YouTube live, ipcamlive iframe) is Pro.
 export function BridgeCameras({ portId, portName }: Props) {
   const { lang } = useLang()
+  const { tier } = useTier()
   const es = lang === 'es'
   const feeds = getBridgeCameras(portId)
-  const [activeIdx, setActiveIdx] = useState(0)
+  const isPaid = tier === 'pro' || tier === 'business'
+
+  // Default tab: free users start on the first SNAPSHOT angle (if any),
+  // so the card opens to a working camera instead of a lock screen.
+  const firstFreeIdx = feeds.findIndex((f) => !isProFeed(f))
+  const defaultIdx = !isPaid && firstFreeIdx >= 0 ? firstFreeIdx : 0
+  const [activeIdx, setActiveIdx] = useState(defaultIdx)
 
   // State 1 — no feeds registered
   if (feeds.length === 0) {
@@ -211,6 +221,8 @@ export function BridgeCameras({ portId, portName }: Props) {
   const safeIdx = Math.min(activeIdx, feeds.length - 1)
   const activeFeed = feeds[safeIdx]
   const hasTabs = feeds.length > 1
+  const activeIsPro = isProFeed(activeFeed)
+  const showLock = activeIsPro && !isPaid
   const isLiveVideo =
     activeFeed.kind === 'youtube' ||
     activeFeed.kind === 'hls' ||
@@ -246,17 +258,19 @@ export function BridgeCameras({ portId, portName }: Props) {
           <div className="flex flex-wrap gap-1.5 mb-2">
             {feeds.map((f, i) => {
               const active = i === safeIdx
+              const locked = isProFeed(f) && !isPaid
               return (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setActiveIdx(i)}
-                  className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition-colors ${
+                  className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition-colors ${
                     active
                       ? 'bg-white text-gray-900 border-white'
                       : 'bg-white/5 text-gray-300 border-white/15 hover:bg-white/10'
                   }`}
                 >
+                  {locked && <Lock className="w-2.5 h-2.5" />}
                   {f.label || `Cam ${i + 1}`}
                 </button>
               )
@@ -264,8 +278,30 @@ export function BridgeCameras({ portId, portName }: Props) {
           </div>
         )}
 
-        <div className="aspect-video bg-black rounded-xl overflow-hidden border border-gray-800">
-          <FeedPlayer feed={activeFeed} portName={portName} />
+        <div className="aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
+          {showLock ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center p-4 bg-gradient-to-br from-gray-900 via-black to-gray-900">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                <Lock className="w-5 h-5 text-white" />
+              </div>
+              <p className="text-sm font-black text-white">
+                {es ? 'Video en vivo es Pro' : 'Live video is Pro'}
+              </p>
+              <p className="text-[11px] text-white/70 max-w-[260px] leading-snug">
+                {es
+                  ? '3 meses gratis — agrega Cruzar a tu pantalla de inicio y desbloquea todas las cámaras en vivo.'
+                  : '3 months free — add Cruzar to your home screen and unlock every live camera.'}
+              </p>
+              <Link
+                href="/pricing"
+                className="mt-1 inline-block bg-gradient-to-br from-amber-400 to-orange-500 text-white text-xs font-black px-4 py-2 rounded-xl active:scale-95 transition-transform"
+              >
+                {es ? 'Desbloquear Pro gratis →' : 'Unlock Pro free →'}
+              </Link>
+            </div>
+          ) : (
+            <FeedPlayer feed={activeFeed} portName={portName} />
+          )}
         </div>
 
         {activeFeed.note && (

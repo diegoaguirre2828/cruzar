@@ -407,3 +407,17 @@ export function getBridgeCamera(portId: string): CameraFeed | null {
 export function hasCamera(portId: string): boolean {
   return (BRIDGE_CAMERAS[portId]?.length ?? 0) > 0
 }
+
+// Live video (HLS, YouTube live, or embedded live-stream iframe) is Pro-gated.
+// Snapshot JPEGs (`kind: 'image'`) stay free as an acquisition surface.
+// Locked 2026-04-17 per Diego's F)b pick.
+export function isProFeed(feed: CameraFeed): boolean {
+  return feed.kind === 'hls' || feed.kind === 'youtube' || feed.kind === 'iframe'
+}
+
+// Returns true if a port has at least one free (snapshot) feed — used to
+// decide whether the default tab for a free user should jump to the first
+// snapshot angle instead of a locked tab.
+export function hasFreeFeed(portId: string): boolean {
+  return (BRIDGE_CAMERAS[portId] ?? []).some((f) => !isProFeed(f))
+}
