@@ -10,6 +10,7 @@ export async function GET() {
   const { data, error } = await db
     .from('crossing_reports')
     .select('port_id, report_type, wait_minutes, created_at')
+    .is('hidden_at', null)  // v35 moderation: skip reports an admin flagged
     .gte('created_at', since30)
     .order('created_at', { ascending: false })
 

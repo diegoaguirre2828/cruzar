@@ -60,6 +60,7 @@ export async function GET() {
         .from('crossing_reports')
         .select('port_id, wait_minutes, report_type, created_at, location_confidence')
         .in('port_id', portIds)
+        .is('hidden_at', null) // v35 moderation: community blend ignores admin-hidden reports
         .gte('created_at', sinceIso)
         .order('created_at', { ascending: false }),
       fetchTrafficWaits(portIds).catch(() => new Map<string, number>()),

@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await db
     .from('crossing_reports')
     .select('id, user_id, port_id, report_type, description, wait_minutes, upvotes, created_at, username, source, source_meta, location_confidence')
+    .is('hidden_at', null)  // v35 moderation: skip reports an admin flagged
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(limit)

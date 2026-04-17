@@ -224,6 +224,7 @@ export async function GET(req: NextRequest) {
     .from('crossing_reports')
     .select('id, user_id, report_type, description, severity, upvotes, created_at, wait_minutes, username, source_meta')
     .eq('port_id', portId)
+    .is('hidden_at', null)  // v35 moderation: skip reports an admin flagged
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(30)
@@ -389,6 +390,35 @@ export async function POST(req: NextRequest) {
     : []
 
   const user = await getUser()
+
+  // Ban gate — v35 moderation. A banned user's token is still valid
+  // (Supabase Auth doesn't revoke sessions on our app-level ban), so
+  // the check happens here at the write path. We look up the profile
+  // once, early-exit with 403 if banned_until is in the future. Rate
+  // limits + spam checks still run AFTER this, so a banned user who
+  // tries to hammer the endpoint gets rejected cheaply before hitting
+  // the slower Supabase inserts downstream.
+  if (user) {
+    const dbEarly = getServiceClient()
+    const { data: bannedCheck } = await dbEarly
+      .from('profiles')
+      .select('banned_until, ban_reason')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (bannedCheck?.banned_until) {
+      const until = new Date(bannedCheck.banned_until)
+      if (until.getTime() > Date.now()) {
+        return NextResponse.json(
+          {
+            error: 'Your account is temporarily suspended from reporting.',
+            reason: bannedCheck.ban_reason || 'other',
+            until: bannedCheck.banned_until,
+          },
+          { status: 403 },
+        )
+      }
+    }
+  }
 
   // Anti-spam: 3 layers
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
