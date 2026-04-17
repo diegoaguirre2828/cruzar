@@ -555,10 +555,18 @@ async function runCommentCycle(): Promise<void> {
 }
 
 // ── Entry point ──────────────────────────────────────────────────────
+//
+// HARD-KILLED 2026-04-17 per Diego. The comment bot posted wrong-region
+// replies (e.g. Brownsville content in El Paso groups) and split messages
+// into multi-comment fragments that made Natividad look like a spam bot.
+// The main-poster fallback selector was ALSO accidentally routing new
+// posts into comment boxes. Rather than trusting an env-var gate that
+// someone can forget, this entry point refuses to run unconditionally.
+// To ever revive: delete this guard AND fix the per-group caption
+// routing AND scope the composer textbox to the modal.
 
 async function main() {
-  console.log(`Cruzar FB Comment Bot starting. ENABLED=${ENABLED}`)
-  await runCommentCycle()
+  console.log('[KILL] Cruzar FB Comment Bot permanently disabled. Exiting.')
   process.exit(0)
 }
 
