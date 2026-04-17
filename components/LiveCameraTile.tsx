@@ -69,7 +69,10 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
         />
       )
     }
-    if (feed.kind === 'hls') {
+    if (feed.kind === 'hls' || feed.kind === 'iframe') {
+      // HLS + iframe live players are heavy to render N times on one
+      // grid page. Show a placeholder tile; the real live view renders
+      // on the port detail page.
       return (
         <div className="w-full h-full bg-gray-900 flex items-center justify-center">
           <Camera className="w-8 h-8 text-white/30" />

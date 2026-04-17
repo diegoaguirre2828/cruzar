@@ -138,7 +138,19 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
   ],
 
   // ─── Arizona — Nogales Mariposa ─────────────────────────────────
+  // Pass-4 upgrade 2026-04-17: Heroica Nogales publishes CORS-open
+  // live HLS streams at cruce.heroicanogales.gob.mx (5 angles).
+  // Adding the "general" stream as the primary live MX feed; the
+  // El Imparcial snapshot stays as a lightweight fallback tab.
   '260402': [
+    {
+      kind: 'hls',
+      src: 'https://cruce.heroicanogales.gob.mx/mariposa/general/index.m3u8',
+      credit: 'Heroica Nogales',
+      creditUrl: 'https://heroicanogales.gob.mx/webcams-garitas',
+      note: 'Garita Mariposa — en vivo (vista general)',
+      label: 'MX · Vivo',
+    },
     {
       kind: 'image',
       src: 'https://www.az511.gov/map/Cctv/1218',
@@ -152,19 +164,30 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
       src: 'https://garitas.elimparcial.com/imgwebcams/garita-mariposa.jpg',
       credit: 'El Imparcial / Heroica Nogales',
       creditUrl: 'https://heroicanogales.gob.mx/webcams-garitas',
-      note: 'Garita Mariposa — vista desde México',
-      label: 'MX · Mariposa',
+      note: 'Garita Mariposa — snapshot',
+      label: 'MX · Snapshot',
     },
   ],
 
-  // ─── Arizona — Nogales DeConcini (Mexican-side only for now) ────
+  // ─── Arizona — Nogales DeConcini ────────────────────────────────
+  // Pass-4 upgrade 2026-04-17: Heroica Nogales HLS stream for the
+  // southern platform (pla-sur). The northern platform stream 404s
+  // so only south is live-upgradeable right now.
   '260401': [
+    {
+      kind: 'hls',
+      src: 'https://cruce.heroicanogales.gob.mx/deconcini/pla-sur/index.m3u8',
+      credit: 'Heroica Nogales',
+      creditUrl: 'https://heroicanogales.gob.mx/webcams-garitas',
+      note: 'Garita DeConcini — plataforma sur en vivo',
+      label: 'MX · Vivo',
+    },
     {
       kind: 'image',
       src: 'https://garitas.elimparcial.com/imgwebcams/garita-deconcini-norte.jpg',
       credit: 'El Imparcial / Heroica Nogales',
       creditUrl: 'https://heroicanogales.gob.mx/webcams-garitas',
-      note: 'Garita DeConcini — vista norte',
+      note: 'Garita DeConcini — vista norte (snapshot)',
       label: 'MX · Norte',
     },
     {
@@ -172,7 +195,7 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
       src: 'https://garitas.elimparcial.com/imgwebcams/garita-deconcini-sur.jpg',
       credit: 'El Imparcial / Heroica Nogales',
       creditUrl: 'https://heroicanogales.gob.mx/webcams-garitas',
-      note: 'Garita DeConcini — vista sur',
+      note: 'Garita DeConcini — vista sur (snapshot)',
       label: 'MX · Sur',
     },
   ],
@@ -267,25 +290,28 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
   // and ipcamlive exposes a CORS-open JPEG snapshot endpoint we can
   // use directly.
 
+  // Pass-4 upgrade 2026-04-17: ipcamlive exposes a live player iframe
+  // (same embed comtodo.com uses). Swapping snapshot → iframe gives
+  // true live video instead of a JPEG refreshing every 10s.
   '535501': [
     {
-      kind: 'image',
-      src: 'https://g3.ipcamlive.com/player/snapshot.php?alias=5df59f3827371',
+      kind: 'iframe',
+      src: 'https://www.ipcamlive.com/player/player.php?alias=5df59f3827371&autoplay=1',
       credit: 'Comtodo',
       creditUrl: 'https://comtodo.com/camaras/',
-      note: 'Puente Viejo (B&M) — vista desde Matamoros',
-      label: 'MX · Viejo',
+      note: 'Puente Viejo (B&M) — en vivo desde Matamoros',
+      label: 'MX · Vivo',
     },
   ],
 
   '535504': [
     {
-      kind: 'image',
-      src: 'https://g3.ipcamlive.com/player/snapshot.php?alias=61af904e45b24',
+      kind: 'iframe',
+      src: 'https://www.ipcamlive.com/player/player.php?alias=61af904e45b24&autoplay=1',
       credit: 'Comtodo',
       creditUrl: 'https://comtodo.com/camaras/',
-      note: 'Puente Nuevo / Gateway International — vista desde Matamoros',
-      label: 'MX · Nuevo',
+      note: 'Puente Nuevo / Gateway International — en vivo desde Matamoros',
+      label: 'MX · Vivo',
     },
   ],
 

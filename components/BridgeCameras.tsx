@@ -211,7 +211,10 @@ export function BridgeCameras({ portId, portName }: Props) {
   const safeIdx = Math.min(activeIdx, feeds.length - 1)
   const activeFeed = feeds[safeIdx]
   const hasTabs = feeds.length > 1
-  const isLiveVideo = activeFeed.kind === 'youtube' || activeFeed.kind === 'hls'
+  const isLiveVideo =
+    activeFeed.kind === 'youtube' ||
+    activeFeed.kind === 'hls' ||
+    activeFeed.kind === 'iframe'
 
   // State 2 — feeds exist, free for all viewers
   return (
