@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 import { useAuth } from '@/lib/useAuth'
 import { getWaitLevel, waitLevelDot, waitLevelColor } from '@/lib/cbp'
 import { getPortMeta } from '@/lib/portMeta'
@@ -348,7 +349,14 @@ function BusinessPortalPage() {
           })
         }
       }
-    } catch {}
+    } catch (err) {
+      // Was a naked `catch {}` that silently hid every route-optimize failure — a
+      // business-tier user would click "Route All Trucks" and see the loading
+      // spinner stop with no recommendation, no error, nothing. Now the error
+      // surfaces in Sentry so failure modes stay visible, and the UX stays
+      // non-blocking (we still setRoutingLoading(false) below).
+      Sentry.captureException(err, { tags: { feature: 'business_route_all_trucks' } })
+    }
     setRoutingLoading(false)
   }
 
