@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Camera } from 'lucide-react'
+import { Camera, Lock, Share2, Check } from 'lucide-react'
 import type { CameraFeed } from '@/lib/bridgeCameras'
+import { isProFeed } from '@/lib/bridgeCameras'
+import { slugForPort } from '@/lib/portSlug'
+import { useTier } from '@/lib/useTier'
+import { trackShare } from '@/lib/trackShare'
 
 interface Props {
   portId: string
@@ -55,6 +59,36 @@ function Polled({ src, alt, intervalMs = 15000 }: { src: string; alt: string; in
 
 export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, noData, feed }: Props) {
   const tone = levelTone(wait, isClosed)
+  const { tier } = useTier()
+  const isPaid = tier === 'pro' || tier === 'business'
+  const isProPort = isProFeed(feed)
+  const showProLock = isProPort && !isPaid
+  const [shareLabel, setShareLabel] = useState<'idle' | 'done'>('idle')
+
+  async function handleShare(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const slug = slugForPort(portId)
+    const url = wait != null && wait >= 0 && wait <= 240
+      ? `https://cruzar.app/w/${portId}/${wait}`
+      : `https://cruzar.app/cruzar/${slug}`
+    const text = wait != null
+      ? `${portName} está en ${wait} min ahorita — cámara + tiempo en vivo en cruzar.app`
+      : `${portName} — cámara y tiempo en vivo en cruzar.app`
+    trackShare('native', 'camera_tile')
+    let shared = false
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title: 'Cruzar', text, url })
+        shared = true
+      } catch { /* cancelled */ }
+    }
+    if (!shared) {
+      try { await navigator.clipboard.writeText(`${text}\n${url}`) } catch {}
+    }
+    setShareLabel('done')
+    setTimeout(() => setShareLabel('idle'), 2500)
+  }
 
   const Frame = () => {
     if (feed.kind === 'image') return <Polled src={feed.src} alt={`${portName} cámara`} />
@@ -84,7 +118,7 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
 
   return (
     <Link
-      href={`/port/${portId}`}
+      href={`/cruzar/${slugForPort(portId)}`}
       className="group relative block rounded-2xl overflow-hidden border border-white/10 bg-gray-900 hover:border-white/25 transition-colors"
     >
       <div className="relative aspect-video w-full bg-black">
@@ -99,16 +133,27 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
         <div className={`absolute top-2 right-2 rounded-full border px-2.5 py-0.5 text-[11px] font-bold tabular-nums ${tone.bg} ${tone.text} ${tone.border}`}>
           {tone.label}
         </div>
+        {showProLock && (
+          <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 bg-gradient-to-r from-amber-500/90 to-orange-600/90 text-white rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-lg">
+            <Lock className="w-2.5 h-2.5" />
+            Pro
+          </div>
+        )}
       </div>
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-sm font-bold text-white truncate">{portName}</div>
             <div className="text-[11px] text-white/50 truncate">{regionLabel}</div>
           </div>
-          <div className="shrink-0 text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">
-            Ver →
-          </div>
+          <button
+            type="button"
+            onClick={handleShare}
+            aria-label="Share"
+            className="shrink-0 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            {shareLabel === 'done' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Share2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
         {feed.credit && (
           <div className="mt-2 text-[10px] text-white/35 truncate">Fuente: {feed.credit}</div>
