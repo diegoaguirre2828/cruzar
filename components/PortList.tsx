@@ -12,6 +12,7 @@ import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useFavorites } from '@/lib/useFavorites'
 import { useHomeRegion, MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
+import { trackEvent } from '@/lib/trackEvent'
 
 const REFRESH_INTERVAL = 5 * 60 * 1000
 
@@ -202,6 +203,12 @@ export function PortList() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ portId: mexPortId, condition, direction: 'mexico', ref: typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null }),
     }).catch(() => {})
+    trackEvent('report_submitted', {
+      port_id: mexPortId,
+      source: 'home_mex_direction_prompt',
+      report_type: condition,
+      direction: 'mexico',
+    })
     setMexSubmitting(false)
     setMexSubmitted(true)
     setTimeout(() => setMexSubmitted(false), 4000)

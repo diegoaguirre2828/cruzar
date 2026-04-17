@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { ReportSentAnimation } from './ReportSentAnimation'
 import { trackShare } from '@/lib/trackShare'
+import { trackEvent } from '@/lib/trackEvent'
 
 interface Props {
   portId: string
@@ -64,6 +65,13 @@ export function JustCrossedPrompt({ portId, portName, onSubmitted, forceShow, on
       }),
     })
     const data = await res.json()
+    trackEvent('report_submitted', {
+      port_id: portId,
+      source: 'just_crossed',
+      report_type: condition,
+      has_wait_minutes: actualMinutes != null,
+      has_lane_info: laneType != null,
+    })
     setPointsEarned(data.pointsEarned || 0)
     sessionStorage.setItem(`crossed_${portId}_${new Date().toDateString()}`, '1')
     setStep('done')

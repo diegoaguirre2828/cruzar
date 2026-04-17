@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { Navigation, X, Zap } from 'lucide-react'
 import { PORT_META } from '@/lib/portMeta'
+import { trackEvent } from '@/lib/trackEvent'
 
 // Derived from PORT_META so geofence coverage matches the map. Adding a port
 // to portMeta.ts automatically enables the "are you at X?" prompt there.
@@ -91,6 +92,11 @@ export function WaitingMode({ onNearCrossing }: Props) {
         waitingMode: true,
         ref: typeof window !== 'undefined' ? localStorage.getItem('cruzar_ref') : null,
       }),
+    })
+    trackEvent('report_submitted', {
+      port_id: nearCrossing.portId,
+      source: 'waiting_mode',
+      condition: cond,
     })
     localStorage.setItem(spamKey, Date.now().toString())
     setSubmitting(false)
