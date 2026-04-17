@@ -58,7 +58,7 @@ function isProtectedPath(path: string): boolean {
   })
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Fast-path: public API routes that don't need an auth refresh
