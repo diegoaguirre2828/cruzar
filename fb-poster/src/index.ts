@@ -83,7 +83,7 @@ async function hydrateLastPostedFromDb(map: Map<string, number>): Promise<void> 
 //
 // Environment variables: see .env.example
 
-const ENABLED = process.env.FB_GROUP_AUTOMATION_ENABLED !== 'false'
+const ENABLED = process.env.FB_GROUP_AUTOMATION_ENABLED === 'true'
 const COOKIES_PATH = process.env.FB_COOKIES_PATH || './cookies.json'
 const RUN_ONCE = process.env.RUN_ONCE === '1'
 
