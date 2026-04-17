@@ -14,12 +14,16 @@ export const dynamic = 'force-dynamic'
 //   - Supabase free-tier storage is 1GB. At ~200KB per photo that's
 //     5000 photos max. Without cleanup the bucket fills up fast.
 //
-// Protection: requires ?secret=CRON_SECRET query param, matching
-// the pattern used by every other cron route in the app.
+// Protection: accepts either ?secret=CRON_SECRET or
+// Authorization: Bearer <CRON_SECRET>, matching every other cron route.
 
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret')
-  if (secret !== process.env.CRON_SECRET) {
+  const authHeader = req.headers.get('authorization')
+  const isAuthed =
+    secret === process.env.CRON_SECRET ||
+    authHeader === `Bearer ${process.env.CRON_SECRET}`
+  if (!isAuthed) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

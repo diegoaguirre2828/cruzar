@@ -4,29 +4,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { Navigation, X, Zap } from 'lucide-react'
+import { PORT_META } from '@/lib/portMeta'
 
-// Approximate coordinates for each crossing (center of bridge)
-const CROSSINGS = [
-  { portId: '230501', name: 'McAllen / Hidalgo',  lat: 26.1080, lng: -98.2708 },
-  { portId: '230502', name: 'Pharr–Reynosa',       lat: 26.1764, lng: -98.1836 },
-  { portId: '230503', name: 'Anzaldúas',           lat: 26.0432, lng: -98.3647 },
-  { portId: '230901', name: 'Progreso',            lat: 26.0905, lng: -97.9736 },
-  { portId: '230902', name: 'Donna',               lat: 26.1649, lng: -98.0492 },
-  { portId: '230701', name: 'Rio Grande City',     lat: 26.3795, lng: -98.8219 },
-  { portId: '231001', name: 'Roma',                lat: 26.4079, lng: -99.0195 },
-  { portId: '535501', name: 'Brownsville Gateway', lat: 25.9007, lng: -97.4935 },
-  { portId: '535502', name: 'Brownsville Veterans',lat: 25.8726, lng: -97.4866 },
-  { portId: '535503', name: 'Los Tomates',         lat: 26.0416, lng: -97.7367 },
-  { portId: '230401', name: 'Laredo I',            lat: 27.4994, lng: -99.5076 },
-  { portId: '230402', name: 'Laredo II',           lat: 27.5628, lng: -99.5019 },
-  { portId: '230403', name: 'Colombia',            lat: 27.6506, lng: -99.5539 },
-  { portId: '230404', name: 'Laredo IV',           lat: 27.5533, lng: -99.4786 },
-  { portId: '230301', name: 'Eagle Pass I',        lat: 28.7091, lng: -100.4995 },
-  { portId: '230302', name: 'Eagle Pass II',       lat: 28.7150, lng: -100.5010 },
-  { portId: '240201', name: 'El Paso',             lat: 31.7619, lng: -106.4850 },
-  { portId: '250401', name: 'San Ysidro',          lat: 32.5432, lng: -117.0281 },
-  { portId: '250601', name: 'Otay Mesa',           lat: 32.5526, lng: -116.9734 },
-]
+// Derived from PORT_META so geofence coverage matches the map. Adding a port
+// to portMeta.ts automatically enables the "are you at X?" prompt there.
+const CROSSINGS = Object.entries(PORT_META).map(([portId, meta]) => ({
+  portId,
+  name: meta.localName || meta.city,
+  lat: meta.lat,
+  lng: meta.lng,
+}))
 
 const NEARBY_KM = 3
 
