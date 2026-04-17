@@ -377,6 +377,10 @@ async function postToGroup(
 }
 
 async function runPostingCycle(): Promise<void> {
+  if (process.env.POSTER_KILL_SWITCH === 'true') {
+    console.log('[KILL] POSTER_KILL_SWITCH=true. Refusing to post.')
+    return
+  }
   if (!ENABLED) {
     console.log('[PAUSED] FB_GROUP_AUTOMATION_ENABLED=false. Skipping.')
     return
