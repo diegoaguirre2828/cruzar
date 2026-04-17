@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { ExternalLink } from 'lucide-react'
+import { useLang } from '@/lib/LangContext'
 
 interface Ad {
   id: string
@@ -20,6 +21,9 @@ interface Props {
 }
 
 export function AdCard({ ad, portId, variant = 'card' }: Props) {
+  const { lang } = useLang()
+  const sponsoredLabel = lang === 'es' ? 'Patrocinado' : 'Sponsored'
+
   useEffect(() => {
     fetch('/api/ads', {
       method: 'POST',
@@ -41,7 +45,7 @@ export function AdCard({ ad, portId, variant = 'card' }: Props) {
     return (
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <span className="text-xs text-amber-500 font-medium">Sponsored</span>
+          <span className="text-xs text-amber-500 font-medium">{sponsoredLabel}</span>
           <p className="text-sm font-semibold text-gray-900 truncate">{ad.title}</p>
           {ad.description && <p className="text-xs text-gray-500 truncate">{ad.description}</p>}
         </div>
@@ -67,7 +71,7 @@ export function AdCard({ ad, portId, variant = 'card' }: Props) {
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1 mb-0.5">
-              <span className="text-xs text-amber-500 font-medium">Sponsored</span>
+              <span className="text-xs text-amber-500 font-medium">{sponsoredLabel}</span>
             </div>
             <p className="text-sm font-semibold text-gray-900">{ad.title}</p>
             {ad.description && <p className="text-xs text-gray-500 mt-0.5">{ad.description}</p>}
@@ -82,7 +86,7 @@ export function AdCard({ ad, portId, variant = 'card' }: Props) {
   return (
     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-amber-500 font-semibold uppercase tracking-wide">Sponsored</span>
+        <span className="text-xs text-amber-500 font-semibold uppercase tracking-wide">{sponsoredLabel}</span>
       </div>
       {ad.image_url && (
         <img src={ad.image_url} alt="" className="w-full h-24 object-cover rounded-xl mb-3" />
