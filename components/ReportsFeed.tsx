@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { AlertTriangle, CheckCircle, Truck, ShieldAlert, HelpCircle, Clock, ThumbsUp } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
+import { useLang } from '@/lib/LangContext'
 
 const TYPE_CONFIG: Record<string, { label: string; labelEs: string; icon: typeof AlertTriangle; color: string; bg: string }> = {
   delay:      { label: 'Long Delay',   labelEs: 'Demora larga',  icon: AlertTriangle, color: 'text-yellow-600', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
@@ -68,15 +69,17 @@ interface Props {
   refresh: number
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, es: boolean): string {
   const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  return `${Math.round(mins / 60)}h ago`
+  if (mins < 1) return es ? 'ahorita' : 'just now'
+  if (mins < 60) return es ? `hace ${mins}m` : `${mins}m ago`
+  return es ? `hace ${Math.round(mins / 60)}h` : `${Math.round(mins / 60)}h ago`
 }
 
 export function ReportsFeed({ portId, refresh }: Props) {
   const { user } = useAuth()
+  const { lang } = useLang()
+  const es = lang === 'es'
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [upvoted, setUpvoted] = useState<Set<string>>(new Set())
@@ -118,7 +121,9 @@ export function ReportsFeed({ portId, refresh }: Props) {
   if (reports.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-xs text-gray-400">No reports in the last 24 hours.</p>
+        <p className="text-xs text-gray-400">
+          {es ? 'Sin reportes en las últimas 24 horas.' : 'No reports in the last 24 hours.'}
+        </p>
       </div>
     )
   }
@@ -137,15 +142,17 @@ export function ReportsFeed({ portId, refresh }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs font-semibold ${config.color}`}>{config.label}</span>
+                    <span className={`text-xs font-semibold ${config.color}`}>
+                      {es ? config.labelEs : config.label}
+                    </span>
                     {r.wait_minutes !== null && (
                       <span className="text-xs bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-600">
-                        {r.wait_minutes} min actual
+                        {r.wait_minutes} min {es ? 'actual' : 'actual'}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
-                    <Clock className="w-3 h-3" />{timeAgo(r.created_at)}
+                    <Clock className="w-3 h-3" />{timeAgo(r.created_at, es)}
                   </div>
                 </div>
 
@@ -168,7 +175,7 @@ export function ReportsFeed({ portId, refresh }: Props) {
                           className="inline-flex items-center gap-0.5 text-[10px] font-semibold bg-white/70 dark:bg-gray-900/40 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded-full"
                         >
                           <span className="text-xs leading-none">{meta.emoji}</span>
-                          {meta.es}
+                          {es ? meta.es : meta.en}
                         </span>
                       )
                     })}
@@ -183,23 +190,32 @@ export function ReportsFeed({ portId, refresh }: Props) {
                   const li = r.source_meta!.lane_info!
                   const parts: string[] = []
                   if (li.lanes_open != null) {
-                    parts.push(`${li.lanes_open} ${li.lanes_open === 1 ? 'fila abierta' : 'filas abiertas'}`)
+                    if (es) {
+                      parts.push(`${li.lanes_open} ${li.lanes_open === 1 ? 'fila abierta' : 'filas abiertas'}`)
+                    } else {
+                      parts.push(`${li.lanes_open} ${li.lanes_open === 1 ? 'lane open' : 'lanes open'}`)
+                    }
                   }
                   if (li.lanes_xray != null && li.lanes_open != null && li.lanes_open > 0) {
                     const noXray = li.lanes_open - li.lanes_xray
-                    parts.push(`${li.lanes_xray} con rayos · ${noXray} sin rayos`)
+                    if (es) {
+                      parts.push(`${li.lanes_xray} con rayos · ${noXray} sin rayos`)
+                    } else {
+                      parts.push(`${li.lanes_xray} X-ray · ${noXray} no X-ray`)
+                    }
                   } else if (li.lanes_xray != null) {
-                    parts.push(`${li.lanes_xray} con rayos X`)
+                    parts.push(`${li.lanes_xray} ${es ? 'con rayos X' : 'X-ray lanes'}`)
                   }
                   const slowLabel = li.slow_lane ? SLOW_LANE_LABEL[li.slow_lane] : null
+                  const defaultLaneTitle = es ? 'Detalles de la fila' : 'Lane details'
                   return (
                     <div className="mt-1.5 bg-white/70 dark:bg-gray-900/40 border border-amber-200 dark:border-amber-700/50 rounded-lg px-2 py-1.5">
                       <p className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 leading-none">
-                        🛣️ {parts.join(' · ') || 'Detalles de la fila'}
+                        🛣️ {parts.join(' · ') || defaultLaneTitle}
                       </p>
                       {slowLabel && (
                         <p className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold mt-0.5 leading-snug">
-                          {slowLabel.es}
+                          {es ? slowLabel.es : slowLabel.en}
                         </p>
                       )}
                     </div>
@@ -208,11 +224,11 @@ export function ReportsFeed({ portId, refresh }: Props) {
 
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-xs text-gray-400 flex items-center gap-1">
-                    {r.username ? `@${r.username}` : 'Anonymous'}
+                    {r.username ? `@${r.username}` : (es ? 'Anónimo' : 'Anonymous')}
                     {(r.reporter_tier === 'pro' || r.reporter_tier === 'business') && (
                       <span
                         className="inline-flex items-center gap-0.5 bg-gradient-to-br from-amber-400 to-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none"
-                        title="Verified Pro reporter"
+                        title={es ? 'Reportero Pro verificado' : 'Verified Pro reporter'}
                       >
                         ✓ PRO
                       </span>
@@ -226,7 +242,7 @@ export function ReportsFeed({ portId, refresh }: Props) {
                         ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
                         : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                     } ${!user ? 'cursor-default' : 'cursor-pointer'}`}
-                    title={!user ? 'Sign in to upvote' : ''}
+                    title={!user ? (es ? 'Inicia sesión pa\' dar upvote' : 'Sign in to upvote') : ''}
                   >
                     <ThumbsUp className="w-3 h-3" />
                     <span>{r.upvotes || 0}</span>
