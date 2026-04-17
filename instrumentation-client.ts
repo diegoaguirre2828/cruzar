@@ -8,6 +8,18 @@ import * as Sentry from '@sentry/nextjs'
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  // Ignore benign / third-party noise that buries real bugs:
+  //  - "Lock broken/stolen" fires from Supabase auth's Web-Locks API
+  //    whenever a user has two tabs open; it's how Supabase hands off
+  //    the auth lock between tabs. Not actionable.
+  //  - "Load failed" on iOS Safari is a fetch network hiccup, not a
+  //    code bug. The app already retries where it matters.
+  ignoreErrors: [
+    /Lock broken by another request with the 'steal' option/,
+    /Lock was stolen by another request/,
+    /^TypeError: Load failed$/,
+  ],
+
   // Performance monitoring — 10% of transactions. Enough to catch
   // patterns, low enough to stay well under the free tier's 10k
   // transactions/month ceiling.

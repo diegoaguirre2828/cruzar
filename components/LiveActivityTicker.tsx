@@ -140,7 +140,11 @@ export function LiveActivityTicker({ initialReports }: TickerProps = {}) {
     )
   }
 
-  const r = reports[idx]
+  // idx can point past reports.length briefly after the reports array
+  // shrinks (e.g., a refetch filters more aggressively than the last).
+  // Guard before accessing r.report_type — caused 3+ TypeError reports.
+  const r = reports[idx] ?? reports[0]
+  if (!r) return null
   const label = TYPE_LABEL[r.report_type] ?? { en: 'Update', es: 'Actualización' }
   const emoji = TYPE_EMOJI[r.report_type] ?? '💬'
 
