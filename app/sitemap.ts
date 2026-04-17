@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { PORT_META } from '@/lib/portMeta'
 import { ALL_CITY_SLUGS } from '@/lib/cityMeta'
+import { slugForPort } from '@/lib/portSlug'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://cruzar.app'
@@ -26,10 +27,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }))
 
-  // Per-port deep pages. Lower priority than city pages since they
-  // target longer-tail queries, but still indexed frequently.
+  // Per-port deep pages. The canonical URL is /cruzar/[slug] (human-
+  // readable, FB-pastable); the numeric /port/[portId] still works as
+  // an alias for existing backlinks but doesn't need to be in the
+  // sitemap since /cruzar/[slug] carries the indexable copy.
   const portPages: MetadataRoute.Sitemap = Object.keys(PORT_META).map((portId) => ({
-    url: `${base}/port/${portId}`,
+    url: `${base}/cruzar/${slugForPort(portId)}`,
     lastModified: now,
     changeFrequency: 'hourly' as const,
     priority: 0.7,

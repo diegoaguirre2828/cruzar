@@ -1,21 +1,31 @@
 import { fetchRgvWaitTimes } from '@/lib/cbp'
-import { PortDetailClient } from './PortDetailClient'
+import { PortDetailClient } from '../../port/[portId]/PortDetailClient'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import type { Metadata } from 'next'
 import { getPortMeta } from '@/lib/portMeta'
-import { slugForPort } from '@/lib/portSlug'
+import { portIdFromSlug, slugForPort, allSlugs } from '@/lib/portSlug'
+
+// Human-readable port URLs for FB commenting + SEO.
+// Mirrors app/port/[portId]/page.tsx but keyed by slug. Canonical URL
+// for each port is the slug variant; numeric /port/[portId] stays as
+// a working alias for backlinks + existing share URLs.
 
 interface Props {
-  params: Promise<{ portId: string }>
+  params: Promise<{ slug: string }>
+}
+
+export async function generateStaticParams() {
+  return allSlugs().map(({ slug }) => ({ slug }))
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { portId } = await params
-  const decodedId = decodeURIComponent(portId)
+  const { slug } = await params
+  const portId = portIdFromSlug(slug)
+  if (!portId) return {}
   const ports = await fetchRgvWaitTimes()
-  const port = ports.find((p) => p.portId === decodedId)
+  const port = ports.find((p) => p.portId === portId)
   if (!port) return {}
 
   const wait = port.vehicle
@@ -23,10 +33,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const level = !wait || wait === 0 ? 'green' : wait <= 20 ? 'green' : wait <= 45 ? 'yellow' : 'red'
   const emoji = level === 'green' ? '🟢' : level === 'yellow' ? '🟡' : '🔴'
 
+  const canonicalSlug = slugForPort(portId)
   const title = `${emoji} ${port.portName} — ${waitStr} wait | Cruzar`
   const description = `Live border crossing wait at ${port.portName}${wait && wait > 0 ? ` — ${wait} min right now` : ''}. Updated every 15 min. Free for commuters and truckers.`
-
-  const canonicalSlug = slugForPort(decodedId)
 
   return {
     title,
@@ -49,31 +58,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function PortDetailPage({ params }: Props) {
-  const { portId } = await params
-  const decodedId = decodeURIComponent(portId)
+export default async function PortBySlug({ params }: Props) {
+  const { slug } = await params
+  const portId = portIdFromSlug(slug)
+  if (!portId) notFound()
 
   const ports = await fetchRgvWaitTimes()
-  const port = ports.find((p) => p.portId === decodedId)
-
+  const port = ports.find((p) => p.portId === portId)
   if (!port) notFound()
 
-  // JSON-LD structured data for Google rich results. Emits a WebPage
-  // whose mainEntity is a Place with geo coords — Google uses this
-  // to show the port in map-style SERP features and to associate our
-  // wait-time updates with the correct real-world crossing. Emitting
-  // the current wait as text inside `description` means our page can
-  // show up in featured snippets for queries like "hidalgo bridge
-  // wait time".
-  const meta = getPortMeta(decodedId)
+  const meta = getPortMeta(portId)
   const waitMin = port.vehicle
   const waitText = waitMin && waitMin > 0 ? `${waitMin} min wait` : 'live wait times available'
+  const canonicalSlug = slugForPort(portId)
   const jsonLd: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: `${port.portName} — ${waitText} | Cruzar`,
     description: `Live US-Mexico border crossing wait time at ${port.portName}. ${waitText}. Updated every 15 min from CBP + community reports.`,
-    url: `https://cruzar.app/port/${decodedId}`,
+    url: `https://cruzar.app/cruzar/${canonicalSlug}`,
     inLanguage: ['en', 'es'],
     mainEntity: {
       '@type': 'Place',
@@ -117,7 +120,7 @@ export default async function PortDetailPage({ params }: Props) {
             <p className="text-sm text-gray-400">{port.crossingName}</p>
           </div>
 
-          <PortDetailClient port={port} portId={decodedId} />
+          <PortDetailClient port={port} portId={portId} />
         </div>
       </main>
     </>

@@ -81,8 +81,10 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
     },
   ],
 
-  // ─── California — Otay Mesa POE ─────────────────────────────────
-  '250501': [
+  // ─── California — Otay Mesa Passenger POE ───────────────────────
+  // Corrected 2026-04-17: portId 250501 is CBP's Tecate crossing,
+  // not Otay Mesa. Otay Mesa Passenger is 250601.
+  '250601': [
     {
       kind: 'image',
       src: 'https://cwwp2.dot.ca.gov/data/d11/cctv/image/c292sb125atotaymesard/c292sb125atotaymesard.jpg',
@@ -370,7 +372,9 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
     },
   ],
 
-  '240204': [
+  // Corrected 2026-04-17: PDN camera was assigned to 240204 which is
+  // CBP's Stanton DCL crossing. PDN is 240202.
+  '240202': [
     {
       kind: 'hls',
       src: 'https://zoocams.elpasozoo.org/memfs/10-pdn-hq.m3u8',
@@ -381,7 +385,10 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
     },
   ],
 
-  '240221': [
+  // Corrected 2026-04-17: Ysleta/Zaragoza camera was assigned to 240221
+  // which CBP treats as a generic "El Paso" port with no crossing name.
+  // Ysleta / Zaragoza is 240203.
+  '240203': [
     {
       kind: 'hls',
       src: 'https://zoocams.elpasozoo.org/memfs/20-zar-hq.m3u8',

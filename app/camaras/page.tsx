@@ -19,6 +19,12 @@ export default function CamarasPage() {
   const { ports, loading } = usePorts()
   const [filter, setFilter] = useState<MegaRegion | 'all'>('all')
 
+  // One tile per PORT (not per feed). A port with 5 angles (e.g., Mariposa)
+  // used to render 5 tiles on the grid — cluttered + repetitive. The port
+  // detail page has the tab picker for multiple angles; the grid is for
+  // scanning bridges. Pick a representative feed per port: prefer a live
+  // feed (HLS / iframe / YouTube) if available, otherwise the first
+  // snapshot.
   const tiles = useMemo(() => {
     const byId = new Map(ports.map((p) => [p.portId, p]))
     const rows: Array<{
@@ -30,6 +36,7 @@ export default function CamarasPage() {
       isClosed: boolean
       noData: boolean
       feedIdx: number
+      angleCount: number
     }> = []
     for (const [portId, feeds] of Object.entries(BRIDGE_CAMERAS)) {
       if (!feeds || feeds.length === 0) continue
@@ -39,24 +46,30 @@ export default function CamarasPage() {
       const regionLabel = es
         ? MEGA_REGION_LABELS[meta.megaRegion]?.es || 'Otros'
         : MEGA_REGION_LABELS[meta.megaRegion]?.en || 'Other'
-      feeds.forEach((_, idx) => {
-        rows.push({
-          portId,
-          portName: name,
-          regionLabel,
-          megaRegion: meta.megaRegion,
-          wait: port?.vehicle ?? null,
-          isClosed: port?.isClosed ?? false,
-          noData: port?.noData ?? true,
-          feedIdx: idx,
-        })
+      // Pick representative feed: prefer live video over snapshot
+      const liveIdx = feeds.findIndex((f) => f.kind === 'hls' || f.kind === 'iframe' || f.kind === 'youtube')
+      const repIdx = liveIdx >= 0 ? liveIdx : 0
+      rows.push({
+        portId,
+        portName: name,
+        regionLabel,
+        megaRegion: meta.megaRegion,
+        wait: port?.vehicle ?? null,
+        isClosed: port?.isClosed ?? false,
+        noData: port?.noData ?? true,
+        feedIdx: repIdx,
+        angleCount: feeds.length,
       })
     }
-    // Sort: within filter, low wait first, unknown last
+    // Sort by region order first, then by wait within each region.
+    const regionRank = (r: MegaRegion) => REGION_ORDER.indexOf(r)
     rows.sort((a, b) => {
-      const rankA = a.isClosed ? 999 : a.wait ?? 998
-      const rankB = b.isClosed ? 999 : b.wait ?? 998
-      return rankA - rankB
+      const ra = regionRank(a.megaRegion)
+      const rb = regionRank(b.megaRegion)
+      if (ra !== rb) return ra - rb
+      const waitA = a.isClosed ? 999 : a.wait ?? 998
+      const waitB = b.isClosed ? 999 : b.wait ?? 998
+      return waitA - waitB
     })
     return rows
   }, [ports, es])
@@ -118,15 +131,65 @@ export default function CamarasPage() {
               {es ? 'No hay cámaras en esta región por ahora.' : 'No cameras in this region yet.'}
             </p>
           </div>
+        ) : filter === 'all' ? (
+          // Group by region when viewing all, so the grid reads as an
+          // organized catalog instead of an opaque flat list.
+          (() => {
+            const byRegion = new Map<MegaRegion, typeof visible>()
+            for (const t of visible) {
+              const bucket = byRegion.get(t.megaRegion) ?? []
+              bucket.push(t)
+              byRegion.set(t.megaRegion, bucket)
+            }
+            return (
+              <div className="space-y-6">
+                {REGION_ORDER.filter((r) => byRegion.has(r)).map((r) => {
+                  const group = byRegion.get(r)!
+                  const label = es ? MEGA_REGION_LABELS[r]?.es : MEGA_REGION_LABELS[r]?.en
+                  return (
+                    <section key={r}>
+                      <h2 className="text-xs font-black uppercase tracking-widest text-white/60 mb-2.5 px-0.5">
+                        {label}
+                        <span className="ml-2 text-white/30 font-bold">{group.length}</span>
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {group.map((t, i) => {
+                          const feed = BRIDGE_CAMERAS[t.portId][t.feedIdx]
+                          const angleNote = t.angleCount > 1
+                            ? (es ? `${t.angleCount} ángulos` : `${t.angleCount} angles`)
+                            : undefined
+                          return (
+                            <LiveCameraTile
+                              key={`${t.portId}-${i}`}
+                              portId={t.portId}
+                              portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
+                              regionLabel={t.regionLabel}
+                              wait={t.wait}
+                              isClosed={t.isClosed}
+                              noData={t.noData}
+                              feed={feed}
+                            />
+                          )
+                        })}
+                      </div>
+                    </section>
+                  )
+                })}
+              </div>
+            )
+          })()
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {visible.map((t, i) => {
               const feed = BRIDGE_CAMERAS[t.portId][t.feedIdx]
+              const angleNote = t.angleCount > 1
+                ? (es ? `${t.angleCount} ángulos` : `${t.angleCount} angles`)
+                : undefined
               return (
                 <LiveCameraTile
-                  key={`${t.portId}-${t.feedIdx}-${i}`}
+                  key={`${t.portId}-${i}`}
                   portId={t.portId}
-                  portName={feed.label ? `${t.portName} · ${feed.label}` : t.portName}
+                  portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
                   regionLabel={t.regionLabel}
                   wait={t.wait}
                   isClosed={t.isClosed}
