@@ -116,82 +116,79 @@ export default async function CamarasOG() {
           </div>
         </div>
 
-        {/* Port tile grid — 3×2 of featured ports */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 12,
-            marginTop: 28,
-            flex: 1,
-          }}
-        >
-          {FEATURED.map((t) => {
-            const meta = PORT_META[t.portId]
-            const localName = meta?.localName || meta?.city || t.portId
-            return (
-              <div
-                key={t.portId}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  background: 'linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-                  border: '1px solid rgba(255,255,255,0.14)',
-                  borderRadius: 16,
-                  padding: '14px 16px',
-                  justifyContent: 'space-between',
-                  gap: 6,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Port tile rows — two rows of three, flex-only (Satori doesn't grid) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 28, flex: 1 }}>
+          {[FEATURED.slice(0, 3), FEATURED.slice(3, 6)].map((row, rIdx) => (
+            <div key={rIdx} style={{ display: 'flex', gap: 12, flex: 1 }}>
+              {row.map((t) => {
+                const meta = PORT_META[t.portId]
+                const localName = meta?.localName || meta?.city || t.portId
+                return (
                   <div
+                    key={t.portId}
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 8,
-                      background: '#ef4444',
+                      flex: 1,
                       display: 'flex',
-                    }}
-                  />
-                  <span
-                    style={{
-                      color: '#fca5a5',
-                      fontSize: 13,
-                      fontWeight: 900,
-                      letterSpacing: 1.2,
-                      textTransform: 'uppercase',
-                      display: 'flex',
+                      flexDirection: 'column',
+                      background: 'rgba(34,197,94,0.06)',
+                      border: '1px solid rgba(255,255,255,0.14)',
+                      borderRadius: 16,
+                      padding: '14px 16px',
+                      justifyContent: 'space-between',
+                      gap: 6,
                     }}
                   >
-                    Cámara en vivo
-                  </span>
-                </div>
-                <div
-                  style={{
-                    color: '#ffffff',
-                    fontSize: 26,
-                    fontWeight: 900,
-                    letterSpacing: -0.8,
-                    lineHeight: 1.05,
-                    display: 'flex',
-                  }}
-                >
-                  {localName}
-                </div>
-                <div
-                  style={{
-                    color: '#94a3b8',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    letterSpacing: 0.2,
-                    display: 'flex',
-                  }}
-                >
-                  {t.viewLabel}
-                </div>
-              </div>
-            )
-          })}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 8,
+                          background: '#ef4444',
+                          display: 'flex',
+                        }}
+                      />
+                      <span
+                        style={{
+                          color: '#fca5a5',
+                          fontSize: 13,
+                          fontWeight: 900,
+                          letterSpacing: 1.2,
+                          textTransform: 'uppercase',
+                          display: 'flex',
+                        }}
+                      >
+                        Cámara en vivo
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        color: '#ffffff',
+                        fontSize: 26,
+                        fontWeight: 900,
+                        letterSpacing: -0.8,
+                        lineHeight: 1.05,
+                        display: 'flex',
+                      }}
+                    >
+                      {localName}
+                    </div>
+                    <div
+                      style={{
+                        color: '#94a3b8',
+                        fontSize: 14,
+                        fontWeight: 700,
+                        letterSpacing: 0.2,
+                        display: 'flex',
+                      }}
+                    >
+                      {t.viewLabel}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Footer — social proof / coverage stats + CTA */}
