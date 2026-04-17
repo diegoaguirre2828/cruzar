@@ -1,9 +1,74 @@
 import 'dotenv/config'
 import { chromium, type BrowserContext, type Page } from 'playwright'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { createHash } from 'crypto'
 import { TARGET_GROUPS, type TargetGroup } from './groups.js'
 import { buildCaption, pickVariantIndex, buildLiveData, type LiveData } from './captions.js'
 import { ensureCookies } from './auto-login.js'
+
+// Persist every successful group post to Supabase `social_posts` so
+// observability survives Railway container restarts. Before this shim
+// existed, the only record of a successful post was an in-memory Map
+// that died on every redeploy — which meant `lastPosted: {}` at the
+// health endpoint could mean "no posts ever" OR "container cold-started
+// 5 minutes ago" with no way to tell them apart. Adding a row here
+// closes the observability gap and doubles as a cross-restart dedupe
+// source (see hydrateLastPostedFromDb).
+async function logGroupPost(group: TargetGroup, caption: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return
+  const captionHash = createHash('sha256').update(caption).digest('hex').slice(0, 16)
+  try {
+    await fetch(`${url}/rest/v1/social_posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        platform: 'facebook_group',
+        caption,
+        caption_hash: captionHash,
+        landing_url: group.url,
+        posted_at: new Date().toISOString(),
+      }),
+    })
+  } catch (err) {
+    console.error('[OBS] social_posts insert failed:', err instanceof Error ? err.message : err)
+  }
+}
+
+// Rehydrate the in-memory `lastPostedAt` map from recent `social_posts`
+// rows at container boot so the 6-hour-per-group dedupe check survives
+// Railway redeploys. Without this, a container restart would allow a
+// second post within the rate-limit window.
+async function hydrateLastPostedFromDb(map: Map<string, number>): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const res = await fetch(
+      `${url}/rest/v1/social_posts?platform=eq.facebook_group&posted_at=gte.${since}&select=landing_url,posted_at&order=posted_at.desc`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    )
+    if (!res.ok) return
+    const rows = (await res.json()) as Array<{ landing_url: string; posted_at: string }>
+    // Keep only the most recent per landing_url
+    for (const row of rows) {
+      if (!row.landing_url) continue
+      const t = new Date(row.posted_at).getTime()
+      const prev = map.get(row.landing_url) || 0
+      if (t > prev) map.set(row.landing_url, t)
+    }
+    console.log(`[OBS] hydrated ${map.size} last-posted entries from Supabase`)
+  } catch (err) {
+    console.error('[OBS] hydrate failed:', err instanceof Error ? err.message : err)
+  }
+}
 
 // Cruzar FB Group Auto-Poster
 //
@@ -300,6 +365,7 @@ async function postToGroup(
     } catch { /* if we can't read text, fall through and treat as ok */ }
 
     console.log(`[OK] Posted to ${group.name}`)
+    await logGroupPost(group, caption)
     return { ok: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -401,6 +467,11 @@ async function runPostingCycle(): Promise<void> {
 async function main() {
   console.log(`Cruzar FB Poster starting. ENABLED=${ENABLED}, RUN_ONCE=${RUN_ONCE}`)
 
+  // Hydrate the in-memory dedupe map from the Supabase log BEFORE
+  // anything else so even a force-triggered cycle right after a
+  // restart respects the 6-hour-per-group rule.
+  await hydrateLastPostedFromDb(lastPostedAt)
+
   // Auto-login: ensure we have valid cookies before doing anything.
   // If no cookies exist and FB_EMAIL/FB_PASSWORD are set, logs in
   // automatically. If cookies exist, skips. If login requires 2FA,
@@ -482,19 +553,49 @@ async function main() {
     }, 30 * 60 * 1000)
   }, initialJitter)
 
-  // Keep process alive for Railway
+  // Keep process alive for Railway. The HTTP server serves two routes:
+  //   GET /          — health + lastPosted snapshot (unchanged behavior)
+  //   GET /trigger   — force-run a posting cycle on demand. Gated by
+  //                    ?secret=<CRON_SECRET> so only an authorized caller
+  //                    can fire it. Responds 202 immediately and runs
+  //                    the cycle asynchronously so the request doesn't
+  //                    time out on long cycles.
   if (process.env.PORT) {
     const port = parseInt(process.env.PORT, 10)
     const { createServer } = await import('http')
-    createServer((_, res) => {
+    let triggerInFlight = false
+    createServer(async (req, res) => {
+      const reqUrl = new URL(req.url || '/', `http://localhost:${port}`)
+      const cronSecret = process.env.CRON_SECRET || ''
+      if (reqUrl.pathname === '/trigger') {
+        const provided = reqUrl.searchParams.get('secret') || ''
+        if (!cronSecret || provided !== cronSecret) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'unauthorized' }))
+          return
+        }
+        if (triggerInFlight) {
+          res.writeHead(429, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'cycle_already_running' }))
+          return
+        }
+        triggerInFlight = true
+        res.writeHead(202, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: true, message: 'cycle starting — check Railway logs and /api/admin/social-posts' }))
+        runPostingCycle()
+          .catch((err) => console.error('[TRIGGER] cycle failed:', err))
+          .finally(() => { triggerInFlight = false })
+        return
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
         status: ENABLED ? 'running' : 'paused',
         lastPosted: Object.fromEntries(
           [...lastPostedAt.entries()].map(([k, v]) => [k, new Date(v).toISOString()])
         ),
+        triggerInFlight,
       }))
-    }).listen(port, () => console.log(`Health check on :${port}`))
+    }).listen(port, () => console.log(`Health check + /trigger on :${port}`))
   }
 }
 

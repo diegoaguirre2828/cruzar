@@ -9,6 +9,7 @@ import { DataExplorer } from '@/components/admin/DataExplorer'
 import { ViralLoopDetail } from '@/components/admin/ViralLoopDetail'
 import { DivergenceTile } from '@/components/admin/DivergenceTile'
 import { GrowthEventsTile } from '@/components/admin/GrowthEventsTile'
+import { FACEBOOK_GROUPS as SHARED_FB_GROUPS } from '@/lib/facebookGroups'
 
 const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
 
@@ -52,28 +53,15 @@ const REGIONS: { key: RegionKey; label: string; emoji: string }[] = [
   { key: 'other',       label: 'Other',                            emoji: '📍' },
 ]
 
-const FACEBOOK_GROUPS: { name: string; regionKey: RegionKey; url: string; members: string }[] = [
-  { name: 'FILAS DE PUENTES ANZALDUAS, HIDALGO, PHARR, DONNA, PROGRESO, INDIOS', regionKey: 'rgv', url: 'https://www.facebook.com/groups/2331786033753528', members: '' },
-  { name: 'Fila en Puentes Reynosa Hidalgo, Anzalduas y Pharr',                  regionKey: 'rgv', url: 'https://www.facebook.com/groups/630300451147099', members: '' },
-  { name: 'FILAS DE PUENTES REYNOSA HIDALGO, DONNA, PHARR, ANZALDUAS, PROGRESO', regionKey: 'rgv', url: 'https://www.facebook.com/groups/302019986939323', members: '' },
-  { name: 'Fila en Puente Reynosa-Hidalgo',                                       regionKey: 'rgv', url: 'https://www.facebook.com/groups/978204527689403', members: '' },
-  { name: 'Filas de Progreso, Donna, y Los Indios',                               regionKey: 'rgv', url: 'https://www.facebook.com/groups/302878187276542', members: '' },
-  { name: 'FILA PUENTE LOS INDIOS',                                               regionKey: 'brownsville', url: 'https://www.facebook.com/groups/230659829875807', members: '' },
-  { name: 'FILA PUENTE LOS INDIOS (2)',                                            regionKey: 'brownsville', url: 'https://www.facebook.com/groups/1731295540981020', members: '' },
-  { name: 'Fila de Los Puentes Internacionales',                                  regionKey: 'brownsville', url: 'https://www.facebook.com/groups/796522180440318', members: '' },
-  { name: 'Filas de Puentes Matamoros/Brownsville',                               regionKey: 'brownsville', url: 'https://www.facebook.com/groups/416633560460332', members: '' },
-  { name: 'Matamoros/Brownsville Bridge Rows.',                                   regionKey: 'brownsville', url: 'https://www.facebook.com/groups/3374381019461919', members: '' },
-  { name: 'Filas Puentes Bville/Matamoros — SOLO FILA PUENTES',                  regionKey: 'brownsville', url: 'https://www.facebook.com/groups/2232818820081853', members: '' },
-  { name: 'Filas de Puentes Matamoros - Brownsville',                             regionKey: 'brownsville', url: 'https://www.facebook.com/groups/autosenmatamoros', members: '' },
-  { name: 'Report on queues at international bridges in Nuevo Laredo',            regionKey: 'laredo', url: 'https://www.facebook.com/groups/276336942705237', members: '' },
-  { name: 'Fila puente 2. nuevo laredo tamaulipas NO CENTRI',                     regionKey: 'laredo', url: 'https://www.facebook.com/groups/1752011028879761', members: '' },
-  { name: 'Filas de los puentes 1 y 2 (Piedras Negras - Eagle Pass)',             regionKey: 'eagle_pass', url: 'https://www.facebook.com/groups/994149160726349', members: '' },
-  { name: 'Puente Internacional Piedras Negras - Eagle Pass',                     regionKey: 'eagle_pass', url: 'https://www.facebook.com/groups/218202582825387', members: '' },
-  { name: 'Reporte de Puentes Juarez-El Paso',                                    regionKey: 'el_paso', url: 'https://www.facebook.com/groups/1615115372079924', members: '' },
-  { name: 'TU REPORTE PUENTES JUAREZ/EL PASO',                                   regionKey: 'el_paso', url: 'https://www.facebook.com/groups/reportepuentes', members: '' },
-  { name: 'JRZ-ELP Bridge Report',                                                regionKey: 'el_paso', url: 'https://www.facebook.com/groups/464122564438748', members: '' },
-  { name: 'En Donde Va La Fila? San Luis RC',                                     regionKey: 'san_luis', url: 'https://www.facebook.com/groups/208758912816787', members: '' },
-]
+// Admin reuses the canonical FB group list from lib/facebookGroups.ts
+// (previously this was a duplicate 20-entry hardcoded array — two copies
+// of the same data is a maintenance hazard because any group added to
+// lib but not here would render on the promoter dashboard but stay
+// invisible in the admin "Groups" tab). The lib uses `region` where
+// this file's RegionKey type is named identically, so we just alias the
+// field at the read site.
+const FACEBOOK_GROUPS: { name: string; regionKey: RegionKey; url: string; members: string }[] =
+  SHARED_FB_GROUPS.map(g => ({ name: g.name, regionKey: g.region as RegionKey, url: g.url, members: g.members ?? '' }))
 
 interface Advertiser {
   id: string
