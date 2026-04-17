@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
+import { keyFromRequest, checkRateLimit } from '@/lib/ratelimit'
 
 async function notifyOwner(businessName: string, email: string, phone: string, crossing: string) {
   if (!process.env.RESEND_API_KEY) return
@@ -35,6 +36,20 @@ export async function POST(req: NextRequest) {
 
   if (!businessName || !email) {
     return NextResponse.json({ error: 'Name and email required' }, { status: 400 })
+  }
+
+  // Rate limit — previously unguarded, each submission fires a Resend
+  // email to the owner inbox, so spam here = spam Diego's inbox +
+  // burn Resend free-tier quota (100 emails/day). Hourly cap 5, burst
+  // cap 3 — enough for legitimate advertiser inquiries, not enough to
+  // abuse.
+  const rlKey = keyFromRequest(req)
+  const rl = checkRateLimit(rlKey, 5, 3)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many submissions. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+    )
   }
 
   const supabase = getServiceClient()

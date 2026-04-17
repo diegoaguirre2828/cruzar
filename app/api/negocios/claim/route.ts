@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
+import { keyFromRequest, checkRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,17 @@ export async function POST(req: NextRequest) {
   if (!business_id) return NextResponse.json({ error: 'business_id required' }, { status: 400 })
   if (!email?.trim() && !whatsapp?.trim()) {
     return NextResponse.json({ error: 'email or whatsapp required' }, { status: 400 })
+  }
+
+  // Rate limit — previously unguarded. An attacker could mass-flag
+  // every business as claim_pending and flood Diego's moderation
+  // queue. Hourly cap 10, burst 3.
+  const rl = checkRateLimit(keyFromRequest(req), 10, 3)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many claim requests. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } },
+    )
   }
 
   const db = getServiceClient()
