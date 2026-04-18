@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Camera, Gift } from 'lucide-react'
 import { isIosSafari, isPwaInstalled } from '@/lib/iosDetect'
+import { AFFILIATES, affiliatesForRegion, type AffiliateRegion } from '@/lib/affiliates'
+import { trackEvent } from '@/lib/trackEvent'
 import { useLang } from '@/lib/LangContext'
 import { useAuth } from '@/lib/useAuth'
 import { useTier } from '@/lib/useTier'
@@ -15,6 +17,7 @@ import { LiveCameraTile } from '@/components/LiveCameraTile'
 import { StickyCamarasCta } from '@/components/StickyCamarasCta'
 import { CamarasStickyInstallCta } from '@/components/CamarasStickyInstallCta'
 import { ProTabSwitcher } from '@/components/ProTabSwitcher'
+import { AdBanner } from '@/components/AdBanner'
 import type { MegaRegion } from '@/lib/portMeta'
 
 const REGION_ORDER: MegaRegion[] = ['rgv', 'laredo', 'coahuila-tx', 'el-paso', 'sonora-az', 'baja', 'other']
@@ -169,6 +172,22 @@ export default function CamarasPage() {
           </Link>
         )}
 
+        {/* Region-contextual affiliate services strip. Swaps in the
+            right services for whichever region the user is browsing —
+            RGV sees Mexican insurance + Holafly + Bankrate, Baja sees
+            Baja Bound + Tijuana dental + Holafly, etc. The 3-card cap
+            keeps it compact above the camera grid. Horizontal scroll on
+            mobile, grid on desktop. */}
+        <CamarasServicesStrip
+          filter={filter}
+          es={es}
+        />
+
+        {/* AdSense — Pro/Business users skip this automatically. */}
+        <div className="mb-4">
+          <AdBanner slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_CAMARAS} />
+        </div>
+
         <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 py-2 mb-2">
           <FilterChip active={filter === 'all'} onClick={() => setFilter('all')} count={tiles.length}>
             {es ? 'Todas' : 'All'}
@@ -313,6 +332,85 @@ export default function CamarasPage() {
       <CamarasStickyInstallCta />
       <StickyCamarasCta />
     </main>
+  )
+}
+
+// Region-aware services strip — 3 relevant affiliates filtered by the
+// currently-selected region chip. On 'all' we show the top 3 border-wide
+// offers (insurance + eSIM + credit cards). Compact cards so the camera
+// grid stays above the fold on most phones.
+function CamarasServicesStrip({
+  filter,
+  es,
+}: {
+  filter: AffiliateRegion
+  es: boolean
+}) {
+  const region: AffiliateRegion = filter
+  const pool =
+    region === 'all'
+      ? AFFILIATES
+      : affiliatesForRegion(region)
+  // Cap to 3 so the strip stays a strip, not a second grid.
+  const offers = pool.slice(0, 3)
+  if (offers.length === 0) return null
+
+  const seeAllHref = region === 'all' ? '/servicios' : `/servicios?region=${encodeURIComponent(region)}`
+
+  return (
+    <section className="mb-4" aria-label={es ? 'Servicios pa\' este cruce' : 'Services for this crossing'}>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xs font-black uppercase tracking-widest text-white/70">
+          {es ? 'Servicios pa\' este cruce' : 'Services for this crossing'}
+        </h2>
+        <Link
+          href={seeAllHref}
+          onClick={() =>
+            trackEvent('affiliate_clicked', {
+              id: 'see_all',
+              category: 'other',
+              source: 'camaras_strip_see_all',
+              region,
+            })
+          }
+          className="text-[11px] font-bold text-green-400 hover:text-green-300 whitespace-nowrap"
+        >
+          {es ? 'Ver todos los servicios →' : 'See all services →'}
+        </Link>
+      </div>
+      <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 sm:gap-3 pb-1">
+        {offers.map((o) => (
+          <a
+            key={o.id}
+            href={o.url}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={() =>
+              trackEvent('affiliate_clicked', {
+                id: o.id,
+                category: o.category,
+                source: 'camaras_strip',
+                region,
+              })
+            }
+            className="shrink-0 w-64 sm:w-auto rounded-2xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] p-3 flex items-start gap-3 transition-colors active:scale-[0.99]"
+          >
+            <span className="text-2xl flex-shrink-0" aria-hidden>{o.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-bold text-white leading-snug line-clamp-2">
+                {es ? o.headline.es : o.headline.en}
+              </p>
+              <p className="text-[11px] text-white/60 leading-snug mt-0.5 line-clamp-2">
+                {es ? o.sub.es : o.sub.en}
+              </p>
+              <span className="inline-block mt-1.5 text-[11px] font-bold text-green-400">
+                {es ? o.cta.es : o.cta.en} →
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </section>
   )
 }
 

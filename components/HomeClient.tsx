@@ -19,6 +19,7 @@ import { HeroCarousel } from '@/components/HeroCarousel'
 import { WeatherHook } from '@/components/WeatherHook'
 import { GuardianProgressCard } from '@/components/GuardianProgressCard'
 import { RegionalSnapshot } from '@/components/RegionalSnapshot'
+import { AdBanner } from '@/components/AdBanner'
 import { InstallPill } from '@/components/InstallPill'
 import { ContributionTodayPill } from '@/components/ContributionTodayPill'
 import { ServicesPill } from '@/components/ServicesPill'
@@ -39,6 +40,8 @@ import { PwaFirstLaunchWelcome } from '@/components/PwaFirstLaunchWelcome'
 import { SocialProofStrip } from '@/components/SocialProofStrip'
 import { armNudge } from '@/lib/useNudge'
 import { trackEvent } from '@/lib/trackEvent'
+import { affiliatesForRegion } from '@/lib/affiliates'
+import { useHomeRegion } from '@/lib/useHomeRegion'
 import type { PortWaitTime } from '@/types'
 import type { RecentReport } from '@/lib/recentReports'
 
@@ -625,6 +628,19 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             can tap a region to jump straight to its fastest bridge. */}
         {!isBusiness && <RegionalSnapshot ports={initialPorts} />}
 
+        {/* Contextual affiliate grid — 2×2 of border services filtered
+            by the user's home region. Insurance + eSIM + credit cards
+            surface for everyone; region-specific offers (Baja Bound,
+            Tijuana dental) slot in when the user's home region matches. */}
+        {!isBusiness && <HomeAffiliateGrid lang={lang} />}
+
+        {/* AdSense — Pro/Business users skip automatically via AdBanner. */}
+        {!isBusiness && (
+          <div className="mt-4">
+            <AdBanner slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
+          </div>
+        )}
+
         {/* Primary signup hook — guests only, now BELOW the list so the data
             is the first thing they get, and the pitch lands after they've
             already seen the value. */}
@@ -758,5 +774,76 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
       <InAppBrowserBanner />
       <OnboardingTour />
     </main>
+  )
+}
+
+// Home-page affiliate grid — 2×2 of top services for border crossers,
+// filtered by the user's home region. Lives below the RegionalSnapshot
+// so the data is always first, the services are context. Each card
+// opens in a new tab; tap telemetry fires affiliate_clicked with
+// source='home'.
+function HomeAffiliateGrid({ lang }: { lang: string }) {
+  const { homeRegion } = useHomeRegion()
+  const es = lang === 'es'
+  const offers = affiliatesForRegion(homeRegion ?? 'all').slice(0, 4)
+  if (offers.length === 0) return null
+  const seeAllHref = homeRegion
+    ? `/servicios?region=${encodeURIComponent(homeRegion)}`
+    : '/servicios'
+  return (
+    <section className="mt-6" aria-label={es ? 'Servicios pa\' los que cruzan' : 'Services for border crossers'}>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+          {es ? 'Servicios pa\' los que cruzan' : 'Services for border crossers'}
+        </h2>
+        <Link
+          href={seeAllHref}
+          onClick={() =>
+            trackEvent('affiliate_clicked', {
+              id: 'see_all',
+              category: 'other',
+              source: 'home_grid_see_all',
+              region: homeRegion ?? 'all',
+            })
+          }
+          className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+        >
+          {es ? 'Ver todos →' : 'See all →'}
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {offers.map((o) => (
+          <a
+            key={o.id}
+            href={o.url}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={() =>
+              trackEvent('affiliate_clicked', {
+                id: o.id,
+                category: o.category,
+                source: 'home_grid',
+                region: homeRegion ?? 'all',
+              })
+            }
+            className="flex flex-col gap-1 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/60 p-3 shadow-sm active:scale-[0.99] transition-colors"
+          >
+            <span className="text-xl" aria-hidden>{o.icon}</span>
+            <p className="text-[12px] font-bold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2">
+              {es ? o.headline.es : o.headline.en}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-snug line-clamp-2">
+              {es ? o.sub.es : o.sub.en}
+            </p>
+            <span className="mt-0.5 text-[11px] font-bold text-blue-600 dark:text-blue-400">
+              {es ? o.cta.es : o.cta.en} →
+            </span>
+          </a>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10px] text-gray-400 dark:text-gray-500">
+        {es ? 'Patrocinado · abren en otra pestaña' : 'Sponsored · open in new tab'}
+      </p>
+    </section>
   )
 }

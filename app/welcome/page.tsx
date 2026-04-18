@@ -11,6 +11,8 @@ import { getPortMeta } from '@/lib/portMeta'
 import { haversineKm } from '@/lib/geo'
 import { createClient } from '@/lib/auth'
 import { isIosSafari, isPwaInstalled } from '@/lib/iosDetect'
+import { getAffiliate } from '@/lib/affiliates'
+import { trackEvent } from '@/lib/trackEvent'
 import type { PortWaitTime } from '@/types'
 
 // Forced activation flow. Every new signup lands here before the dashboard.
@@ -501,8 +503,60 @@ function WelcomeInner() {
               : "We'll send a push to this phone when the wait drops. You can change or cancel anytime."}
           </p>
         </div>
+
+        {/* While-you're-here service offer. Shown ONLY on step 2 (after
+            install, user is picking their bridge). Doesn't block the
+            flow — the confirm button above is still the primary action.
+            Auto insurance is the single highest-leverage offer to put in
+            front of someone who just installed Cruzar and is about to
+            cross. */}
+        <WelcomeServiceOffer es={es} />
       </div>
     </main>
+  )
+}
+
+// Non-blocking post-install service offer — Mexican auto insurance via
+// Oscar Padilla. Sits at the bottom of the welcome flow so the user
+// sees it after they've already made their bridge pick. Opens in a new
+// tab so the welcome flow is preserved if they tap through.
+function WelcomeServiceOffer({ es }: { es: boolean }) {
+  const offer = getAffiliate('oscar-padilla-auto')
+  if (!offer) return null
+  return (
+    <div className="mt-6 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-4">
+      <p className="text-[10px] font-black uppercase tracking-widest text-blue-100 mb-1.5">
+        {es ? 'Una cosa más' : 'One more thing'}
+      </p>
+      <div className="flex items-start gap-3">
+        <span className="text-2xl flex-shrink-0" aria-hidden>{offer.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white leading-snug">
+            {es
+              ? 'Una cosa más — no cruces sin seguro mexicano'
+              : "One more thing — don't cross without Mexican auto insurance"}
+          </p>
+          <p className="text-[11px] text-blue-100 leading-snug mt-0.5">
+            {es ? offer.sub.es : offer.sub.en}
+          </p>
+          <a
+            href={offer.url}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={() =>
+              trackEvent('affiliate_clicked', {
+                id: offer.id,
+                category: offer.category,
+                source: 'welcome_post_install',
+              })
+            }
+            className="inline-block mt-2 text-xs font-bold text-indigo-700 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-full"
+          >
+            {es ? offer.cta.es : offer.cta.en} →
+          </a>
+        </div>
+      </div>
+    </div>
   )
 }
 

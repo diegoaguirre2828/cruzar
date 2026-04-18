@@ -24,6 +24,8 @@ import { PortFAQ } from '@/components/PortFAQ'
 import { cityForPortId } from '@/lib/cityMeta'
 import { PortDetailHero } from '@/components/PortDetailHero'
 import { trackEvent } from '@/lib/trackEvent'
+import { getAffiliate } from '@/lib/affiliates'
+import { AdBanner } from '@/components/AdBanner'
 import { SharePrompt } from '@/components/SharePrompt'
 import { PingCircleButton } from '@/components/PingCircleButton'
 import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
@@ -515,6 +517,18 @@ export function PortDetailClient({ port, portId }: Props) {
       {/* Viral share prompt — appears after 10s on the page */}
       <SharePrompt port={port} />
 
+      {/* Contextual affiliates — surface insurance + eSIM AT THE MOMENT
+          OF NEED (someone staring at a bridge wait time is about to
+          cross). Shown to all users, guest or auth, because affiliates
+          are revenue and hiding them behind the Pro gate makes no sense.
+          Sits between the hero and the camera block so it's unmissable
+          without pushing the cameras below the fold. */}
+      <PortDetailAffiliateCard portId={portId} es={es} />
+
+      <div className="mb-4">
+        <AdBanner slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_PORT} />
+      </div>
+
       {/* Live bridge camera — Pro-gated when a feed is registered for this
           port. Sits below the wait number so it's the first thing after
           the data, matching how Fronter uses cameras as the hero upsell. */}
@@ -686,27 +700,6 @@ export function PortDetailClient({ port, portId }: Props) {
           </Link>
         </div>
       ) : null}
-
-      {/* Mexican auto insurance nudge */}
-      <div className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🛡️</span>
-          <div>
-            <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-              {es ? 'Cruzando a México?' : 'Heading into Mexico?'}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {es ? 'El seguro mexicano es obligatorio por ley.' : 'Mexican auto insurance is required by law.'}
-            </p>
-          </div>
-        </div>
-        <Link
-          href="/insurance"
-          className="flex-shrink-0 ml-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-xl transition-colors"
-        >
-          {es ? 'Ver opciones →' : 'Get covered →'}
-        </Link>
-      </div>
 
       {/* 24-hour history chart */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
@@ -961,6 +954,62 @@ export function PortDetailClient({ port, portId }: Props) {
           </a>
         </div>
       )}
+    </div>
+  )
+}
+
+// Inline affiliate card — surfaces the two most-relevant border services
+// (Mexican auto insurance + eSIM for Mexico) at the moment the user is
+// looking at a bridge's wait time. Diego's contextual placement thesis:
+// someone staring at /port/[id] is about to cross, so "do you have
+// insurance?" lands 10× better than a generic directory link.
+function PortDetailAffiliateCard({ portId, es }: { portId: string; es: boolean }) {
+  const insurance = getAffiliate('oscar-padilla-auto')
+  const esim = getAffiliate('holafly-mexico-esim')
+  if (!insurance || !esim) return null
+
+  const offers = [insurance, esim] as const
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+      <p className="px-4 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">
+        {es ? 'Antes de cruzar' : 'Before you cross'}
+      </p>
+      <div className="divide-y divide-gray-100 dark:divide-gray-700">
+        {offers.map((o) => (
+          <a
+            key={o.id}
+            href={o.url}
+            target="_blank"
+            rel="sponsored noopener"
+            onClick={() =>
+              trackEvent('affiliate_clicked', {
+                id: o.id,
+                category: o.category,
+                source: 'port_detail',
+                port_id: portId,
+              })
+            }
+            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors active:scale-[0.99]"
+          >
+            <span className="text-2xl flex-shrink-0" aria-hidden>{o.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                {es ? o.headline.es : o.headline.en}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mt-0.5">
+                {es ? o.sub.es : o.sub.en}
+              </p>
+            </div>
+            <span className="flex-shrink-0 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-xl whitespace-nowrap">
+              {es ? o.cta.es : o.cta.en} →
+            </span>
+          </a>
+        ))}
+      </div>
+      <p className="px-4 py-2 text-[10px] text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-900/50">
+        {es ? 'Patrocinado · abre en otra pestaña' : 'Sponsored · opens in new tab'}
+      </p>
     </div>
   )
 }

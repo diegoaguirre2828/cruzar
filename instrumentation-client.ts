@@ -18,6 +18,13 @@ Sentry.init({
     /Lock broken by another request with the 'steal' option/,
     /Lock was stolen by another request/,
     /^TypeError: Load failed$/,
+    // Facebook / Instagram in-app-browser injects these. Not from our
+    // code, pure platform noise. ~3-5 false alerts/day until filtered.
+    /window\.webkit\.messageHandlers/,
+    /enableButtonsClickedMetaDataLogging/,
+    /enableDidUserTypeOnKeyboardLogging/,
+    /Java object is gone/,
+    /Non-Error promise rejection captured with value: undefined/,
   ],
 
   // Performance monitoring — 10% of transactions. Enough to catch
