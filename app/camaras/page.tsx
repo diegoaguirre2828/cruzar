@@ -147,7 +147,7 @@ export default function CamarasPage() {
           </Link>
         )}
 
-        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 py-2 mb-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-4 px-4 py-2 mb-2">
           <FilterChip active={filter === 'all'} onClick={() => setFilter('all')} count={tiles.length}>
             {es ? 'Todas' : 'All'}
           </FilterChip>
@@ -155,6 +155,28 @@ export default function CamarasPage() {
             <FilterChip key={r} active={filter === r} onClick={() => setFilter(r)} count={regionCounts[r] || 0}>
               {es ? MEGA_REGION_LABELS[r]?.es : MEGA_REGION_LABELS[r]?.en}
             </FilterChip>
+          ))}
+        </div>
+
+        {/* Bridge-name jump chips — scroll-to a specific tile by name.
+            Added because region-only pills hid bridges that users know
+            by name (Hidalgo, Pharr, Progreso). Filtered by current
+            region selection so the row stays scannable. */}
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 py-1.5 mb-4">
+          <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-white/40 self-center pr-1">
+            {es ? 'Ir a:' : 'Jump to:'}
+          </span>
+          {visible.map((t) => (
+            <button
+              key={`jump-${t.portId}`}
+              onClick={() => {
+                const el = document.getElementById(`cam-${t.portId}`)
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              className="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              {t.portName.split(' · ')[0]}
+            </button>
           ))}
         </div>
 
@@ -199,16 +221,17 @@ export default function CamarasPage() {
                             ? (es ? `${t.angleCount} ángulos` : `${t.angleCount} angles`)
                             : undefined
                           return (
-                            <LiveCameraTile
-                              key={`${t.portId}-${i}`}
-                              portId={t.portId}
-                              portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
-                              regionLabel={t.regionLabel}
-                              wait={t.wait}
-                              isClosed={t.isClosed}
-                              noData={t.noData}
-                              feed={feed}
-                            />
+                            <div key={`${t.portId}-${i}`} id={`cam-${t.portId}`} className="scroll-mt-4">
+                              <LiveCameraTile
+                                portId={t.portId}
+                                portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
+                                regionLabel={t.regionLabel}
+                                wait={t.wait}
+                                isClosed={t.isClosed}
+                                noData={t.noData}
+                                feed={feed}
+                              />
+                            </div>
                           )
                         })}
                       </div>
@@ -226,16 +249,17 @@ export default function CamarasPage() {
                 ? (es ? `${t.angleCount} ángulos` : `${t.angleCount} angles`)
                 : undefined
               return (
-                <LiveCameraTile
-                  key={`${t.portId}-${i}`}
-                  portId={t.portId}
-                  portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
-                  regionLabel={t.regionLabel}
-                  wait={t.wait}
-                  isClosed={t.isClosed}
-                  noData={t.noData}
-                  feed={feed}
-                />
+                <div key={`${t.portId}-${i}`} id={`cam-${t.portId}`} className="scroll-mt-4">
+                  <LiveCameraTile
+                    portId={t.portId}
+                    portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
+                    regionLabel={t.regionLabel}
+                    wait={t.wait}
+                    isClosed={t.isClosed}
+                    noData={t.noData}
+                    feed={feed}
+                  />
+                </div>
               )
             })}
           </div>
