@@ -11,7 +11,8 @@ import { getPortMeta } from '@/lib/portMeta'
 import { trackShare } from '@/lib/trackShare'
 import { getMyRecentReportAgeMin } from '@/lib/myReports'
 import { useFavorites } from '@/lib/useFavorites'
-import { hasCamera } from '@/lib/bridgeCameras'
+import { hasCamera, hasProLiveCamera } from '@/lib/bridgeCameras'
+import { slugForPort } from '@/lib/portSlug'
 import type { PortWaitTime } from '@/types'
 
 export interface PortSignal {
@@ -151,6 +152,21 @@ export function PortCard({ port, signal }: Props) {
                   {lang === 'es'
                     ? (myReportAge < 1 ? 'Tú reportaste ahora' : `Tú reportaste hace ${myReportAge} min`)
                     : (myReportAge < 1 ? 'You reported now' : `You reported ${myReportAge}m ago`)}
+                </span>
+              </div>
+            )}
+
+            {/* Pro-live camera chip — signals which ports have real
+                live video behind the Pro wall. Encourages free users
+                to install (= 3 months Pro = unlock). Snapshot-only
+                ports get no chip; the camera available state is
+                already implied by the existing "Camera available"
+                indicator below. */}
+            {hasProLiveCamera(port.portId) && (
+              <div className="ml-4 mt-1 inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500/15 to-orange-500/15 border border-amber-400/40 rounded-full px-2 py-0.5">
+                <span className="text-[10px] leading-none">📹</span>
+                <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+                  {lang === 'es' ? 'Video en vivo · Pro' : 'Live video · Pro'}
                 </span>
               </div>
             )}

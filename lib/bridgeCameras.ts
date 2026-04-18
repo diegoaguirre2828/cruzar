@@ -428,3 +428,10 @@ export function isProFeed(feed: CameraFeed): boolean {
 export function hasFreeFeed(portId: string): boolean {
   return (BRIDGE_CAMERAS[portId] ?? []).some((f) => !isProFeed(f))
 }
+
+// Returns true if the port offers at least one Pro-tier live video feed.
+// Powers the "🔒 Pro live cam" chip on home / mapa / camaras tiles for
+// free users so they see what they unlock by installing.
+export function hasProLiveCamera(portId: string): boolean {
+  return (BRIDGE_CAMERAS[portId] ?? []).some(isProFeed)
+}
