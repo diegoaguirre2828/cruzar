@@ -172,11 +172,28 @@ export async function GET(req: NextRequest) {
         // compute on the fly from wait_time_readings directly.
       })
 
+    // Piggyback the install-reminder loop onto this same daily fire so
+    // we don't need to add another cron-job.org schedule. Fires the
+    // /api/cron/install-reminder route in-process via fetch — keeps the
+    // logic isolated in its own file but avoids extra scheduling.
+    let reminderResult: unknown = null
+    try {
+      const base = process.env.NEXT_PUBLIC_APP_URL || 'https://www.cruzar.app'
+      const r = await fetch(
+        `${base}/api/cron/install-reminder?secret=${encodeURIComponent(process.env.CRON_SECRET || '')}`,
+        { cache: 'no-store' }
+      )
+      reminderResult = await r.json().catch(() => ({ ok: r.ok }))
+    } catch (e) {
+      reminderResult = { error: String(e) }
+    }
+
     return NextResponse.json({
       date: targetDate,
       ports: portStats.length,
       readings: readings.length,
       globalAvg: globalAvg,
+      install_reminder: reminderResult,
     })
   } catch (err) {
     console.error('Daily report cron error:', err)
