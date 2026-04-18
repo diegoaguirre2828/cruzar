@@ -11,6 +11,7 @@ import { ReactionsWelcomeToast } from "@/components/ReactionsWelcomeToast";
 import { FirstVisitInstallSheet } from "@/components/FirstVisitInstallSheet";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PWASetup } from "@/components/PWASetup";
+import { GlobalInstallPromptCapture } from "@/components/GlobalInstallPromptCapture";
 import { ClaimProInPwa } from "@/components/ClaimProInPwa";
 import { PwaGrantCelebration } from "@/components/PwaGrantCelebration";
 import { SessionPingMount } from "@/components/SessionPingMount";
@@ -85,6 +86,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#0f172a" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="google-adsense-account" content="ca-pub-8997191973110385" />
+        <meta name="impact-site-verification" content="8152bcbe-65f7-488d-97e6-53a0f6d80359" />
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
@@ -105,6 +107,7 @@ export default function RootLayout({
             <FirstVisitInstallSheet />
             <OfflineBanner />
             <PWASetup />
+            <GlobalInstallPromptCapture />
             <ClaimProInPwa />
             <PwaGrantCelebration />
             <SessionPingMount />

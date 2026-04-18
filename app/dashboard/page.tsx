@@ -515,6 +515,17 @@ export default function DashboardPage() {
         {/* Alerts Tab */}
         {tab === 'alerts' && (
           <div className="space-y-4">
+            {/* Empty-state alert nudge — fires for Pro/Business users
+                who have zero alerts. Alerts are the #1 retention lever;
+                this prominent amber/orange banner above the port picker
+                puts the CTA front-and-center. Visual cue only — the
+                existing port picker below is the action. Tracks a
+                shown-event once per mount. */}
+            <EmptyAlertNudge
+              show={alerts.length === 0 && (tier === 'pro' || tier === 'business')}
+              es={es}
+              fromWelcome={typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('fromWelcome') === '1'}
+            />
             {tier === 'free' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-4 py-3 flex items-center justify-between">
                 <p className="text-xs font-medium text-blue-700 dark:text-blue-300">
@@ -755,6 +766,32 @@ interface Circle {
   owner_id: string
   is_owner: boolean
   members: CircleMember[]
+}
+
+function EmptyAlertNudge({ show, es, fromWelcome }: { show: boolean; es: boolean; fromWelcome: boolean }) {
+  useEffect(() => {
+    if (!show) return
+    trackEvent('alert_nudge_shown', {
+      source: 'dashboard_alerts_empty',
+      from_welcome: fromWelcome,
+    })
+  }, [show, fromWelcome])
+  if (!show) return null
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-600 p-4 shadow-lg cruzar-shimmer">
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-300/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative">
+        <p className="text-base font-black text-white leading-tight">
+          {es ? '🔔 No tienes alertas todavía' : "🔔 You haven't set any alerts yet"}
+        </p>
+        <p className="text-[13px] text-amber-50 mt-1.5 leading-snug">
+          {es
+            ? 'Cruzar sirve cuando te avisa — elige tu puente abajo y te pingamos cuando baje la espera.'
+            : "Cruzar only becomes useful when you get pinged — pick your bridge below and we'll notify you when the wait drops."}
+        </p>
+      </div>
+    </div>
+  )
 }
 
 function DashboardPushNudgeBlock() {

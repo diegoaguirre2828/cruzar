@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Camera, Lock } from 'lucide-react'
+import { Camera, Gift } from 'lucide-react'
+import { isIosSafari, isPwaInstalled } from '@/lib/iosDetect'
 import { useLang } from '@/lib/LangContext'
 import { useAuth } from '@/lib/useAuth'
 import { useTier } from '@/lib/useTier'
@@ -12,6 +13,7 @@ import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import { BRIDGE_CAMERAS } from '@/lib/bridgeCameras'
 import { LiveCameraTile } from '@/components/LiveCameraTile'
 import { StickyCamarasCta } from '@/components/StickyCamarasCta'
+import { CamarasStickyInstallCta } from '@/components/CamarasStickyInstallCta'
 import { ProTabSwitcher } from '@/components/ProTabSwitcher'
 import type { MegaRegion } from '@/lib/portMeta'
 
@@ -25,7 +27,26 @@ export default function CamarasPage() {
   const { ports, loading } = usePorts()
   const [filter, setFilter] = useState<MegaRegion | 'all'>('all')
   const isPaid = tier === 'pro' || tier === 'business'
-  const showLockCta = !isPaid
+  // Hide the install-Pro hero for already-installed users — they've
+  // already claimed (or will auto-claim) the 3-month grant. Also hide
+  // for paid users for the same reason.
+  const [installed, setInstalled] = useState(false)
+  const [iosNonInstalled, setIosNonInstalled] = useState(false)
+  useEffect(() => {
+    setInstalled(isPwaInstalled())
+    setIosNonInstalled(isIosSafari() && !isPwaInstalled())
+  }, [])
+  const showInstallHero = !isPaid && !installed
+
+  // Pick the right install target per platform + auth state:
+  //   - iOS Safari non-installed → /ios-install walkthrough
+  //   - signed-in (any device) → /welcome (step 2 forces install)
+  //   - guest (Android/desktop) → /signup, then bounce back to /camaras
+  const installHref = iosNonInstalled
+    ? '/ios-install?next=%2Fcamaras'
+    : user
+      ? '/welcome'
+      : '/signup?next=%2Fcamaras'
 
   // One tile per PORT (not per feed). A port with 5 angles (e.g., Mariposa)
   // used to render 5 tiles on the grid — cluttered + repetitive. The port
@@ -118,32 +139,29 @@ export default function CamarasPage() {
           </p>
         </div>
 
-        {/* Primary in-content CTA for guests + free users. The floating
-            install sheet can get dismissed; this lives inline so anyone
-            scrolling sees the value + path concretely. */}
-        {showLockCta && (
+        {/* Primary in-content CTA. Repositioned (2026-04-18) from a
+            signup push to an install push — funnel data shows the page
+            already converts to signup fine via StickyCamarasCta; the
+            real leak is the 8.3% install rate, so the hero now pairs
+            live-camera value with the Pro unlock on install. */}
+        {showInstallHero && (
           <Link
-            href={user ? '/welcome' : '/signup?next=%2Fcamaras'}
+            href={installHref}
             className="group relative block mb-5 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-pink-500/15 overflow-hidden"
           >
             <div className="absolute -top-12 -right-10 w-40 h-40 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
             <div className="relative p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
               <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-                <Lock className="w-5 h-5 text-white" />
+                <Gift className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-black text-amber-100 uppercase tracking-wide">
-                  🔔 {es ? 'Avísame cuando baje' : 'Ping me when it clears'}
+                  🎁 {es ? '3 meses Pro — gratis al instalar la app' : '3 months Pro — free when you install'}
                 </p>
-                <p className="text-sm sm:text-base font-bold text-white leading-tight mt-0.5">
+                <p className="text-sm sm:text-base font-bold text-white leading-tight mt-1">
                   {es
-                    ? 'Te mandamos un push cuando tu puente esté flojo'
-                    : 'Get a push when your bridge clears up'}
-                </p>
-                <p className="text-[11px] text-white/60 leading-snug mt-0.5">
-                  {es
-                    ? 'Cuenta gratis · 10 segundos · sin tarjeta'
-                    : 'Free account · 10 seconds · no card'}
+                    ? 'Las cámaras en vivo son gratis. Las alertas push cuando baje tu puente son Pro. Instala Cruzar y desbloquea los dos por 90 días.'
+                    : 'Live cameras here are free. Push alerts when your bridge clears are Pro. Install Cruzar to unlock both for 90 days.'}
                 </p>
               </div>
               <span className="flex-shrink-0 text-white text-lg font-black group-hover:translate-x-0.5 transition-transform">→</span>
@@ -292,6 +310,7 @@ export default function CamarasPage() {
           </Link>
         </div>
       </div>
+      <CamarasStickyInstallCta />
       <StickyCamarasCta />
     </main>
   )

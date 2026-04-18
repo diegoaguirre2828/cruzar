@@ -252,7 +252,27 @@ function WelcomeInner() {
 
       // The reversal means bridge-pick is now the FINAL welcome step.
       // Navigate straight to /dashboard after successful alert setup.
-      const next = params?.get('next') || '/dashboard?welcomed=1'
+      //
+      // Alert-count-aware fallback: if the alert POST succeeded the user
+      // now has >= 1 alert, so the plain /dashboard?welcomed=1 fallback
+      // is correct. But for defensive routing (alert creation can fail
+      // silently at the DB layer on a retry, and for first-1000 users
+      // who were auto-graduated to Pro without the PwaGrantCelebration
+      // re-route firing), we sanity-check alert count and drop users
+      // straight onto the alerts tab with fromWelcome=1 when empty so
+      // the dashboard EmptyAlertNudge fires.
+      const defaultNext = '/dashboard?welcomed=1'
+      let next = params?.get('next') || defaultNext
+      try {
+        const alertsRes = await fetch('/api/alerts', { cache: 'no-store' })
+        if (alertsRes.ok) {
+          const data = await alertsRes.json()
+          const count = Array.isArray(data?.alerts) ? data.alerts.length : 0
+          if (count === 0 && !params?.get('next')) {
+            next = '/dashboard?tab=alerts&fromWelcome=1'
+          }
+        }
+      } catch { /* ignore — fall back to defaultNext */ }
       router.push(next)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

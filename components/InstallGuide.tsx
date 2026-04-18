@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useLang } from '@/lib/LangContext'
 import { trackEvent } from '@/lib/trackEvent'
+import { subscribe, consume, getPrompt, type BIPEvent } from '@/lib/installPromptStore'
 
 // Reusable install instructions block. Used by /welcome step 2 and the
 // dashboard nag banner. Auto-detects the platform and renders the right
@@ -15,11 +16,12 @@ import { trackEvent } from '@/lib/trackEvent'
 //   - dashboard → framed as "your alert is waiting — finish setup"
 //   - but the mechanical install UX is identical, so the platform logic
 //     lives here once.
-
-type DeferredPromptEvent = Event & {
-  prompt: () => void
-  userChoice: Promise<{ outcome: string }>
-}
+//
+// Install-prompt capture now lives in a global module store
+// (lib/installPromptStore.ts) mounted once via
+// <GlobalInstallPromptCapture />. This component just subscribes so it
+// always has the latest value, even if the event fired on a page before
+// this component ever mounted (the old failure mode on /camaras, /).
 
 interface Props {
   onInstalled?: () => void
@@ -30,7 +32,7 @@ export function InstallGuide({ onInstalled, variant = 'welcome' }: Props) {
   const { lang } = useLang()
   const es = lang === 'es'
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop')
-  const [deferredPrompt, setDeferredPrompt] = useState<DeferredPromptEvent | null>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<BIPEvent | null>(null)
 
   useEffect(() => {
     if (typeof navigator === 'undefined') return
@@ -39,36 +41,49 @@ export function InstallGuide({ onInstalled, variant = 'welcome' }: Props) {
     const isAndroid = /android/i.test(ua)
     setPlatform(isIos ? 'ios' : isAndroid ? 'android' : 'desktop')
 
-    const handler = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as DeferredPromptEvent)
-      // Telemetry: browser offered the install prompt. Gives us the
-      // denominator for the install conversion rate.
+    // Pull the currently cached prompt (may have fired before mount).
+    const current = getPrompt()
+    if (current) {
+      setDeferredPrompt(current)
       trackEvent('install_prompt_available', { variant, platform: isAndroid ? 'android' : isIos ? 'ios' : 'desktop' })
     }
+
+    // Subscribe for future captures (rare — the event fires once per
+    // page load, but keeps us consistent if the user navigates SPA-
+    // style from a page that captured mid-session).
+    const unsub = subscribe((e) => {
+      setDeferredPrompt(e)
+      if (e) {
+        trackEvent('install_prompt_available', { variant, platform: isAndroid ? 'android' : isIos ? 'ios' : 'desktop' })
+      }
+    })
+
     const installed = () => {
       // Telemetry: user actually completed the install. Numerator for
       // the accepted-install conversion rate.
       trackEvent('install_completed', { variant })
       onInstalled?.()
     }
-    window.addEventListener('beforeinstallprompt', handler)
     window.addEventListener('appinstalled', installed)
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler)
+      unsub()
       window.removeEventListener('appinstalled', installed)
     }
   }, [onInstalled, variant])
 
   async function triggerInstall() {
-    if (!deferredPrompt) return
+    // Consume from the store so no other component reuses the same
+    // single-shot event. If it's already been consumed elsewhere, bail.
+    const event = consume()
+    if (!event) return
+    setDeferredPrompt(null)
     // Telemetry: user tapped our "install" button. Diego needs this to
     // know whether the install gap is people never tapping (awareness)
     // or tapping-but-cancelling (friction).
     trackEvent('install_button_tapped', { variant })
-    deferredPrompt.prompt()
+    event.prompt()
     try {
-      const { outcome } = await deferredPrompt.userChoice
+      const { outcome } = await event.userChoice
       trackEvent('install_prompt_choice', { variant, outcome })
       if (outcome === 'accepted') onInstalled?.()
     } catch { /* user dismissed */ }

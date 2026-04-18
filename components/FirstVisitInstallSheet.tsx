@@ -20,12 +20,17 @@ import { trackEvent } from '@/lib/trackEvent'
 // /mas install card.
 
 const SEEN_KEY = 'cruzar_first_visit_install_seen_v1'
-// Cooldown before the sheet re-appears after a dismiss. Previously
-// permanent — most users (especially iOS) tap "later" on first visit
-// meaning to install soon, then never see the prompt again and never
-// install. 14-day cooldown lets us re-surface once a repeat user is
-// engaged enough to see real value.
-const DISMISS_COOLDOWN_DAYS = 14
+// Cooldown before the sheet re-appears after a dismiss.
+//
+// Evolution: permanent → 14 days → 3 days (2026-04-18).
+// Rationale: funnel audit showed install rate at 8.3% (17/204). The
+// 14-day cooldown was still too long — most users tap "browse first"
+// on visit #1 meaning "soon," not "never." At 3 days we re-surface
+// on the next engaged return visit (while memory of the app is warm
+// and they've had time to feel the value of live wait times). Still
+// long enough to respect the "not right now" signal. Tap ≠ permanent
+// silence.
+const DISMISS_COOLDOWN_DAYS = 3
 const HIDDEN_PATHS = [
   '/login',
   '/signup',
@@ -60,7 +65,7 @@ export function FirstVisitInstallSheet() {
       (navigator as Navigator & { standalone?: boolean }).standalone === true
     if (isStandalone) return
 
-    // Cooldown gate — respect the user's "not right now" for 14 days,
+    // Cooldown gate — respect the user's "not right now" for 3 days,
     // then re-surface on a repeat visit.
     try {
       const dismissedAt = localStorage.getItem(SEEN_KEY)

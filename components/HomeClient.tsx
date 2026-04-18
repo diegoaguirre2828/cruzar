@@ -42,6 +42,83 @@ import { trackEvent } from '@/lib/trackEvent'
 import type { PortWaitTime } from '@/types'
 import type { RecentReport } from '@/lib/recentReports'
 
+function ProNoAlertBanner({ lang, tier, user }: { lang: string; tier: string; user: { id: string } | null }) {
+  // Prominent one-time soft nag for Pro/Business users who haven't set
+  // any alerts. Alerts are the retention mechanism — without one, the
+  // user never comes back. Dismissable with a 7-day cooldown. Renders
+  // inline on the homepage above the port list. Fetches alert count
+  // once on mount.
+  const [alertCount, setAlertCount] = useState<number | null>(null)
+  const [dismissed, setDismissed] = useState(true) // start hidden; flip after checks pass
+  const es = lang === 'es'
+  const isPro = tier === 'pro' || tier === 'business'
+
+  useEffect(() => {
+    if (!user || !isPro) { setDismissed(true); return }
+    try {
+      const raw = localStorage.getItem('cruzar_pro_no_alert_dismissed_at')
+      if (raw) {
+        const ageDays = (Date.now() - parseInt(raw, 10)) / (1000 * 60 * 60 * 24)
+        if (ageDays < 7) { setDismissed(true); return }
+      }
+    } catch { /* ignore */ }
+    fetch('/api/alerts', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : { alerts: [] })
+      .then((data) => {
+        const n = Array.isArray(data?.alerts) ? data.alerts.length : 0
+        setAlertCount(n)
+        if (n === 0) {
+          setDismissed(false)
+          trackEvent('alert_nudge_shown', { source: 'home_pro_no_alert' })
+        }
+      })
+      .catch(() => { /* keep dismissed */ })
+  }, [user, isPro])
+
+  if (!user || !isPro || dismissed || alertCount !== 0) return null
+
+  return (
+    <Link
+      href="/dashboard?tab=alerts"
+      onClick={() => trackEvent('alert_nudge_tapped', { source: 'home_pro_no_alert' })}
+      className="block mt-3 relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-600 p-4 shadow-lg cruzar-shimmer active:scale-[0.99] transition-transform"
+    >
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-300/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-black text-white leading-tight">
+            {es
+              ? '🔔 Ya eres Pro pero no has activado una alerta'
+              : "🔔 You're Pro but haven't set an alert yet"}
+          </p>
+          <p className="text-[11px] text-amber-50 mt-0.5 leading-snug">
+            {es
+              ? 'Te avisamos cuando tu puente baje — sin andar chequeando.'
+              : "We'll ping you when your bridge clears — no checking needed."}
+          </p>
+        </div>
+        <span className="flex-shrink-0 bg-white text-orange-700 text-[11px] font-black px-3 py-1.5 rounded-full whitespace-nowrap">
+          {es ? 'Activar →' : 'Set one →'}
+        </span>
+        <button
+          type="button"
+          aria-label={es ? 'Descartar' : 'Dismiss'}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            try { localStorage.setItem('cruzar_pro_no_alert_dismissed_at', String(Date.now())) } catch { /* ignore */ }
+            trackEvent('alert_nudge_dismissed', { source: 'home_pro_no_alert' })
+            setDismissed(true)
+          }}
+          className="flex-shrink-0 text-white/80 hover:text-white text-xl leading-none px-1"
+        >
+          ×
+        </button>
+      </div>
+    </Link>
+  )
+}
+
 function ShareAppButton({ lang }: { lang: string }) {
   // Framed as "tell your people" instead of "share the app" — the sender
   // is taking care of their community, not doing marketing. The psychological
@@ -433,6 +510,14 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             "they need more incentive to log in other than us hoping
             that want to click something." */}
         {!isBusiness && !authLoading && tier === 'guest' && <GuestSignupBanner />}
+
+        {/* Pro-without-alert nag — prominent inline banner for Pro/Business
+            users who graduated without setting an alert. Fires once with
+            7-day cooldown. Alerts are THE retention mechanism; only 3.4%
+            of users have one as of 2026-04-18. This is the surgical fix. */}
+        {!isBusiness && !authLoading && (
+          <ProNoAlertBanner lang={lang} tier={tier} user={user} />
+        )}
 
         {/* Social proof strip — real community numbers + first-1000 promo.
             Sits above the port list so guests see live evidence before
