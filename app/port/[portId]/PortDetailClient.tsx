@@ -23,6 +23,7 @@ import { CommunityBridgePhotos } from '@/components/CommunityBridgePhotos'
 import { PortFAQ } from '@/components/PortFAQ'
 import { cityForPortId } from '@/lib/cityMeta'
 import { PortDetailHero } from '@/components/PortDetailHero'
+import { trackEvent } from '@/lib/trackEvent'
 import { SharePrompt } from '@/components/SharePrompt'
 import { PingCircleButton } from '@/components/PingCircleButton'
 import { JustCrossedPrompt } from '@/components/JustCrossedPrompt'
@@ -264,6 +265,12 @@ export function PortDetailClient({ port, portId }: Props) {
     })
     if (res.ok) {
       setAlertSaved(true)
+      trackEvent('alert_created', {
+        port_id: portId,
+        source: 'port_detail',
+        lane: 'vehicle',
+        threshold: alertThreshold,
+      })
       // Fuse push permission with alert creation. Any listener (the
       // dashboard push nudge, a future in-page prompt) can react to
       // this event to surface the push prompt immediately.

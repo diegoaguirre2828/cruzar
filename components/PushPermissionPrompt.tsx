@@ -23,11 +23,12 @@ import { trackEvent } from '@/lib/trackEvent'
 
 interface Props {
   bridgeName?: string
+  source?: string
   onDone?: (granted: boolean) => void
   onDismiss?: () => void
 }
 
-export function PushPermissionPrompt({ bridgeName, onDone, onDismiss }: Props) {
+export function PushPermissionPrompt({ bridgeName, source, onDone, onDismiss }: Props) {
   const { lang } = useLang()
   const es = lang === 'es'
   const { supported, subscribe } = usePushNotifications()
@@ -41,13 +42,13 @@ export function PushPermissionPrompt({ bridgeName, onDone, onDismiss }: Props) {
 
   async function handleAllow() {
     setState('asking')
-    trackEvent('push_prompt_allow_clicked', { bridge: bridgeName || null })
+    trackEvent('push_prompt_allow_clicked', { bridge: bridgeName || null, source: source || null })
     try {
       await subscribe()
       const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted'
       if (granted) {
         setState('granted')
-        trackEvent('push_prompt_granted', { bridge: bridgeName || null })
+        trackEvent('push_prompt_granted', { bridge: bridgeName || null, source: source || null })
         // Fire a test notification immediately so the user SEES that it works
         try {
           await fetch('/api/push/test', { method: 'POST' })
@@ -55,7 +56,7 @@ export function PushPermissionPrompt({ bridgeName, onDone, onDismiss }: Props) {
         setTimeout(() => onDone?.(true), 2200)
       } else {
         setState('denied')
-        trackEvent('push_prompt_denied', { bridge: bridgeName || null })
+        trackEvent('push_prompt_denied', { bridge: bridgeName || null, source: source || null })
         setTimeout(() => onDone?.(false), 2500)
       }
     } catch {
@@ -65,7 +66,7 @@ export function PushPermissionPrompt({ bridgeName, onDone, onDismiss }: Props) {
   }
 
   function handleDismiss() {
-    trackEvent('push_prompt_dismissed', { bridge: bridgeName || null })
+    trackEvent('push_prompt_dismissed', { bridge: bridgeName || null, source: source || null })
     try { localStorage.setItem('cruzar_push_prompt_dismissed_at', String(Date.now())) } catch {}
     onDismiss?.()
   }

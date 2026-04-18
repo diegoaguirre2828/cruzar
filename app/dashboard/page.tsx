@@ -15,6 +15,7 @@ import { PortSearch } from '@/components/PortSearch'
 import { DashboardInstallBanner } from '@/components/DashboardInstallBanner'
 import { PostWelcomeTour } from '@/components/PostWelcomeTour'
 import { FoundingMemberBadge } from '@/components/FoundingMemberBadge'
+import { trackEvent } from '@/lib/trackEvent'
 import { PostUpgradeTour } from '@/components/PostUpgradeTour'
 import { InstallGateModal, useInstallGate, needsInstallGate } from '@/components/InstallGateModal'
 import { usePushNotifications } from '@/lib/usePushNotifications'
@@ -167,6 +168,12 @@ export default function DashboardPage() {
       if (data.error === 'free_limit') { setAlertLimitHit(true); return }
     }
     setAlertLimitHit(false)
+    trackEvent('alert_created', {
+      port_id: newAlertPortId,
+      source: 'dashboard',
+      lane: newAlertLane,
+      threshold: newAlertThreshold,
+    })
     // Fuse push permission with alert creation: dispatch a window event
     // so the PushPermissionPrompt surfaces immediately, bypassing the
     // 7-day cooldown and any other gate. Without this pairing the alert
@@ -722,6 +729,7 @@ interface Circle {
 function DashboardPushNudgeBlock() {
   const { supported, subscribed } = usePushNotifications()
   const [show, setShow] = useState(false)
+  const [source, setSource] = useState<string>('dashboard_nudge')
   useEffect(() => {
     if (!supported || subscribed) { setShow(false); return }
     try {
@@ -740,6 +748,7 @@ function DashboardPushNudgeBlock() {
     if (typeof window === 'undefined') return
     const onAlertCreated = () => {
       if (!supported || subscribed) return
+      setSource('alert_created')
       setShow(true)
     }
     window.addEventListener('cruzar:alert-created', onAlertCreated)
@@ -749,6 +758,7 @@ function DashboardPushNudgeBlock() {
   return (
     <div className="mb-4">
       <PushPermissionPrompt
+        source={source}
         onDone={(granted) => { if (granted) setShow(false) }}
         onDismiss={() => {
           try { localStorage.setItem('cruzar_dash_push_dismissed_at', String(Date.now())) } catch {}
