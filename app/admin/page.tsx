@@ -134,7 +134,7 @@ export default function AdminPage() {
   type AdminUserDetail = {
     id: string; email: string; auth_created_at: string | null; last_sign_in_at: string | null
     email_confirmed_at: string | null; provider: string | null
-    profile: { display_name?: string | null; tier?: string; points?: number; reports_count?: number; badges?: string[]; full_name?: string | null; company?: string | null; role?: string | null; bio?: string | null; created_at?: string | null } | null
+    profile: { display_name?: string | null; tier?: string; points?: number; reports_count?: number; badges?: string[]; full_name?: string | null; company?: string | null; role?: string | null; bio?: string | null; created_at?: string | null; first_seen_at?: string | null; last_seen_at?: string | null; last_seen_device?: string | null; last_seen_os?: string | null; last_seen_browser?: string | null; install_state?: string | null; home_region?: string | null; pro_via_pwa_until?: string | null; promo_first_1000_until?: string | null } | null
     subscription: { tier?: string; status?: string; current_period_end?: string | null; stripe_subscription_id?: string | null } | null
     reports: { id: string; port_id: string; report_type: string; wait_minutes: number | null; description: string | null; created_at: string; upvotes: number | null }[]
     alerts: { id: string; port_id: string; lane_type: string; threshold_minutes: number; active: boolean; last_triggered_at: string | null }[]
@@ -1781,12 +1781,12 @@ export default function AdminPage() {
                 placeholder="Search email or name…"
                 value={usersSearch}
                 onChange={e => { setUsersSearch(e.target.value); setUsersPage(1) }}
-                className="sm:col-span-2 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="sm:col-span-2 px-3 py-2 text-sm text-gray-900 placeholder-gray-500 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <select
                 value={usersTier}
                 onChange={e => { setUsersTier(e.target.value as typeof usersTier); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="all">All tiers</option>
                 <option value="free">Free</option>
@@ -1796,7 +1796,7 @@ export default function AdminPage() {
               <select
                 value={usersSort}
                 onChange={e => { setUsersSort(e.target.value as typeof usersSort); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="created_desc">Newest first</option>
                 <option value="last_seen_desc">Last seen (any page)</option>
@@ -1812,7 +1812,7 @@ export default function AdminPage() {
               <select
                 value={usersOs}
                 onChange={e => { setUsersOs(e.target.value as typeof usersOs); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="all">All OS</option>
                 <option value="ios">iOS</option>
@@ -1825,7 +1825,7 @@ export default function AdminPage() {
               <select
                 value={usersDevice}
                 onChange={e => { setUsersDevice(e.target.value as typeof usersDevice); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="all">All devices</option>
                 <option value="mobile">Mobile</option>
@@ -1835,7 +1835,7 @@ export default function AdminPage() {
               <select
                 value={usersInstall}
                 onChange={e => { setUsersInstall(e.target.value as typeof usersInstall); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="all">All install states</option>
                 <option value="installed">Any install (PWA/TWA/Capacitor)</option>
@@ -1847,7 +1847,7 @@ export default function AdminPage() {
               <select
                 value={usersRegion}
                 onChange={e => { setUsersRegion(e.target.value as typeof usersRegion); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="all">All regions</option>
                 <option value="unset">Unset (no region picked)</option>
@@ -1861,7 +1861,7 @@ export default function AdminPage() {
               <select
                 value={usersActivity}
                 onChange={e => { setUsersActivity(e.target.value as typeof usersActivity); setUsersPage(1) }}
-                className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white"
+                className="px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg bg-white"
               >
                 <option value="all">Any activity</option>
                 <option value="24h">Last 24h</option>
@@ -2008,6 +2008,14 @@ export default function AdminPage() {
                     <Info label="Email confirmed" value={userDetail.email_confirmed_at ? '✓ yes' : '✗ no'} />
                     <Info label="Signed up"    value={userDetail.auth_created_at ? new Date(userDetail.auth_created_at).toLocaleString() : '—'} />
                     <Info label="Last sign-in" value={userDetail.last_sign_in_at ? new Date(userDetail.last_sign_in_at).toLocaleString() : 'never'} />
+                    <Info label="First seen"   value={userDetail.profile?.first_seen_at ? new Date(userDetail.profile.first_seen_at).toLocaleString() : '—'} />
+                    <Info label="Last seen"    value={userDetail.profile?.last_seen_at ? new Date(userDetail.profile.last_seen_at).toLocaleString() : '—'} />
+                    <Info label="Home region"  value={userDetail.profile?.home_region || '—'} />
+                    <Info label="Device · OS"  value={userDetail.profile?.last_seen_device && userDetail.profile?.last_seen_os ? `${userDetail.profile.last_seen_device} · ${userDetail.profile.last_seen_os}` : '—'} />
+                    <Info label="Browser"      value={userDetail.profile?.last_seen_browser || '—'} />
+                    <Info label="Install"      value={userDetail.profile?.install_state || '—'} />
+                    <Info label="PWA grant"    value={userDetail.profile?.pro_via_pwa_until ? `until ${new Date(userDetail.profile.pro_via_pwa_until).toLocaleDateString()}` : '—'} />
+                    <Info label="Founder"      value={userDetail.profile?.promo_first_1000_until ? (new Date(userDetail.profile.promo_first_1000_until).getTime() > Date.now() + 10 * 365 * 24 * 60 * 60 * 1000 ? '🏆 forever' : `until ${new Date(userDetail.profile.promo_first_1000_until).toLocaleDateString()}`) : '—'} />
                     <Info label="Saved ports"  value={String(userDetail.saved_ports.length)} />
                     <Info label="Push enabled" value={userDetail.push_subscription_count > 0 ? `✓ (${userDetail.push_subscription_count})` : '✗'} />
                   </div>
