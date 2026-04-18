@@ -11,6 +11,7 @@ import { getPortMeta } from '@/lib/portMeta'
 import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import { BRIDGE_CAMERAS } from '@/lib/bridgeCameras'
 import { LiveCameraTile } from '@/components/LiveCameraTile'
+import { StickyCamarasCta } from '@/components/StickyCamarasCta'
 import type { MegaRegion } from '@/lib/portMeta'
 
 const REGION_ORDER: MegaRegion[] = ['rgv', 'laredo', 'coahuila-tx', 'el-paso', 'sonora-az', 'baja', 'other']
@@ -128,17 +129,17 @@ export default function CamarasPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-black text-amber-100 uppercase tracking-wide">
-                  🎁 {es ? '3 meses Pro gratis' : '3 months Pro free'}
+                  🔔 {es ? 'Avísame cuando baje' : 'Ping me when it clears'}
                 </p>
                 <p className="text-sm sm:text-base font-bold text-white leading-tight mt-0.5">
                   {es
-                    ? 'Desbloquea video en vivo de cada puente'
-                    : 'Unlock live video of every bridge'}
+                    ? 'Te mandamos un push cuando tu puente esté flojo'
+                    : 'Get a push when your bridge clears up'}
                 </p>
                 <p className="text-[11px] text-white/60 leading-snug mt-0.5">
                   {es
-                    ? 'Agrega Cruzar a tu pantalla de inicio — auto-activa Pro por 90 días'
-                    : 'Add Cruzar to your home screen — auto-activates Pro for 90 days'}
+                    ? 'Cuenta gratis · 10 segundos · sin tarjeta'
+                    : 'Free account · 10 seconds · no card'}
                 </p>
               </div>
               <span className="flex-shrink-0 text-white text-lg font-black group-hover:translate-x-0.5 transition-transform">→</span>
@@ -263,6 +264,7 @@ export default function CamarasPage() {
           </Link>
         </div>
       </div>
+      <StickyCamarasCta />
     </main>
   )
 }
