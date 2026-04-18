@@ -124,18 +124,26 @@ export async function POST(req: NextRequest) {
     // If CBP fetch fails, continue without live data
   }
 
-  const systemPrompt = BASE_SYSTEM_PROMPT + waitTimesBlock
-
   // Keep only last 10 messages to control cost
   const trimmed = messages.slice(-10).map((m: { role: string; content: string }) => ({
     role: m.role as 'user' | 'assistant',
     content: String(m.content).slice(0, 2000),
   }))
 
+  // Prompt caching: the system prompt is ~1000 tokens of stable content
+  // (border-crossing knowledge, brand voice, format rules). Marking it
+  // cache_control: ephemeral cuts input cost ~90% on every follow-up
+  // request within the 5-min cache window. Critical with the shared
+  // $30 cross-project Anthropic budget Diego flagged 2026-04-17.
+  // The wait-times block is appended unwrapped because it changes
+  // every cron tick — not worth caching.
   const stream = await client.messages.stream({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 600,
-    system: systemPrompt,
+    max_tokens: 400,
+    system: [
+      { type: 'text', text: BASE_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: waitTimesBlock || ' ' },
+    ],
     messages: trimmed,
   })
 
