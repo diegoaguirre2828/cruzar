@@ -34,26 +34,13 @@ export async function GET(req: NextRequest) {
     issues.push('CBP data stale: no wait_time_readings in last 30 min. Check cron-job.org fetch-wait-times.')
   }
 
-  // Check 2: Railway FB automation
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    const res = await fetch('https://cruzar-production.up.railway.app/', {
-      signal: controller.signal,
-    })
-    clearTimeout(timeout)
-
-    if (!res.ok) {
-      issues.push(`Railway health check failed: HTTP ${res.status}`)
-    } else {
-      const data = await res.json()
-      if (data.status === 'paused') {
-        issues.push('Railway FB automation is paused (FB_GROUP_AUTOMATION_ENABLED=false)')
-      }
-    }
-  } catch {
-    issues.push('Railway is DOWN — cannot reach cruzar-production.up.railway.app')
-  }
+  // Check 2: Railway FB automation — REMOVED 2026-04-18.
+  // fb-poster was intentionally shut down 2026-04-17 per Diego. This
+  // check was firing every 15 min permanently, emailing Diego ~96x/day
+  // and eating the Resend 100/day free-tier quota. If the Railway
+  // service is ever re-enabled, restore this block + add a once-per-day
+  // dedupe (e.g. track last_notified_at in app_events) so we don't
+  // resume flooding the inbox.
 
   // Check 3: Recent user signups (growth pulse)
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()

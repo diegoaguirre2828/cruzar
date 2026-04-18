@@ -9,6 +9,24 @@ export async function GET(req: NextRequest) {
 
   if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'No email configured' }, { status: 500 })
 
+  // Monday-only guard. Cron-job.org schedule should already fire only
+  // on Mondays, but a mis-set schedule blasted all Pro users on a
+  // Saturday (2026-04-18), burning ~30 emails of the Resend 100/day
+  // free-tier quota. This defensive day-of-week check ensures even a
+  // mis-scheduled trigger can't fire the digest on the wrong day.
+  // Use Central Time (UTC-5 / -6) since Cruzar's audience is CT.
+  // Force=1 query param bypasses the guard for manual admin runs.
+  const force = req.nextUrl.searchParams.get('force') === '1'
+  const ctNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }))
+  const isMonday = ctNow.getDay() === 1
+  if (!force && !isMonday) {
+    return NextResponse.json({
+      skipped: true,
+      reason: 'weekly-digest only runs on Monday CT. Pass ?force=1 to override.',
+      dayOfWeek: ctNow.getDay(),
+    })
+  }
+
   const db = getServiceClient()
 
   // Get all business + pro users
