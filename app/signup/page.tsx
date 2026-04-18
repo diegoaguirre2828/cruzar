@@ -243,18 +243,37 @@ export default function SignupPage() {
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
 
-        {/* Header — tight, free-first, clear value prop */}
+        {/* Header — value-first. Funnel data 2026-04-17: 82% of /signup
+            visitors never tap a method — they land cold from FB without
+            knowing what Cruzar is. Hero now leads with concrete what +
+            why, not generic "sign up free." */}
         <div className="text-center mb-5">
-          <h1 className="text-3xl font-black text-gray-900 dark:text-gray-100 leading-tight">
-            {es ? 'Entra gratis' : 'Sign up free'}
-          </h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400/20 to-orange-500/20 border border-amber-300 dark:border-amber-600/40">
+            <span className="text-sm">🎁</span>
+            <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+              {es ? '3 meses Pro gratis al instalar' : '3 months Pro free on install'}
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-gray-100 leading-[1.1]">
             {es
-              ? 'Te avisamos cuando tu puente baje de 30 min'
-              : "We'll ping you when your bridge drops below 30 min"}
+              ? 'Te avisamos cuando tu puente esté rápido — antes de salir.'
+              : 'Get pinged when your bridge clears — before you leave.'}
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 leading-snug">
+            {es
+              ? 'Cruzar tiene los tiempos en vivo de los 52 puentes US-México. Crea cuenta y elige el tuyo.'
+              : 'Cruzar shows live wait times for all 52 US-Mexico bridges. Create an account and pick yours.'}
           </p>
-          <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1 rounded-full">
-            ⚡ {es ? '10 segundos · sin tarjeta · sin spam' : '10 seconds · no card · no spam'}
+          <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+              ⚡ {es ? '10 segundos' : '10 seconds'}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+              💳 {es ? 'sin tarjeta' : 'no card'}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
+              🤐 {es ? 'sin spam' : 'no spam'}
+            </span>
           </div>
         </div>
 

@@ -2,7 +2,18 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Redirects for typo URLs Diego has been pasting in FB groups.
+  // /mapas (plural) → /mapa (singular, the real route). Without this
+  // every FB post that uses the plural form 404s, killing inbound clicks.
+  async redirects() {
+    return [
+      { source: '/mapas', destination: '/mapa', permanent: true },
+      { source: '/mapas/:path*', destination: '/mapa', permanent: true },
+      // Common other typos people guess
+      { source: '/cameras', destination: '/camaras', permanent: true },
+      { source: '/cameras/:path*', destination: '/camaras', permanent: true },
+    ]
+  },
 };
 
 export default withSentryConfig(nextConfig, {
