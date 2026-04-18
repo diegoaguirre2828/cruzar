@@ -140,7 +140,7 @@ export default function MapaPage() {
                 {section.ports.map(({ port, name, city, level }, i) => {
                   const waitLabel =
                     level === 'closed' ? (es ? 'Cerrado' : 'Closed') :
-                    level === 'unknown' ? (es ? 'Sin tiempos' : 'No times') :
+                    level === 'unknown' ? (es ? 'Sin datos' : 'No data') :
                     port.vehicle === 0 ? '<1 min' :
                     `${port.vehicle} min`
                   return (
