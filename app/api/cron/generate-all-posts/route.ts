@@ -101,8 +101,16 @@ const PEAK_COPY: { hour: number; opener: string; featurePitch: string; followHoo
 ]
 
 export async function GET(req: NextRequest) {
+  // Accept either ?secret=<CRON_SECRET> query param or
+  // Authorization: Bearer <CRON_SECRET> header. Matches the pattern
+  // every sibling cron route uses, so Vercel Scheduled + cron-job.org
+  // + curl smoke tests all succeed against the same endpoint.
   const secret = req.nextUrl.searchParams.get('secret')
-  if (secret !== process.env.CRON_SECRET) {
+  const authHeader = req.headers.get('authorization')
+  const isAuthed =
+    secret === process.env.CRON_SECRET ||
+    authHeader === `Bearer ${process.env.CRON_SECRET}`
+  if (!isAuthed) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

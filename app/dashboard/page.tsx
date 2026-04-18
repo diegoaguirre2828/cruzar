@@ -104,6 +104,13 @@ export default function DashboardPage() {
     if (window.location.pathname === '/ios-install') return
     if (!isIosSafari()) return
     if (isPwaInstalled()) return
+    // Bypass redirect if the user explicitly tapped "Skip for now" on
+    // /ios-install this session. Without this check, iOS users are
+    // trapped in a dashboard → ios-install → dashboard loop because
+    // isIosSafari()+!isPwaInstalled() still evaluates true after skip.
+    try {
+      if (sessionStorage.getItem('cruzar_ios_install_skipped') === '1') return
+    } catch { /* ignore */ }
     router.replace(`/ios-install?next=${encodeURIComponent('/dashboard')}`)
   }, [user, authLoading, router])
 
@@ -590,10 +597,10 @@ export default function DashboardPage() {
                   onChange={e => setNewAlertLane(e.target.value)}
                   className="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="vehicle">Passenger Vehicle</option>
-                  <option value="sentri">SENTRI / Ready Lane</option>
-                  <option value="pedestrian">{t.pedestrianLabel}</option>
-                  <option value="commercial">{t.commercialTruck}</option>
+                  <option value="vehicle">{es ? 'Vehículo particular' : 'Passenger vehicle'}</option>
+                  <option value="sentri">SENTRI · Ready Lane</option>
+                  <option value="pedestrian">{es ? 'Peatonal' : 'Pedestrian'}</option>
+                  <option value="commercial">{es ? 'Comercial' : 'Commercial'}</option>
                 </select>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{t.notifyWhenUnder}</span>

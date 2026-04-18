@@ -12,6 +12,7 @@ import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import { BRIDGE_CAMERAS } from '@/lib/bridgeCameras'
 import { LiveCameraTile } from '@/components/LiveCameraTile'
 import { StickyCamarasCta } from '@/components/StickyCamarasCta'
+import { ProTabSwitcher } from '@/components/ProTabSwitcher'
 import type { MegaRegion } from '@/lib/portMeta'
 
 const REGION_ORDER: MegaRegion[] = ['rgv', 'laredo', 'coahuila-tx', 'el-paso', 'sonora-az', 'baja', 'other']
@@ -93,6 +94,9 @@ export default function CamarasPage() {
     <main className="min-h-screen bg-gray-950">
       <div className="max-w-6xl mx-auto px-4 pb-24">
         <div className="pt-8 pb-4">
+          <div className="mb-3">
+            <ProTabSwitcher />
+          </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-[11px] font-bold text-red-400 mb-3">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />

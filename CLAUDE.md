@@ -15,7 +15,7 @@ Standing capability across every project Diego owns. Canonical rules live in the
 **Pipeline:** memory pass (handoffs + backlogs, treat all claims as hypotheses) then parallel live-state scan (build, endpoint health, env drift, schema drift, bilingual coverage, security/RLS) then structured **CRITICAL / HIGH / MEDIUM / LOW** report with file:line evidence PLUS a `verified-live-at` evidence cell on every row, then autonomous-safe vs. Diego-input split with ONE pick for the autonomous bundle, then on greenlight ("all in one session", "go", "ship"), execute end-to-end: edits, run the build, commit (named files, never `-A`), push, deploy to prod via the `vercel deploy --prod` command, curl live endpoints to verify landing, self-correct against live state, and append a **Reconciliation log** section to the audit memory noting SUPERSEDED items + their commit SHA.
 
 **Cruzar-specific audit surfaces:**
-- Build: run `npm run build` — must produce 106 of 106 pages clean
+- Build: run `npm run build` — must produce 158 of 158 pages clean
 - Live verify: curl `https://cruzar.app/api/ports` (at least 50 ports), plus `/privacy` and `/pricing`
 - Railway fb-poster: curl `https://cruzar-production.up.railway.app/` — check `lastPosted` non-empty after 5am/4pm CT cycles
 - Schema source: the file `supabase-schema-v12.sql` plus migrations `v27` through `v32` in `supabase/migrations/`
@@ -456,7 +456,7 @@ NEXT_PUBLIC_ADSENSE_CLIENT=        (set — placeholder)
 All of the above PLUS:
 ```
 RESEND_API_KEY=                    (set — email alerts)
-RESEND_FROM_EMAIL=                 (NOT set — defaults to onboarding@resend.dev)
+RESEND_FROM_EMAIL=                 (set — Cruzar Alerts <alerts@cruzar.app>)
 VAPID_PUBLIC_KEY=                  (set — push notifications)
 VAPID_PRIVATE_KEY=                 (set — push notifications)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=      (set)
@@ -465,9 +465,9 @@ OWNER_EMAIL=                       (set)
 ```
 
 ### Known Gaps
-- `RESEND_FROM_EMAIL` not set → emails send from `onboarding@resend.dev` → only delivers to verified email, not real users. Fix: add custom domain to Resend.
+- Emails send from `Cruzar Alerts <alerts@cruzar.app>` — domain verified in Resend, delivers to real users.
 - Stripe keys may be placeholder values — verify before charging real users.
-- Custom domain: cruzar.app (purchased, pending activation)
+- Custom domain: cruzar.app (live).
 
 ---
 

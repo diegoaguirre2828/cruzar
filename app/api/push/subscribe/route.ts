@@ -21,13 +21,18 @@ export async function POST(req: NextRequest) {
   const subscription = await req.json()
   const db = getServiceClient()
 
+  // Conflict on endpoint, not user_id. Endpoint is globally unique per
+  // browser/device, so this lets a single user have multiple active
+  // subscriptions (iPhone + laptop + Android tablet, etc). Previously
+  // upserting on user_id capped each user at one device. See migration
+  // v38-push-subscriptions-multi-device.sql for the constraint swap.
   await db.from('push_subscriptions').upsert({
     user_id: user.id,
     endpoint: subscription.endpoint,
     p256dh: subscription.keys?.p256dh,
     auth: subscription.keys?.auth,
     updated_at: new Date().toISOString(),
-  }, { onConflict: 'user_id' })
+  }, { onConflict: 'endpoint' })
 
   return NextResponse.json({ ok: true })
 }

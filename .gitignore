@@ -48,4 +48,9 @@ fb-poster/tiktok-cookies.json
 fb-poster/.env
 fb-poster/node_modules
 
+# fb-poster runtime artifacts
+fb-poster/debug-*.png
+fb-poster/scraped-posts.json
+fb-poster/commented-posts.json
+
 .env*.local

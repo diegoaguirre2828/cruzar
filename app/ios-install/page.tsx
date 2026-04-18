@@ -60,6 +60,10 @@ export default function IosInstallPage() {
 
   function onSkip() {
     trackEvent('ios_install_skip')
+    // Set session flag so /dashboard and /welcome don't redirect us right
+    // back to /ios-install. Without this, iOS users are trapped in an
+    // infinite redirect loop. Clears naturally when the tab closes.
+    try { sessionStorage.setItem('cruzar_ios_install_skipped', '1') } catch { /* ignore */ }
   }
 
   const waHref = `https://wa.me/?text=${encodeURIComponent(es ? WA_TEXT_ES : WA_TEXT_EN)}`

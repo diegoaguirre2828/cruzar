@@ -9,6 +9,7 @@ import { usePorts } from '@/lib/usePorts'
 import { getPortMeta } from '@/lib/portMeta'
 import { formatWaitLabel } from '@/lib/formatWait'
 import { PortSearch } from '@/components/PortSearch'
+import { ProTabSwitcher } from '@/components/ProTabSwitcher'
 import type { PortWaitTime } from '@/types'
 
 // Analytics tab. Pro-gated. Houses everything we used to stack on
@@ -92,6 +93,9 @@ function DatosPageInner() {
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-lg mx-auto px-4 pb-24">
         <div className="pt-6 pb-2">
+          <div className="mb-3">
+            <ProTabSwitcher />
+          </div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">
               📊 {es ? 'Datos del puente' : 'Border insights'}

@@ -12,7 +12,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 async function sendEmail(email: string, portName: string, portId: string, wait: number, threshold: number) {
   if (!process.env.RESEND_API_KEY) return
-  await fetch('https://api.resend.com/emails', {
+  const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
@@ -41,44 +41,62 @@ async function sendEmail(email: string, portName: string, portId: string, wait: 
       `,
     }),
   })
+  if (!res.ok) {
+    throw new Error(`Resend ${res.status}: ${await res.text()}`)
+  }
 }
 
 async function sendPush(userId: string, portName: string, portId: string, wait: number) {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return
   const db = getServiceClient()
-  const { data: sub } = await db
+  // Fetch EVERY subscription for this user — a single user may have
+  // iPhone + laptop + Android tablet registered. Previously `.single()`
+  // capped delivery to one device, which meant a user's primary phone
+  // could silently stop getting alerts if they ever hit "enable" on a
+  // second device and the row got overwritten.
+  const { data: subs } = await db
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .eq('user_id', userId)
-    .single()
 
-  if (!sub?.endpoint) return
+  if (!subs?.length) return
 
-  try {
-    await webpush.sendNotification(
-      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-      JSON.stringify({
-        title: `🌉 ${portName} — ${wait} min wait`,
-        body: `Wait dropped below your threshold. Tap to view live times.`,
-        url: `/port/${encodeURIComponent(portId)}`,
-        tag: `urgent-alert-${portId}`,
-        requireInteraction: true,
-      }),
-      { urgency: 'high', TTL: 600 }
-    )
-    // Log the delivery for future alert-conversion analysis.
-    // Failure is silent — a missing event row shouldn't break
-    // the cron run.
+  let anyDelivered = false
+  for (const sub of subs) {
+    if (!sub?.endpoint) continue
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify({
+          title: `🌉 ${portName} — ${wait} min wait`,
+          body: `Wait dropped below your threshold. Tap to view live times.`,
+          url: `/port/${encodeURIComponent(portId)}`,
+          tag: `urgent-alert-${portId}`,
+          requireInteraction: true,
+        }),
+        { urgency: 'high', TTL: 600 }
+      )
+      anyDelivered = true
+    } catch (err: unknown) {
+      // Subscription expired — remove just THIS endpoint, not every row
+      // for the user. Other devices on the same account should keep
+      // getting alerts.
+      if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
+        await db.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+      }
+      // Other errors fall through — loop continues so one bad endpoint
+      // never blocks delivery to the user's other devices.
+    }
+  }
+
+  if (anyDelivered) {
+    // Log one event per alert-fire, not per device. Failure is silent —
+    // a missing event row shouldn't break the cron run.
     await db.from('app_events').insert({
       event_name: 'alert_fired',
       props: { port_id: portId, wait, channel: 'push' },
       user_id: userId,
     }).then(() => {}, () => {})
-  } catch (err: unknown) {
-    // Subscription expired — remove it
-    if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
-      await db.from('push_subscriptions').delete().eq('user_id', userId)
-    }
   }
 }
 

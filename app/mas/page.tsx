@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Camera } from 'lucide-react'
 import { createClient } from '@/lib/auth'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
@@ -24,6 +25,7 @@ import { FbPageFollowCard } from '@/components/FbPageFollowCard'
 interface MenuItem {
   href: string
   emoji: string
+  icon?: React.ComponentType<{ className?: string }>
   labelEs: string
   labelEn: string
   subEs?: string
@@ -39,6 +41,7 @@ const ACCOUNT_ITEMS: MenuItem[] = [
 ]
 
 const EXPLORE_ITEMS: MenuItem[] = [
+  { href: '/camaras', emoji: '📹', icon: Camera, labelEs: 'Cámaras en vivo', labelEn: 'Live cameras', subEs: 'Mira los puentes ahorita', subEn: 'Watch the bridges right now' },
   { href: '/planner', emoji: '🗺️', labelEs: 'Planifica tu cruce', labelEn: 'Plan your crossing', subEs: 'Cuándo salir y qué puente agarrar', subEn: 'When to leave and which bridge to pick' },
   { href: '/for-fleets', emoji: '🚛', labelEs: 'Para flotas / Trucking', labelEn: 'For fleets / Trucking', subEs: 'Panel de flota + alertas + ROI', subEn: 'Fleet dashboard + alerts + ROI' },
   { href: '/negocios', emoji: '🏪', labelEs: 'Negocios locales', labelEn: 'Local businesses', subEs: 'Dental, farmacias, cambios', subEn: 'Dental, pharmacy, exchange' },
@@ -188,7 +191,9 @@ function MenuRow({ item, es }: { item: MenuItem; es: boolean }) {
       href={item.href}
       className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700/50 last:border-b-0 active:bg-gray-50 dark:active:bg-gray-700/30 transition-colors"
     >
-      <span className="text-xl leading-none flex-shrink-0">{item.emoji}</span>
+      <span className="text-xl leading-none flex-shrink-0 w-6 flex items-center justify-center">
+        {item.icon ? <item.icon className="w-5 h-5 text-gray-700 dark:text-gray-300" /> : item.emoji}
+      </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">
           {es ? item.labelEs : item.labelEn}

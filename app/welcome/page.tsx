@@ -55,26 +55,35 @@ function WelcomeInner() {
   const [alertedPortName, setAlertedPortName] = useState<string>('')
 
   // iOS Safari non-installed redirect — send authenticated iOS Safari
-  // users straight to /ios-install, which is the dedicated 3-tap
-  // Safari-only walkthrough. Funnel data 2026-04-17: iOS is 2× Android
-  // in registered users but iOS users mostly fail the generic install
-  // carrot on step 1. A Safari-specific page converts far better.
+  // users to /ios-install, the dedicated 3-tap Safari-only walkthrough.
+  // Funnel data 2026-04-17: iOS is 2× Android in registered users but
+  // iOS users mostly fail the generic install carrot on step 1. A
+  // Safari-specific page converts far better.
+  //
+  // Change 2026-04-18: only redirect once the user advances past step 1.
+  // Showing step 1 first lets iOS users see the 3-month Pro carrot — our
+  // biggest hook — before we punt them to the install flow. Also honors
+  // the `cruzar_ios_install_skipped` flag so users who tapped "Skip for
+  // now" on /ios-install aren't looped back.
   //
   // Preserves ?next= so after install the user still lands where they
-  // were headed. Android/desktop continue through the normal step-1
-  // install carrot.
+  // were headed. Android/desktop continue through the normal flow.
   useEffect(() => {
     if (authLoading || !user) return
     if (typeof window === 'undefined') return
     if (window.location.pathname === '/ios-install') return
     if (!isIosSafari()) return
     if (isPwaInstalled()) return
+    if (step !== 2) return
+    try {
+      if (sessionStorage.getItem('cruzar_ios_install_skipped') === '1') return
+    } catch { /* ignore */ }
     const next = params?.get('next')
     const dest = next
       ? `/ios-install?next=${encodeURIComponent(next)}`
       : '/ios-install'
     router.replace(dest)
-  }, [user, authLoading, router, params])
+  }, [user, authLoading, router, params, step])
 
   // Redirect guests to signup
   useEffect(() => {
@@ -196,7 +205,7 @@ function WelcomeInner() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error || 'Could not save your alert — try again')
+        setError(data.error || (es ? 'No pudimos guardar tu alerta — intenta otra vez' : 'Could not save your alert — try again'))
         setSubmitting(false)
         return
       }
