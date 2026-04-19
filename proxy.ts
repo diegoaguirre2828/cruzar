@@ -1,26 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Routes where we do NOT need to run the auth-refresh hit against Supabase
-// on every request. These endpoints either don't look at the session at
-// all, or do their own auth check internally. Skipping them here saves a
-// massive amount of DB load under traffic spikes — every visit to the
-// homepage fires /api/ports + /api/reports/recent, which would otherwise
-// each trigger a getUser() call here.
-const PUBLIC_API_PREFIXES = [
-  '/api/ports',
-  '/api/reports/recent',
-  '/api/negocios',
-  '/api/exchange',
-  '/api/leaderboard',
-  '/api/predict',
-  '/api/predictions',
-  '/api/widget',
-  '/api/ingest',              // has its own admin/secret gate
-  '/api/cron',                 // has its own CRON_SECRET gate
-  '/api/stripe/webhook',       // has its own signature check
-  '/api/admin/migrate',        // has its own CRON_SECRET gate + bootstraps exec_sql
-]
+// NOTE 2026-04-18: the original PUBLIC_API_PREFIXES fast-path below (now
+// removed) still incurred one edge invocation per hit because the proxy
+// function ran before the early-return. We were on track to blow past
+// Vercel's free-tier 1M edge-request cap this month. Public API routes
+// are now excluded at the matcher level (see config.matcher) so the proxy
+// never runs for them — zero edge invocations, same auth behavior since
+// those routes never needed middleware session refresh anyway.
 
 // Routes that HARD-redirect to /signup when the visitor isn't
 // authenticated. Per Diego's 2026-04-14 late late directive, guests
@@ -61,11 +48,6 @@ function isProtectedPath(path: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname
-
-  // Fast-path: public API routes that don't need an auth refresh
-  if (PUBLIC_API_PREFIXES.some((p) => path.startsWith(p))) {
-    return NextResponse.next({ request })
-  }
 
   let supabaseResponse = NextResponse.next({ request })
 
@@ -123,10 +105,21 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Exclude: Next.js static assets, favicon, image files, and the
-    // .well-known directory. .well-known must be served directly
-    // without auth overhead for Digital Asset Links verification
-    // (Google crawls /.well-known/assetlinks.json to verify TWA apps).
-    '/((?!_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Exclude from edge-middleware invocation:
+    //   - Next.js static/image pipelines
+    //   - favicon + image assets (any extension)
+    //   - .well-known (Digital Asset Links for TWA — must bypass auth)
+    //   - SEO files (sitemap / robots / manifest)
+    //   - Opengraph image generators (their output is cacheable, no auth)
+    //   - Public API routes — each has its own auth/secret gate and never
+    //     needed middleware session refresh. Before 2026-04-18 these hit
+    //     the proxy and got a fast-path early-return, which still counted
+    //     as an edge invocation against the free-tier 1M/mo cap.
+    //
+    // Everything else (pages + auth-touching /api/ routes like /api/alerts,
+    // /api/saved, /api/profile, /api/reports, /api/stripe/checkout, etc.)
+    // still runs through the proxy for session refresh + protected-route
+    // guard.
+    '/((?!_next/static|_next/image|favicon\\.ico|\\.well-known|sitemap\\.xml|robots\\.txt|manifest\\.(?:webmanifest|json)|opengraph-image|apple-icon|icon|api/ports|api/reports/recent|api/negocios|api/exchange|api/leaderboard|api/predict|api/predictions|api/widget|api/cron|api/stripe/webhook|api/ingest|api/admin/migrate|api/track/click|api/funnel|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }
