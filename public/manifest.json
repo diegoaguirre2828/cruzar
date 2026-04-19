@@ -13,31 +13,25 @@
   "categories": ["travel", "navigation", "utilities"],
   "icons": [
     {
-      "src": "/logo-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-192.png",
+      "src": "https://cruzar.app/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "https://cruzar.app/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192.png",
+      "src": "https://cruzar.app/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "https://cruzar.app/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -51,7 +45,7 @@
       "short_name": "Mi zona",
       "description": "Tu región fronteriza · Your border zone",
       "url": "/",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "https://cruzar.app/icons/icon-192.png", "sizes": "192x192" }]
     }
   ],
   "share_target": {
@@ -63,5 +57,13 @@
       "url": "url"
     }
   },
-  "screenshots": []
+  "screenshots": [
+    {
+      "src": "https://cruzar.app/fb-cover.png",
+      "sizes": "1640x624",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Cruzar — Live US-Mexico border wait times"
+    }
+  ]
 }
