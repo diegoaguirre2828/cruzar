@@ -131,7 +131,12 @@ Google Play is the higher-priority ship since per Diego's traffic data ~80% of C
 ## Files in this folder
 
 - `README.md` (this file) — the ship guide
+- `store-listing.md` — all the copy Play Console asks for, EN + ES, ready to paste (short + long descriptions, release notes, tags, screenshot shot list, content rating answers, data safety declarations).
 - The actual Android project (`/android/app/`, `/android/build.gradle`, etc.) is **not stored here** because it contains the signing key. Keep the PWABuilder ZIP somewhere safe (Drive, 1Password, etc.) and re-download whenever you need to update.
+
+## Known post-v1 polish
+
+- **Share target leads to admin page.** `public/manifest.json` points `share_target.action` at `/admin/ingest-share` which redirects into `/admin?tab=ingest`. That route is behind the protected-path proxy guard, so if a non-admin user ever shares TO Cruzar via the Android share sheet they'll hit /signup. Not a launch blocker (share-to-Cruzar is your own ingestion flow today). For public v1.1: either scope the share target to a public reports-ingest page or remove `share_target` from the manifest.
 
 ## Signing key backup warning
 
