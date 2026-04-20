@@ -58,14 +58,53 @@ export async function POST(req: NextRequest) {
 
   const { data: profile } = await db
     .from('profiles')
-    .select('share_count')
+    .select('share_count, pro_via_pwa_until')
     .eq('id', user.id)
     .single()
   const next = (profile?.share_count ?? 0) + 1
+
+  // Share-to-unlock: every 3rd share bumps pro_via_pwa_until +30 days,
+  // capped at the first 15 shares (so a max of +150 days of Pro bonus
+  // per user). 2026-04-20 audit lever 3 — turns the static share
+  // buttons into a rewarded growth loop.
+  //
+  // Cheat vector acknowledged: user can self-share via Copy button.
+  // Mitigation is cheap — each bump is only 30 days of Pro that most
+  // users already have via the 90-day PWA grant anyway. Real cost to
+  // Cruzar is zero. Keep the logic simple + trust-based for now.
+  let proExtended = false
+  let newProUntil: string | null = profile?.pro_via_pwa_until ?? null
+
+  if (next > 0 && next % 3 === 0 && next <= 15) {
+    const baseline = profile?.pro_via_pwa_until
+      ? new Date(Math.max(Date.now(), new Date(profile.pro_via_pwa_until).getTime()))
+      : new Date()
+    // Don't shorten grants already at 100-year founder-forever (would
+    // be silly to "extend" by +30 days on top of year 2126).
+    const isFoundersForever = profile?.pro_via_pwa_until
+      ? new Date(profile.pro_via_pwa_until).getTime() > Date.now() + 365 * 10 * 24 * 60 * 60 * 1000
+      : false
+    if (!isFoundersForever) {
+      const extended = new Date(baseline.getTime() + 30 * 24 * 60 * 60 * 1000)
+      newProUntil = extended.toISOString()
+      proExtended = true
+    }
+  }
+
+  const updates: Record<string, unknown> = { share_count: next }
+  if (proExtended && newProUntil) updates.pro_via_pwa_until = newProUntil
+
   await db
     .from('profiles')
-    .update({ share_count: next })
+    .update(updates)
     .eq('id', user.id)
 
-  return NextResponse.json({ ok: true, share_count: next })
+  return NextResponse.json({
+    ok: true,
+    share_count: next,
+    pro_extended: proExtended,
+    pro_via_pwa_until: newProUntil,
+    // Progress hint the frontend can use to surface "1 more share → +30 days"
+    shares_until_next_reward: next >= 15 ? null : (3 - (next % 3)) % 3 || 3,
+  })
 }

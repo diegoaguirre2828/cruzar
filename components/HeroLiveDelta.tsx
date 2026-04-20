@@ -54,7 +54,27 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [geoDenied, setGeoDenied] = useState(false)
   const [reportCount, setReportCount] = useState<number | null>(null)
+  const [liveCount, setLiveCount] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Live-presence fetch — the "X personas ahorita en Cruzar" social-proof
+  // number. Refreshed every 30s. 2026-04-20 audit lever 4.
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const r = await fetch('/api/stats/live')
+        if (cancelled) return
+        if (r.ok) {
+          const d = await r.json()
+          if (typeof d.count === 'number') setLiveCount(d.count)
+        }
+      } catch { /* non-critical */ }
+    }
+    load()
+    const interval = setInterval(load, 30_000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [])
 
   // Ask for geolocation once. Non-blocking: if denied or times out we fall
   // back to the region-based fastest. We don't retry — that'd be annoying.
@@ -349,9 +369,21 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
             })()}
           </div>
 
-          {/* Social proof + tap hint — single compact footer line */}
+          {/* Social proof + tap hint — single compact footer line.
+              Priority: live-presence > reports-today > static CBP
+              cadence. The live number converts best at the moment
+              of hesitation ("other people are here right now =
+              this is real"). 2026-04-20 audit lever 4. */}
           <div className="mt-3 flex items-center justify-between gap-2 text-[10px] text-blue-100/90">
-            {reportCount != null && reportCount > 0 ? (
+            {liveCount != null && liveCount >= 3 ? (
+              <span className="font-medium flex items-center gap-1.5">
+                <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-300" />
+                </span>
+                {es ? `${liveCount} en Cruzar ahorita` : `${liveCount} on Cruzar now`}
+              </span>
+            ) : reportCount != null && reportCount > 0 ? (
               <span className="font-medium">
                 {es ? `📣 ${reportCount} reportes hoy` : `📣 ${reportCount} reports today`}
               </span>
@@ -404,6 +436,38 @@ export function HeroLiveDelta({ ports: propPorts }: Props) {
             </span>
           </div>
         </a>
+      )}
+
+      {/* Low-wait-moment share nudge — surfaced only when the headline
+          wait is <= 20 min. The static "Tell your people" card below
+          has existed forever but wasn't converting — users don't share
+          unless the share is CONTEXTUAL. At <20 min the headline IS a
+          useful heads-up to forward. Pulsing green banner draws the
+          eye straight to WhatsApp. 2026-04-20 audit: shares driver. */}
+      {headlineWait <= 20 && (
+        <div className="mt-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-2xl px-3 py-2.5 shadow-md">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative flex h-2 w-2 flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+              </span>
+              <p className="text-xs font-black leading-tight truncate">
+                {es ? 'Buena hora — dile a tu gente' : "It's moving — tell your people"}
+              </p>
+            </div>
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackShare('whatsapp', 'hero_low_wait_nudge')}
+              className="flex-shrink-0 inline-flex items-center gap-1 bg-white text-green-700 text-[11px] font-black px-2.5 py-1 rounded-full active:scale-95 transition-transform"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+              WhatsApp
+            </a>
+          </div>
+        </div>
       )}
 
       {/* Compact share strip — was a full-size "Corre la voz" card that
