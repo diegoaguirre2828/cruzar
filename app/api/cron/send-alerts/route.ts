@@ -12,6 +12,8 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 async function sendEmail(email: string, portName: string, portId: string, wait: number, threshold: number) {
   if (!process.env.RESEND_API_KEY) return
+  const subject = `🌉 ${portName} bajó a ${wait} min · dropped to ${wait} min`
+  const preheader = `${portName}: ${wait} min · debajo de tu umbral de ${threshold} min · below your ${threshold}-min threshold`
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -21,21 +23,23 @@ async function sendEmail(email: string, portName: string, portId: string, wait: 
     body: JSON.stringify({
       from: process.env.RESEND_FROM_EMAIL || 'Cruzar Alerts <onboarding@resend.dev>',
       to: [email],
-      subject: `🌉 ${portName} wait dropped to ${wait} min`,
+      subject,
       html: `
         <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-          <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">🌉 Cruzar Alert</h2>
+          <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
+          <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">🌉 Alerta · Alert</h2>
           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:20px;">
-            <p style="margin:0;font-size:16px;font-weight:600;color:#166534;">${portName} is now ${wait} min</p>
-            <p style="margin:4px 0 0;font-size:14px;color:#16a34a;">Below your ${threshold}-minute alert threshold</p>
+            <p style="margin:0;font-size:16px;font-weight:600;color:#166534;">${portName} está en ${wait} min</p>
+            <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#166534;">${portName} is now ${wait} min</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#16a34a;">Debajo de tu umbral de ${threshold} min · Below your ${threshold}-min threshold</p>
           </div>
           <a href="https://cruzar.app/port/${encodeURIComponent(portId)}"
              style="display:inline-block;background:#111827;color:white;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;">
-            View Live Wait Times →
+            Ver en vivo · View live →
           </a>
           <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">
-            You're receiving this because you set a wait time alert on Cruzar.
-            <a href="https://cruzar.app/dashboard" style="color:#6b7280;">Manage alerts</a>
+            Recibes esto porque pusiste una alerta en Cruzar · You're receiving this because you set a wait alert on Cruzar.
+            <a href="https://cruzar.app/dashboard" style="color:#6b7280;">Manage alerts · Ver alertas</a>
           </p>
         </div>
       `,
@@ -68,11 +72,15 @@ async function sendPush(userId: string, portName: string, portId: string, wait: 
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify({
-          title: `🌉 ${portName} — ${wait} min wait`,
-          body: `Wait dropped below your threshold. Tap to view live times.`,
+          title: `🌉 ${portName} — ${wait} min`,
+          body: `Bajó la espera · Wait dropped — toca para ver en vivo · tap to view live`,
           url: `/port/${encodeURIComponent(portId)}`,
           tag: `urgent-alert-${portId}`,
           requireInteraction: true,
+          actions: [
+            { action: 'view', title: 'Ver · View' },
+            { action: 'snooze', title: 'Snooze 1h' },
+          ],
         }),
         { urgency: 'high', TTL: 600 }
       )

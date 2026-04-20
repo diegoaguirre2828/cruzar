@@ -161,18 +161,42 @@ self.addEventListener('push', e => {
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag: data.tag || 'cruzar-alert',
-      data: { url: data.url || '/' },
+      data: { url: data.url || '/', tag: data.tag || 'cruzar-alert' },
       vibrate,
       requireInteraction: isUrgent,
       renotify: true,
       silent: false,
+      actions: Array.isArray(data.actions) ? data.actions : undefined,
     })
   )
 })
 
 self.addEventListener('notificationclick', e => {
-  e.notification.close()
+  const action = e.action
   const url = e.notification.data?.url || '/'
+  const tag = e.notification.data?.tag || ''
+
+  e.notification.close()
+
+  // Snooze: fire-and-forget POST that bumps the alert's last_triggered_at
+  // forward by 1 hour so the send-alerts cron skips this user for that
+  // window. Server pulls the alert id from the tag (urgent-alert-<portId>).
+  if (action === 'snooze') {
+    const portId = tag.startsWith('urgent-alert-') ? tag.slice('urgent-alert-'.length) : null
+    if (portId) {
+      e.waitUntil(
+        fetch('/api/alerts/snooze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ port_id: portId, minutes: 60 }),
+          keepalive: true,
+        }).catch(() => {})
+      )
+    }
+    return
+  }
+
+  // Default action (tap) or explicit "view" action: open/focus the app.
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       const existing = clients.find(c => c.url.includes(self.location.origin))

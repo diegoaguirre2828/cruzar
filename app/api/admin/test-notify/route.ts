@@ -68,30 +68,51 @@ async function testPush(userId: string): Promise<ChannelResult> {
     return { ok: false, detail: 'VAPID keys not set' }
   }
   const db = getServiceClient()
-  const { data: sub } = await db
+  // Was .maybeSingle() — returned null whenever the admin had 2+ devices
+  // subscribed (iPhone + laptop), falsely reporting "no subscription."
+  // Fetch all and attempt delivery to each, matching the send-alerts
+  // multi-device fan-out behavior.
+  const { data: subs } = await db
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .eq('user_id', userId)
-    .maybeSingle()
 
-  if (!sub?.endpoint) {
+  if (!subs?.length) {
     return { ok: false, detail: 'No push subscription for admin user. Enable notifications in the app first.' }
   }
 
-  try {
-    await webpush.sendNotification(
-      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-      JSON.stringify({
-        title: '🌉 Cruzar test push',
-        body: `Test notification sent at ${new Date().toLocaleTimeString()}`,
-        url: '/',
-        tag: 'admin-test',
-      })
-    )
-    return { ok: true, detail: 'Push sent — check your device.' }
-  } catch (err: unknown) {
-    const msg = err && typeof err === 'object' && 'body' in err ? (err as { body?: string }).body : String(err)
-    return { ok: false, detail: `Push failed: ${msg}` }
+  let delivered = 0
+  let failed = 0
+  const errors: string[] = []
+  for (const sub of subs) {
+    if (!sub?.endpoint) continue
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify({
+          title: '🌉 Cruzar — prueba · test',
+          body: `Notificación de prueba · Test notification · ${new Date().toLocaleTimeString()}`,
+          url: '/',
+          tag: 'admin-test',
+          actions: [
+            { action: 'view', title: 'Ver · View' },
+          ],
+        })
+      )
+      delivered++
+    } catch (err: unknown) {
+      failed++
+      const msg = err && typeof err === 'object' && 'body' in err ? (err as { body?: string }).body : String(err)
+      errors.push(String(msg).slice(0, 80))
+    }
+  }
+
+  if (delivered === 0) {
+    return { ok: false, detail: `Push failed on ${failed} device(s): ${errors.join(' | ')}` }
+  }
+  return {
+    ok: true,
+    detail: `Push sent to ${delivered} device(s)${failed ? `; ${failed} failed` : ''} — check your device.`,
   }
 }
 
