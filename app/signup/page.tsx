@@ -438,9 +438,10 @@ export default function SignupPage() {
             else lives behind a subtle disclosure. */}
         <details
           className="group mt-2"
+          open={iosPersona}
           onToggle={(e) => {
             if ((e.currentTarget as HTMLDetailsElement).open) {
-              trackFunnel('signup_more_options_opened')
+              trackFunnel('signup_more_options_opened', { ios_default: iosPersona })
             }
           }}
         >
