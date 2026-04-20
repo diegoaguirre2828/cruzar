@@ -654,11 +654,22 @@ export function PortDetailClient({ port, portId }: Props) {
             </p>
           ) : (
             <>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                 {es ? 'Notificarme cuando la espera de vehículos baje de:' : 'Notify me when vehicle wait drops below:'}
               </p>
+              {/* Typical-wait hint — 2026-04-20 audit M3: alert thresholds
+                  were universally below typical waits (20-30 min vs 40-120
+                  actual) so no alert ever fired. Show the 24h average so
+                  users pick a threshold that will actually trigger. */}
+              {avgVehicleWait != null && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-3">
+                  {es
+                    ? `Promedio aquí hoy: ${avgVehicleWait} min. Tu alerta solo dispara cuando baja del valor que elijas.`
+                    : `Typical today: ${avgVehicleWait} min. Your alert only fires when wait drops below your pick.`}
+                </p>
+              )}
               <div className="flex gap-2 mb-3">
-                {[10, 20, 30].map(t => (
+                {[10, 20, 30, 45, 60].map(t => (
                   <button
                     key={t}
                     onClick={() => setAlertThreshold(t)}
@@ -668,7 +679,7 @@ export function PortDetailClient({ port, portId }: Props) {
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                     }`}
                   >
-                    {t} min
+                    {t}
                   </button>
                 ))}
               </div>

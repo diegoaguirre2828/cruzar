@@ -20,6 +20,15 @@ import { trackEvent } from '@/lib/trackEvent'
 // /mas install card.
 
 const SEEN_KEY = 'cruzar_first_visit_install_seen_v1'
+// Visit counter + port-view flag. 2026-04-20 audit M3: 49% dismiss
+// rate on the install sheet (86 of 175 shown). On FIRST visit the
+// user hasn't felt the value yet — the install ask is premature.
+// Show the sheet only once either condition is true:
+//   - visit count >= 2 (they came back)
+//   - OR the user has viewed at least one port detail page
+//     (proved intent to actually use the product)
+const VISITS_KEY = 'cruzar_visit_count'
+const PORT_VIEWED_KEY = 'cruzar_port_viewed'
 // Cooldown before the sheet re-appears after a dismiss.
 //
 // Evolution: permanent → 14 days → 3 days (2026-04-18).
@@ -59,11 +68,30 @@ export function FirstVisitInstallSheet() {
     // own install path.
     if (HIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return
 
+    // Increment visit counter + mark port-view on every mount (cheap).
+    // These flags gate the sheet below.
+    try {
+      const currentCount = parseInt(localStorage.getItem(VISITS_KEY) || '0', 10) || 0
+      localStorage.setItem(VISITS_KEY, String(currentCount + 1))
+      if (pathname.startsWith('/port/') || pathname.startsWith('/cruzar/')) {
+        localStorage.setItem(PORT_VIEWED_KEY, '1')
+      }
+    } catch { /* ignore */ }
+
     // Already installed — never show.
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true
     if (isStandalone) return
+
+    // Earn-it gate — don't fire on first visit before the user has
+    // felt the value. Sheet surfaces on visit 2+ OR after they've
+    // viewed any port detail (proved use intent).
+    try {
+      const visits = parseInt(localStorage.getItem(VISITS_KEY) || '0', 10) || 0
+      const portViewed = localStorage.getItem(PORT_VIEWED_KEY) === '1'
+      if (visits < 2 && !portViewed) return
+    } catch { /* ignore */ }
 
     // Cooldown gate — respect the user's "not right now" for 3 days,
     // then re-surface on a repeat visit.
