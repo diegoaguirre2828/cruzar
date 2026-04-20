@@ -81,6 +81,25 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [magicSent, setMagicSent] = useState(false)
 
+  // FB / IG / messenger in-app browser detection. These webviews
+  // block Google OAuth (Google rejects embedded webviews as of 2021)
+  // and break cookie persistence, so letting users attempt signup
+  // inside them guarantees a failure they can't recover from. 44% of
+  // cruzar traffic lands from FB's in-app browser per 2026-04-20
+  // analytics — this wall keeps them from hitting the OAuth dead end
+  // and pushes them to escape first.
+  const [inAppBrowser, setInAppBrowser] = useState(false)
+  const [inAppPlatform, setInAppPlatform] = useState<'ios' | 'android' | 'other'>('other')
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return
+    const ua = navigator.userAgent || ''
+    if (/FBAN|FBAV|FB_IAB|FBIOS|Instagram|Musical_ly|Bytedance|TikTok|LINE|MicroMessenger|Messenger|Twitter|X-App|Snapchat|GSA\/|Pinterest|RedditMobile/i.test(ua)) {
+      setInAppBrowser(true)
+      if (/iPhone|iPad|iPod/.test(ua)) setInAppPlatform('ios')
+      else if (/Android/.test(ua)) setInAppPlatform('android')
+    }
+  }, [])
+
   // Track page view on mount
   useState(() => { trackFunnel('signup_page_view') })
 
@@ -267,6 +286,87 @@ export default function SignupPage() {
                 : 'Once in Safari, paste the link and sign up there so the app works properly.'}
             </p>
           </div>
+        </div>
+      </main>
+    )
+  }
+
+  // FB/IG in-app browser — hard block: the signup form below is
+  // replaced entirely with an escape prompt. We fire the funnel event
+  // so we can measure how many visitors would have seen the form but
+  // hit this block instead.
+  if (inAppBrowser) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm text-center">
+          <div className="inline-flex items-center gap-1.5 mb-4 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600/40">
+            <span className="text-sm">⚠️</span>
+            <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-wide">
+              {es ? 'Navegador de Facebook detectado' : 'Facebook browser detected'}
+            </span>
+          </div>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 leading-tight">
+            {es ? 'Ábrelo en tu navegador real' : 'Open in your real browser'}
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-3 leading-snug">
+            {es
+              ? 'El navegador dentro de Facebook bloquea el registro con Google y se traba. Abre Cruzar en Chrome o Safari pa\' crear tu cuenta en 10 segundos.'
+              : "Facebook's built-in browser blocks Google sign-in and breaks login. Open Cruzar in Chrome or Safari to create your account in 10 seconds."}
+          </p>
+
+          {inAppPlatform === 'android' && (
+            <button
+              onClick={() => {
+                try { trackFunnel('iab_signup_escape_attempt', { platform: 'android' }) } catch {}
+                const path = '/signup' + (typeof window !== 'undefined' ? window.location.search : '')
+                if (typeof window !== 'undefined') {
+                  window.location.href = `intent://www.cruzar.app${path}#Intent;scheme=https;package=com.android.chrome;end`
+                  setTimeout(() => { window.location.href = 'https://www.cruzar.app' + path }, 600)
+                }
+              }}
+              className="mt-5 w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-sm px-5 py-3 rounded-full active:scale-95"
+            >
+              {es ? 'Abrir en Chrome →' : 'Open in Chrome →'}
+            </button>
+          )}
+
+          {inAppPlatform === 'ios' && (
+            <>
+              <div className="mt-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl p-4 text-left">
+                <p className="text-[12px] font-bold text-amber-900 dark:text-amber-100 mb-2">
+                  {es ? 'iPhone — 3 pasos:' : 'iPhone — 3 steps:'}
+                </p>
+                <ol className="text-[12px] text-amber-800 dark:text-amber-200 space-y-1.5 list-decimal list-inside">
+                  <li>{es ? 'Toca los 3 puntitos (⋯) arriba a la derecha' : 'Tap the 3 dots (⋯) top right'}</li>
+                  <li>{es ? 'Elige "Abrir en Safari"' : 'Choose "Open in Safari"'}</li>
+                  <li>{es ? 'Regístrate ahí — toma 10 segundos' : 'Sign up there — takes 10 seconds'}</li>
+                </ol>
+              </div>
+              <button
+                onClick={() => {
+                  try { trackFunnel('iab_signup_escape_attempt', { platform: 'ios' }) } catch {}
+                  try { navigator.clipboard.writeText('https://cruzar.app/signup').catch(() => {}) } catch {}
+                }}
+                className="mt-4 w-full bg-amber-600 hover:bg-amber-700 text-white font-black text-sm px-5 py-3 rounded-full active:scale-95"
+              >
+                {es ? 'Copiar link' : 'Copy link'}
+              </button>
+            </>
+          )}
+
+          {inAppPlatform === 'other' && (
+            <div className="mt-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl p-4 text-left">
+              <p className="text-[12px] text-amber-800 dark:text-amber-200">
+                {es
+                  ? 'Abre esta página en tu navegador normal (Chrome, Safari, Firefox) y podrás registrarte.'
+                  : 'Open this page in your normal browser (Chrome, Safari, Firefox) to sign up.'}
+              </p>
+            </div>
+          )}
+
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-5">
+            cruzar.app/signup
+          </p>
         </div>
       </main>
     )
