@@ -8,15 +8,29 @@ export function usePushNotifications() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      setSupported(true)
-      // Register service worker
-      navigator.serviceWorker.register('/sw.js').then(reg => {
-        reg.pushManager.getSubscription().then(sub => {
-          setSubscribed(!!sub)
-        })
-      })
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+
+    // On iOS, Web Push only works when the site is installed as a PWA
+    // via "Add to Home Screen" — prompting inside a Safari tab silently
+    // fails and burns the user's ability to opt in later. Gate support
+    // on standalone display-mode so the in-app alert prompt + any other
+    // caller of this hook skip the prompt until the user installs.
+    const ua = navigator.userAgent
+    const isIos = /iPhone|iPad|iPod/.test(ua)
+    if (isIos) {
+      type IosNav = Navigator & { standalone?: boolean }
+      const standalone =
+        (navigator as IosNav).standalone === true ||
+        (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches)
+      if (!standalone) return
     }
+
+    setSupported(true)
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.pushManager.getSubscription().then(sub => {
+        setSubscribed(!!sub)
+      })
+    })
   }, [])
 
   async function subscribe() {

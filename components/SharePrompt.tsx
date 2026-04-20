@@ -43,6 +43,8 @@ export function SharePrompt({ port }: Props) {
     try { sessionStorage.setItem('cruzar_share_dismissed', '1') } catch {}
   }
 
+  const [copied, setCopied] = useState(false)
+
   async function handleShare() {
     const text = es
       ? `${name} está en ${wait} min ahorita. Yo uso cruzar.app pa' checar los puentes antes de salir — tiene todos los puentes en vivo, gratis.`
@@ -57,12 +59,25 @@ export function SharePrompt({ port }: Props) {
       try {
         trackShare('native', 'share_prompt')
         await navigator.share({ title: 'Cruzar', text, url })
+        trackShare('native_success', 'share_prompt')
         handleDismiss()
         return
-      } catch { /* cancelled */ }
+      } catch { /* cancelled or unavailable — fall through */ }
     }
 
-    // WhatsApp fallback
+    // Copy-to-clipboard fallback — covers iMessage / Telegram / email /
+    // desktop / anyone who doesn't use WhatsApp. Previous fallback was
+    // WhatsApp-only which stranded ~half of iOS users.
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(`${text}\n${url}`)
+        trackShare('copy', 'share_prompt')
+        setCopied(true)
+        setTimeout(() => { setCopied(false); handleDismiss() }, 1800)
+        return
+      } catch { /* fall through to wa.me */ }
+    }
+
     trackShare('whatsapp', 'share_prompt')
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n' + url)}`
     window.open(waUrl, '_blank')
@@ -89,7 +104,9 @@ export function SharePrompt({ port }: Props) {
         onClick={handleShare}
         className="mt-3 w-full py-2.5 bg-white text-green-700 text-sm font-black rounded-xl active:scale-[0.97] transition-transform"
       >
-        {es ? 'Compartir por WhatsApp' : 'Share via WhatsApp'}
+        {copied
+          ? (es ? '¡Link copiado!' : 'Link copied!')
+          : (es ? 'Compartir link' : 'Share link')}
       </button>
     </div>
   )
