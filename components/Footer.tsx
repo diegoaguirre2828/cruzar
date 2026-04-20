@@ -43,7 +43,7 @@ export function Footer() {
           <Link href="/pricing" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             {es ? 'Precios' : 'Pricing'}
           </Link>
-          <a href="mailto:cruzabusiness@gmail.com" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
+          <a href="mailto:hello@cruzar.app" className="hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             {es ? 'Contacto' : 'Contact'}
           </a>
         </div>

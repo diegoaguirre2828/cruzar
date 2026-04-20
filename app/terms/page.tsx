@@ -206,9 +206,9 @@ export default function TermsPage() {
             </h2>
             <p>
               {lang === 'es' ? (
-                <>¿Preguntas? Escribe a <strong>cruzabusiness@gmail.com</strong>.</>
+                <>¿Preguntas? Escribe a <strong>hello@cruzar.app</strong>.</>
               ) : (
-                <>Questions? Email <strong>cruzabusiness@gmail.com</strong>.</>
+                <>Questions? Email <strong>hello@cruzar.app</strong>.</>
               )}
             </p>
           </section>

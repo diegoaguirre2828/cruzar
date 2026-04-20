@@ -1434,7 +1434,7 @@ function BusinessPortalPage() {
               <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Need a custom data feed?</p>
               <p className="text-xs text-gray-400 mb-3">We can integrate live border data directly into your TMS, ERP, or dispatch system via API.</p>
               <a
-                href="mailto:cruzabusiness@gmail.com?subject=Custom API Integration"
+                href="mailto:hello@cruzar.app?subject=Custom API Integration"
                 className="inline-block text-xs font-semibold text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 px-5 py-2 rounded-xl hover:bg-gray-700 dark:hover:bg-gray-200 transition-colors"
               >
                 Contact for API Access

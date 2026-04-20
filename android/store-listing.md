@@ -132,7 +132,7 @@ juarez, laredo, mcallen, brownsville
 
 ## Contact
 
-- **Support email:** cruzabusiness@gmail.com  (same one used in VAPID push config)
+- **Support email:** hello@cruzar.app  (VAPID push config still uses cruzabusiness@gmail.com — that's the internal protocol contact, not user-facing)
 - **Website:** https://cruzar.app
 - **Privacy policy:** https://cruzar.app/privacy
 - **Terms:** https://cruzar.app/terms

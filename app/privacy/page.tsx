@@ -134,9 +134,9 @@ export default function PrivacyPage() {
             </h2>
             <p>
               {lang === 'es' ? (
-                <>Puedes solicitar acceso, corrección o eliminación de tus datos personales en cualquier momento. Contáctanos en <strong>cruzabusiness@gmail.com</strong>.</>
+                <>Puedes solicitar acceso, corrección o eliminación de tus datos personales en cualquier momento. Contáctanos en <strong>hello@cruzar.app</strong>.</>
               ) : (
-                <>You may request access to, correction of, or deletion of your personal data at any time. Contact us at <strong>cruzabusiness@gmail.com</strong>.</>
+                <>You may request access to, correction of, or deletion of your personal data at any time. Contact us at <strong>hello@cruzar.app</strong>.</>
               )}
             </p>
           </section>
@@ -158,9 +158,9 @@ export default function PrivacyPage() {
             </h2>
             <p>
               {lang === 'es' ? (
-                <>¿Preguntas? Escríbenos a <strong>cruzabusiness@gmail.com</strong>.</>
+                <>¿Preguntas? Escríbenos a <strong>hello@cruzar.app</strong>.</>
               ) : (
-                <>Questions? Email us at <strong>cruzabusiness@gmail.com</strong>.</>
+                <>Questions? Email us at <strong>hello@cruzar.app</strong>.</>
               )}
             </p>
           </section>

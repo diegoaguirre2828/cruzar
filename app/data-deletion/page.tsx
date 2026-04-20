@@ -1,160 +1,212 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
+import { createBrowserClient } from '@supabase/ssr'
 
 export default function DataDeletionPage() {
   const { lang } = useLang()
+  const router = useRouter()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const [signedIn, setSignedIn] = useState<boolean | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [errMsg, setErrMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setSignedIn(!!data.user)
+      setUserEmail(data.user?.email ?? null)
+    })
+  }, [supabase])
+
+  const es = lang === 'es'
+
+  async function handleDelete() {
+    setBusy(true)
+    setErrMsg(null)
+    try {
+      const res = await fetch('/api/profile', { method: 'DELETE' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `HTTP ${res.status}`)
+      }
+      await supabase.auth.signOut()
+      router.push('/?deleted=1')
+    } catch (e) {
+      setErrMsg((e as Error).message)
+      setBusy(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-2xl mx-auto px-4 pb-16">
         <div className="pt-8 pb-6">
           <Link href="/" className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-4">
-            <ArrowLeft className="w-3 h-3" /> {lang === 'es' ? 'Atrás' : 'Back'}
+            <ArrowLeft className="w-3 h-3" /> {es ? 'Atrás' : 'Back'}
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {lang === 'es' ? 'Instrucciones para Eliminar Datos' : 'Data Deletion Instructions'}
+            {es ? 'Eliminar tu Cuenta' : 'Delete Your Account'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {lang === 'es'
-              ? 'Cómo eliminar tu cuenta de Cruzar y tus datos personales'
-              : 'How to delete your Cruzar account and personal data'}
+            {es
+              ? 'Elimina tu cuenta de Cruzar y tus datos personales'
+              : 'Delete your Cruzar account and personal data'}
           </p>
         </div>
+
+        {signedIn && (
+          <div className="bg-red-50 dark:bg-red-950/20 rounded-2xl border border-red-200 dark:border-red-900 p-6 mb-6">
+            <h2 className="text-lg font-bold text-red-900 dark:text-red-200 mb-2">
+              {es ? 'Eliminar cuenta ahora' : 'Delete account now'}
+            </h2>
+            <p className="text-sm text-red-800 dark:text-red-200/80 mb-4">
+              {es
+                ? `Sesión iniciada como ${userEmail ?? ''}. Borraremos permanentemente tu perfil, cruces guardados, alertas, suscripciones push y registros de suscripción. Tus reportes de cruce se anonimizan (siguen visibles pero sin tu nombre).`
+                : `Signed in as ${userEmail ?? ''}. We will permanently delete your profile, saved crossings, alerts, push subscriptions, and subscription records. Your crossing reports are anonymized (still visible but no longer tied to you).`}
+            </p>
+            <button
+              onClick={() => setConfirmOpen(true)}
+              className="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl active:scale-[0.98] transition-transform"
+            >
+              {es ? 'Eliminar mi cuenta' : 'Delete my account'}
+            </button>
+          </div>
+        )}
+
+        {signedIn === false && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 rounded-2xl border border-blue-200 dark:border-blue-900 p-6 mb-6">
+            <h2 className="text-lg font-bold text-blue-900 dark:text-blue-200 mb-2">
+              {es ? 'Inicia sesión para eliminar' : 'Sign in to delete'}
+            </h2>
+            <p className="text-sm text-blue-800 dark:text-blue-200/80 mb-4">
+              {es
+                ? 'La forma más rápida de eliminar tu cuenta es desde dentro de la app. Inicia sesión primero, después regresa aquí.'
+                : 'The fastest way to delete your account is from inside the app. Sign in first, then come back here.'}
+            </p>
+            <Link
+              href="/login?next=/data-deletion"
+              className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl"
+            >
+              {es ? 'Iniciar sesión' : 'Sign in'}
+            </Link>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-sm space-y-6 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? 'Eliminar tu Cuenta' : 'Delete Your Account'}
+              {es ? 'Alternativa — Solicitud por Correo' : 'Alternative — Email Request'}
             </h2>
             <p>
-              {lang === 'es'
-                ? 'Puedes solicitar la eliminación de tu cuenta de Cruzar y todos los datos personales asociados en cualquier momento. Hay dos maneras de hacerlo:'
-                : 'You can request deletion of your Cruzar account and all associated personal data at any time. There are two ways to do this:'}
-            </p>
-          </section>
-
-          <section>
-            <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? 'Opción 1 — Solicitud por Correo' : 'Option 1 — Email Request'}
-            </h2>
-            <p>
-              {lang === 'es' ? (
-                <>Envía un correo a <strong>cruzabusiness@gmail.com</strong> con el asunto <strong>"Eliminar Mi Cuenta"</strong> desde el correo asociado a tu cuenta de Cruzar.</>
+              {es ? (
+                <>Si no puedes iniciar sesión, envía un correo a <strong>hello@cruzar.app</strong> con el asunto <strong>&quot;Eliminar Mi Cuenta&quot;</strong> desde el correo asociado a tu cuenta.</>
               ) : (
-                <>Send an email to <strong>cruzabusiness@gmail.com</strong> with the subject line <strong>"Delete My Account"</strong> from the email address associated with your Cruzar account.</>
+                <>If you can&apos;t sign in, send an email to <strong>hello@cruzar.app</strong> with subject <strong>&quot;Delete My Account&quot;</strong> from the email tied to your account.</>
               )}
             </p>
             <p className="mt-2">
-              {lang === 'es' ? (
-                <>Eliminaremos permanentemente tu cuenta, perfil, cruces guardados, preferencias de alerta y cualquier reporte vinculado a tu cuenta dentro de <strong>7 días hábiles</strong> y lo confirmaremos por correo.</>
-              ) : (
-                <>We will permanently delete your account, profile, saved crossings, alert preferences, and any reports tied to your account within <strong>7 business days</strong> and confirm by email.</>
-              )}
+              {es
+                ? 'Eliminaremos permanentemente tu cuenta y datos asociados dentro de 7 días hábiles y lo confirmaremos por correo.'
+                : 'We will permanently delete your account and associated data within 7 business days and confirm by email.'}
             </p>
           </section>
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? 'Opción 2 — Eliminación dentro de la App' : 'Option 2 — In-App Deletion'}
-            </h2>
-            <p>
-              {lang === 'es'
-                ? 'Si iniciaste sesión con Facebook, también puedes revocar el acceso de Cruzar desde tu cuenta de Facebook:'
-                : "If you signed in with Facebook, you can also revoke Cruzar's access from your Facebook account:"}
-            </p>
-            <ol className="list-decimal pl-4 mt-2 space-y-1">
-              <li>
-                {lang === 'es' ? (
-                  <>Ve a <strong>Facebook → Configuración y Privacidad → Configuración → Aplicaciones y Sitios Web</strong></>
-                ) : (
-                  <>Go to <strong>Facebook → Settings & Privacy → Settings → Apps and Websites</strong></>
-                )}
-              </li>
-              <li>
-                {lang === 'es' ? (
-                  <>Encuentra <strong>Cruzar</strong> en la lista de aplicaciones activas</>
-                ) : (
-                  <>Find <strong>Cruzar</strong> in the list of active apps</>
-                )}
-              </li>
-              <li>
-                {lang === 'es' ? (
-                  <>Haz clic en <strong>Eliminar</strong></>
-                ) : (
-                  <>Click <strong>Remove</strong></>
-                )}
-              </li>
-            </ol>
-            <p className="mt-2">
-              {lang === 'es'
-                ? 'Eliminar la app impide que Cruzar acceda a tus datos de Facebook de ahora en adelante. Para también eliminar los datos que ya almacenamos, por favor sigue la Opción 1.'
-                : 'Removing the app stops Cruzar from accessing your Facebook data going forward. To also delete data we already stored, please follow Option 1.'}
-            </p>
-          </section>
-
-          <section>
-            <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? 'Qué se Elimina' : 'What Gets Deleted'}
+              {es ? 'Qué se Elimina' : 'What Gets Deleted'}
             </h2>
             <ul className="list-disc pl-4 space-y-1">
-              <li>
-                {lang === 'es'
-                  ? 'Tu cuenta y perfil (nombre, correo, nombre visible)'
-                  : 'Your account and profile (name, email, display name)'}
-              </li>
-              <li>
-                {lang === 'es'
-                  ? 'Cruces guardados y preferencias de alerta'
-                  : 'Saved crossings and alert preferences'}
-              </li>
-              <li>
-                {lang === 'es'
-                  ? 'Suscripciones a notificaciones push'
-                  : 'Push notification subscriptions'}
-              </li>
-              <li>
-                {lang === 'es'
-                  ? 'Identificadores personales adjuntos a reportes de cruce'
-                  : 'Personal identifiers attached to crossing reports'}
-              </li>
-              <li>
-                {lang === 'es'
-                  ? 'Registros de suscripción (después de la conciliación final de facturación)'
-                  : 'Subscription records (after final billing reconciliation)'}
-              </li>
+              <li>{es ? 'Tu cuenta y perfil (nombre, correo, nombre visible)' : 'Your account and profile (name, email, display name)'}</li>
+              <li>{es ? 'Cruces guardados y preferencias de alerta' : 'Saved crossings and alert preferences'}</li>
+              <li>{es ? 'Suscripciones a notificaciones push' : 'Push notification subscriptions'}</li>
+              <li>{es ? 'Registros de suscripción (después de la conciliación final de facturación)' : 'Subscription records (after final billing reconciliation)'}</li>
             </ul>
           </section>
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? 'Qué Puede Retenerse' : 'What May Be Retained'}
+              {es ? 'Qué Puede Retenerse' : 'What May Be Retained'}
             </h2>
             <p>
-              {lang === 'es'
-                ? 'Los datos anonimizados y agregados de tiempos de espera (sin vínculo con tu identidad) pueden retenerse para análisis histórico y para mejorar las predicciones para todos los usuarios. Estos datos no pueden usarse para identificarte.'
-                : 'Anonymized, aggregated wait time data (with no link to your identity) may be retained for historical analysis and to improve predictions for all users. This data cannot be used to identify you.'}
+              {es
+                ? 'Los reportes de cruce que enviaste se anonimizan y siguen visibles para la comunidad sin vínculo con tu identidad. Los datos agregados de tiempos de espera (sin identificadores) se retienen para mejorar las predicciones.'
+                : 'Crossing reports you submitted are anonymized and remain visible to the community with no link to your identity. Aggregate wait time data (no identifiers) is retained to improve predictions.'}
             </p>
           </section>
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? 'Preguntas' : 'Questions'}
+              {es ? 'Preguntas' : 'Questions'}
             </h2>
             <p>
-              {lang === 'es' ? (
-                <>Si tienes preguntas sobre la eliminación de datos, contáctanos en <strong>cruzabusiness@gmail.com</strong>.</>
+              {es ? (
+                <>Si tienes preguntas sobre la eliminación de datos, escríbenos a <strong>hello@cruzar.app</strong>.</>
               ) : (
-                <>If you have any questions about data deletion, contact us at <strong>cruzabusiness@gmail.com</strong>.</>
+                <>Questions about data deletion? Contact <strong>hello@cruzar.app</strong>.</>
               )}
             </p>
           </section>
 
         </div>
       </div>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center px-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {es ? 'Confirmar eliminación' : 'Confirm deletion'}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              {es ? (
+                <>Escribe <strong>ELIMINAR</strong> para confirmar. Esto no se puede deshacer.</>
+              ) : (
+                <>Type <strong>DELETE</strong> to confirm. This cannot be undone.</>
+              )}
+            </p>
+            <input
+              type="text"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm text-gray-900 dark:text-gray-100 mb-3"
+              placeholder={es ? 'ELIMINAR' : 'DELETE'}
+            />
+            {errMsg && (
+              <p className="text-xs text-red-600 dark:text-red-400 mb-3">{errMsg}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setConfirmOpen(false); setTyped(''); setErrMsg(null) }}
+                disabled={busy}
+                className="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-semibold"
+              >
+                {es ? 'Cancelar' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={busy || (typed !== 'DELETE' && typed !== 'ELIMINAR')}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-950 disabled:cursor-not-allowed text-white text-sm font-bold"
+              >
+                {busy
+                  ? (es ? 'Eliminando…' : 'Deleting…')
+                  : (es ? 'Eliminar' : 'Delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

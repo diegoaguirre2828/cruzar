@@ -20,7 +20,7 @@ export default function SignupError({ error, reset }: Props) {
           Algo falló creando tu cuenta · Something failed creating your account
         </h1>
         <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug mb-4">
-          Reintenta. Si sigue sin funcionar, escríbenos a cruzabusiness@gmail.com. · Try again. If it keeps failing, email us at cruzabusiness@gmail.com.
+          Reintenta. Si sigue sin funcionar, escríbenos a hello@cruzar.app. · Try again. If it keeps failing, email us at hello@cruzar.app.
         </p>
         <div className="flex flex-col gap-2">
           <button onClick={reset} className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold active:scale-[0.98] transition-transform">

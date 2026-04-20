@@ -74,3 +74,36 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ ok: true })
 }
+
+// DELETE — in-app account deletion (Apple Guideline 5.1.1(v)).
+// Wipes user-scoped data, anonymizes community reports (preserves
+// aggregate history per /data-deletion "What May Be Retained"), and
+// removes the auth user via service-role admin API.
+export async function DELETE() {
+  const cookieStore = await cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => cookieStore.getAll() } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const db = getServiceClient()
+  const uid = user.id
+
+  await db.from('push_subscriptions').delete().eq('user_id', uid)
+  await db.from('alert_preferences').delete().eq('user_id', uid)
+  await db.from('saved_crossings').delete().eq('user_id', uid)
+  await db.from('subscriptions').delete().eq('user_id', uid)
+  await db.from('crossing_reports').update({ user_id: null }).eq('user_id', uid)
+  await db.from('exchange_rate_reports').update({ user_id: null }).eq('user_id', uid)
+  await db.from('profiles').delete().eq('id', uid)
+
+  const { error: authErr } = await db.auth.admin.deleteUser(uid)
+  if (authErr) {
+    return NextResponse.json({ error: authErr.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}
