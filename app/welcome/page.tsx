@@ -95,6 +95,42 @@ function WelcomeInner() {
     }
   }, [user, authLoading, router, params])
 
+  // Fire signup_complete funnel event ONCE per user on first /welcome visit.
+  // Previously this was only fired from signup/page.tsx:179 inside the
+  // password flow. Google OAuth / magic-link / phone OTP signups all land
+  // on /welcome without passing through that code path, so the event
+  // never fired for them. After the 2026-04-18 signup compression pushed
+  // everyone to Google, signup_complete stopped firing entirely — making
+  // funnel conversion look like a cliff even though real signups were
+  // steady (per profiles table).
+  //
+  // localStorage flag scoped by user.id so returning users don't re-fire.
+  useEffect(() => {
+    if (!user?.id || typeof window === 'undefined') return
+    const flagKey = `cruzar_signup_complete_${user.id}`
+    try {
+      if (localStorage.getItem(flagKey)) return
+      // same shape as signup/page.tsx trackFunnel() — sessionId + referrer
+      // included so the event joins the rest of the funnel cleanly.
+      const sessionId = sessionStorage.getItem('cruzar_sid') || (() => {
+        const id = Math.random().toString(36).slice(2)
+        sessionStorage.setItem('cruzar_sid', id)
+        return id
+      })()
+      fetch('/api/funnel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'signup_complete',
+          page: '/welcome',
+          referrer: document.referrer || null,
+          sessionId,
+        }),
+      }).catch(() => {})
+      localStorage.setItem(flagKey, '1')
+    } catch { /* no-op — localStorage disabled or similar */ }
+  }, [user?.id])
+
   // Reversed-step routing logic — matches the new order.
   //
   //   - Already running standalone → they installed already. Check if
