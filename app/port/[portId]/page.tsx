@@ -6,6 +6,15 @@ import type { Metadata } from 'next'
 import { getPortMeta } from '@/lib/portMeta'
 import { slugForPort } from '@/lib/portSlug'
 
+// Live wait times must not be Next-cached. Without this, the `port`
+// object passed into PortDetailClient can go stale for minutes after a
+// deploy, and the hero shows a wait time that disagrees with anything
+// the client-side SW/fetcher loads afterwards. Users read that as "the
+// app is lying about the number." Force-dynamic guarantees the CBP
+// fetch runs on every request. Already what /api/ports does.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface Props {
   params: Promise<{ portId: string }>
 }

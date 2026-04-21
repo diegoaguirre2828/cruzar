@@ -882,8 +882,17 @@ export function PortDetailClient({ port, portId }: Props) {
       {canAccess(tier, 'ai_predictions') ? (
         predictionChartData.length > 0 && (() => {
           const nowLabel = predictionChartData[0]?.time
-          const nowWait = predictionChartData[0]?.predicted as number | null
-          const waitColor = nowWait == null ? '#6b7280' : nowWait <= 20 ? '#22c55e' : nowWait <= 45 ? '#f59e0b' : '#ef4444'
+          // Show the LIVE CBP number as the "now" reference, and the
+          // historical average for the current hour as the "typical"
+          // comparison underneath. Previously this card pulled
+          // predictionChartData[0].predicted (historical average) and
+          // labeled it "Estimated wait now" — which diverged from the
+          // hero's live `port.vehicle` and made users distrust both
+          // numbers. Live is authoritative; the pattern is context.
+          const liveWait = port.vehicle
+          const typicalNow = predictionChartData[0]?.predicted as number | null
+          const liveColor = liveWait == null ? '#6b7280' : liveWait <= 20 ? '#22c55e' : liveWait <= 45 ? '#f59e0b' : '#ef4444'
+          const diff = liveWait != null && typicalNow != null ? liveWait - typicalNow : null
           return (
             <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -891,12 +900,25 @@ export function PortDetailClient({ port, portId }: Props) {
                 <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Beta</span>
               </div>
 
-              {/* Estimated wait now */}
-              {nowWait != null && (
-                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl" style={{ backgroundColor: `${waitColor}18`, border: `1px solid ${waitColor}40` }}>
-                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: waitColor }} />
+              {/* Live now + typical-for-this-hour comparison. Same
+                  `port.vehicle` that powers the hero — single source
+                  of truth for "now." */}
+              {liveWait != null && (
+                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl" style={{ backgroundColor: `${liveColor}18`, border: `1px solid ${liveColor}40` }}>
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: liveColor }} />
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                    {es ? 'Espera estimada ahora: ' : 'Estimated wait now: '}<span className="font-bold" style={{ color: waitColor }}>{nowWait} min</span>
+                    {es ? 'En vivo ahora: ' : 'Live now: '}<span className="font-bold" style={{ color: liveColor }}>{liveWait} min</span>
+                    {typicalNow != null && (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {' · '}
+                        {es ? `típico a esta hora: ${typicalNow} min` : `typical for this hour: ${typicalNow} min`}
+                        {diff != null && Math.abs(diff) >= 5 && (
+                          <span className={`ml-1 font-bold ${diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                            ({diff > 0 ? '+' : ''}{diff})
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </span>
                 </div>
               )}
@@ -907,16 +929,18 @@ export function PortDetailClient({ port, portId }: Props) {
                   <XAxis dataKey="time" tick={{ fontSize: 10 }} interval={3} />
                   <YAxis tick={{ fontSize: 10 }} unit=" min" width={50} domain={[0, 'auto']} />
                   <Tooltip
-                    formatter={(value) => [`${value} min`, 'Est. wait']}
+                    formatter={(value) => [`${value} min`, es ? 'Típico' : 'Typical']}
                     contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
                   />
                   {nowLabel && (
-                    <ReferenceLine x={nowLabel} stroke="#94a3b8" strokeDasharray="4 2" label={{ value: 'Now', fontSize: 9, fill: '#94a3b8', position: 'insideTopRight' }} />
+                    <ReferenceLine x={nowLabel} stroke="#94a3b8" strokeDasharray="4 2" label={{ value: es ? 'Ahora' : 'Now', fontSize: 9, fill: '#94a3b8', position: 'insideTopRight' }} />
                   )}
-                  <Line type="monotone" dataKey="predicted" stroke="#8b5cf6" strokeWidth={2.5} dot={false} name="Est. wait" />
+                  <Line type="monotone" dataKey="predicted" stroke="#8b5cf6" strokeWidth={2.5} dot={false} name={es ? 'Típico' : 'Typical'} />
                 </LineChart>
               </ResponsiveContainer>
-              <p className="text-xs text-gray-400 mt-2">Based on historical patterns for this crossing</p>
+              <p className="text-xs text-gray-400 mt-2">
+                {es ? 'La línea muestra el promedio histórico por hora. La espera real en vivo está arriba.' : 'The line shows historical average by hour. Live actual wait is shown above.'}
+              </p>
             </div>
           )
         })()
