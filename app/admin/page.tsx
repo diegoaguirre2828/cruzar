@@ -495,6 +495,35 @@ export default function AdminPage() {
     }
   }
 
+  // Generic cron registrar for any /api/cron/* route. POSTs to the
+  // /api/admin/register-cron companion endpoint which wraps cron-job.org's
+  // v1 API. One-off jobs like the camera-vision scanner ship through
+  // here instead of ever asking Diego to paste a URL manually.
+  const [registerStatus, setRegisterStatus] = useState<string | null>(null)
+  const [registering, setRegistering] = useState(false)
+  async function registerCustomCron(spec: { path: string; title: string; schedule: Record<string, unknown> }) {
+    if (!cronApiKey.trim()) { setRegisterStatus('Paste your cron-job.org API key above first'); return }
+    setRegistering(true)
+    setRegisterStatus(null)
+    try {
+      const res = await fetch('/api/admin/register-cron', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cronApiKey: cronApiKey.trim(), ...spec }),
+      })
+      const data = await res.json()
+      if (res.ok && data.ok) {
+        setRegisterStatus(`✅ Registered "${spec.title}" (job ${data.jobId})`)
+      } else {
+        setRegisterStatus(`⚠️ Failed: ${data.error || `HTTP ${res.status}`}`)
+      }
+    } catch (err) {
+      setRegisterStatus(`⚠️ ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      setRegistering(false)
+    }
+  }
+
   function copyCaption() {
     navigator.clipboard.writeText(caption)
     setCopied(true)
@@ -1076,6 +1105,36 @@ export default function AdminPage() {
                           <p>⚠️ {cronCreateStatus.created} created, {cronCreateStatus.failed} failed</p>
                           {cronCreateStatus.firstError && <p className="mt-1 font-mono font-normal break-all">{cronCreateStatus.firstError}</p>}
                         </>}
+                  </div>
+                )}
+              </div>
+
+              {/* One-click registration for specific crons ships with the app.
+                  Reuses the cronApiKey pasted above. Add new buttons here
+                  whenever a new /api/cron/* route is shipped — never tell
+                  Diego to configure the schedule by hand again. */}
+              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mb-5">
+                <p className="text-xs font-bold text-indigo-800 mb-1">⚡ One-click cron registrar</p>
+                <p className="text-xs text-indigo-700 mb-3">
+                  Uses the cron-job.org API key you pasted above. Registers the job directly — no manual cron-job.org clicks.
+                </p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => registerCustomCron({
+                      path: '/api/cron/analyze-bridge-cameras',
+                      title: '📸 Cruzar — Camera vision every 15 min',
+                      // Every 15 min (0/15/30/45), every day, UTC.
+                      schedule: { timezone: 'UTC', hours: [-1], minutes: [0, 15, 30, 45], mdays: [-1], months: [-1], wdays: [-1] },
+                    })}
+                    disabled={registering || !cronApiKey.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors text-left px-4"
+                  >
+                    📸 Register camera-vision cron (every 15 min)
+                  </button>
+                </div>
+                {registerStatus && (
+                  <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${registerStatus.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    {registerStatus}
                   </div>
                 )}
               </div>
