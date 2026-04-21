@@ -2,30 +2,22 @@
 
 URL: https://www.reddit.com/r/UTRGV/submit
 
-Post Sun night (8-10pm CT) or Mon morning — students checking sub before the week.
+Sun night 8–10pm CT or Mon morning.
 
 ## Title
 
-[Made by a UTRGV student] Live border wait app for everyone who commutes to MX for pharmacy/dental/family — free, no login needed
+UTRGV student here — built a free border wait app for anyone who crosses to MX
 
 ## Body
 
-Hey Vaqueros,
+hey Vaqueros.
 
-If you cross to Reynosa / Nuevo Progreso / Matamoros for dental, pharmacy, barbershop, family, or anything else — **[cruzar.app](https://cruzar.app)** is live and free.
+if you cross to Reynosa / Matamoros / Nuevo Progreso for pharmacy, dental, family, whatever — built something for you:
 
-I'm a student here too (bio minor, CS vibes). Built this because I was sick of guessing. It shows:
+cruzar.app — shows the live wait at every bridge, every 15 min from the CBP feed. free, no login.
 
-- Real-time wait at Hidalgo, Pharr, Anzaldúas, Progreso, Donna, all of them
-- Map view with color-coded dots (green/yellow/red)
-- Community reports from people who just crossed
-- Live exchange rates from real casas de cambio near each puente
-- Optional alerts: "tell me when Pharr drops below 30 min"
+i'm a student here too, bio minor. built it because i was sick of guessing before leaving campus.
 
-No login required for the basics. 3 months of Pro free if you add it to your home screen (iOS: tap share → Add to Home Screen / Android: Chrome auto-prompts).
+if you commute and cross, please tap "report" when you do. one tap, helps the next car in line.
 
-If you commute to school OR to MX, I'd really appreciate a report when you cross — takes one tap. More reports = better data for everyone.
-
-Happy to answer anything — it's a solo project so you'll hear from me directly.
-
-— Diego (UTRGV)
+— Diego

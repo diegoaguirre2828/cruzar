@@ -31,29 +31,18 @@ const CHANNELS: Channel[] = [
     color: '#ff4500',
     windowTiming: 'Tue–Thu · 10am–1pm CT (commuter lunch scroll)',
     submitUrl: 'https://www.reddit.com/r/rgv/submit',
-    title: 'I built a free live border wait-time app for us — cruzar.app (20yo UTRGV student, born and raised in the Valle)',
-    body: `Hola Valluco/as,
+    title: 'built an app for the puentes — cruzar.app',
+    body: `got tired of scrolling filas de los puentes on FB every morning guessing if hidalgo was moving, so i built one.
 
-I got tired of scrolling "Filas de los Puentes" on FB every morning guessing if Hidalgo was moving, so over the last few months I built **[cruzar.app](https://cruzar.app)** — live wait times for every crossing from Brownsville to Tijuana, refreshed every 15 minutes from the CBP public API, plus community reports when someone just crossed.
+cruzar.app — live wait time at every bridge, refreshed every 15 min from the CBP feed. free, no login to check the number.
 
-It's **free** for regular use:
-- Live wait at every bridge, with a map
-- Bridge cameras when a city has a public feed (Laredo, Pharr, McAllen)
-- Community reports — if you just crossed, tap "report" and help the next person in line
-- Alerts: pick your bridge, set a threshold, Cruzar pings you when it drops below
-- Live exchange rate from casas de cambio near each puente (crowdsourced)
+i'm 20, UTRGV, solo project. not selling anything.
 
-Built in the Valle, for the Valle. No affiliation with CBP or any government.
+one ask — if you cross, tap "report" when you do. the app's only as good as the people in it.
 
-Two things I need help with honestly:
-1. **Reports** — if you cross, please report. The app is only as useful as the people in it.
-2. **Southbound** — I just added southbound reports because CBP only publishes northbound. If you cross INTO Mexico, please report that too so I can build out the reverse feed.
+also just added southbound reports since CBP only publishes northbound. if you cross into MX, those help the next person going the same direction.
 
-If anyone here commutes through Pharr / Hidalgo / Anzaldúas / Roma / Progreso and wants a tracking link that'll auto-ping your threshold, hit the alert button on your bridge's page.
-
-Not selling anything. Not VC-backed. Single cat in the RGV trying to make one thing that works. Would love feedback — brutal is fine.
-
-— Diego`,
+roast welcome.`,
   },
   {
     id: 'twitter',
@@ -65,50 +54,46 @@ Not selling anything. Not VC-backed. Single cat in the RGV trying to make one th
     submitUrl: 'https://twitter.com/compose/tweet',
     title: 'Thread · 6 tweets',
     body: `Tweet 1:
-i'm 20, live in the Rio Grande Valley, and spent the last 6 months building a live border wait-time app because Facebook groups were the only alternative.
+i'm 20, live in the RGV, spent the last 6 months building a live border wait-time app because the only alternative was scrolling a Facebook group every morning.
 
-tonight i shipped a southbound data feed that doesn't exist anywhere else.
-
-🧵 what i built, what it cost, what's next 👇
+tonight i shipped something that doesn't exist anywhere else. 🧵
 
 ---
 
 Tweet 2:
-Cruzar (cruzar.app) shows the live wait at every US–MX bridge, every 15 minutes, from the CBP public feed. ~1.4M RGV border crossers daily and the only prior tool was scrolling a Facebook group.
+cruzar.app — live wait at every US–MX bridge, every 15 min from the CBP public feed.
 
 ---
 
 Tweet 3:
-killer feature i just shipped: southbound community reports.
+the new thing: southbound community reports.
 
-CBP only publishes **northbound** wait times. half the market (people crossing INTO MX) had no live data anywhere. Cruzar now accepts reports with a direction flag. the feed becomes the only source.
+CBP only publishes northbound. half the market (going INTO MX) has no live data anywhere. cruzar now accepts reports with a direction flag. the feed becomes the source.
 
 ---
 
 Tweet 4:
-stack: next.js 16, supabase, vercel, web push, stripe.
-solo build. no VC. no team.
-$19.99/mo trucking tier is the business lane — tracking link the dispatcher pastes into WhatsApp, customer sees live status + current border wait.
+stack: next.js 16, supabase, vercel, stripe.
+solo. no VC.
+$19.99/mo trucking tier — tracking link the dispatcher pastes into whatsapp, customer sees live status + border wait.
 
 ---
 
 Tweet 5:
-the regional-builder arc matters to me more than the scale play.
-
-i'm not trying to be Samsara. i'm trying to be the one thing a RGV commuter or a 5-truck Laredo dispatcher actually uses every morning.
+not trying to be samsara.
+trying to be the thing a RGV commuter or a 5-truck Laredo dispatcher actually uses every morning.
 
 ---
 
-Tweet 6 (CTA):
-free for commuters.
-trucking tier 14-day trial, no card.
+Tweet 6:
+free for commuters. trucking tier 14-day trial, no card.
 
-if you're in the Valle and you cross — please report when you do. the app is only as good as the people in it.
+if you cross — please report when you do. the app's only as good as the people in it.
 
 cruzar.app
 
 — Diego`,
-    notes: 'Post as a thread — paste tweet 1, hit "add", paste tweet 2, repeat. Each break (---) = new tweet.',
+    notes: 'Post as a thread — paste tweet 1, hit "add", paste tweet 2, repeat. Each --- = new tweet.',
   },
   {
     id: 'show-hn',
@@ -118,24 +103,18 @@ cruzar.app
     color: '#ff6600',
     windowTiming: 'Mon–Wed · 6:30–8:00am PT (11:30am–1pm UTC). Do NOT post on weekends.',
     submitUrl: 'https://news.ycombinator.com/submit',
-    title: 'Show HN: Cruzar – live US-Mexico border wait times, built for my region (RGV)',
+    title: 'Show HN: Cruzar – live US-Mexico border wait times',
     body: `URL field: https://cruzar.app
 
-Text field (usually left blank — include if you want context):
+Text field (optional — can leave blank):
 
-I'm 20, live in the Rio Grande Valley, and got tired of scrolling Facebook groups every morning to guess whether the bridge to Reynosa had cleared. CBP publishes wait times at https://bwt.cbp.gov/api/bwtnew but nobody consumer-facing was really using the feed well for my region.
+Solo build from the Rio Grande Valley. CBP publishes wait times at https://bwt.cbp.gov/api/bwtnew but nothing consumer-facing was using the feed well for my region.
 
-Cruzar is the thing I wanted:
+Cruzar pulls it every 15 min, adds community reports, alerts, bridge cameras where cities publish them, and a $19.99/mo dispatcher tier with a customer-facing tracking URL.
 
-- Every US-MX crossing, live, refreshed every 15 minutes from the CBP API
-- Community reports when people actually cross (time-stamped, optionally anonymized)
-- Alerts: pick a bridge and a threshold, web push or email when the wait drops below it
-- Map view, language toggle (ES/EN), exchange rates near each crossing
-- A $19.99/mo dispatcher tier with a customer-facing tracking URL — pastes into WhatsApp, consignee sees live status + current border wait + ETA
+Stack: Next.js 16 / Supabase / Vercel / Stripe. Happy to take critique on architecture or positioning.
 
-Stack: Next.js 16 / Supabase / Vercel / cron-job.org → Vercel cron (migrated this week). A cron fetches CBP every 15 min. I'm solo, no VC, no team. The real competitor is a pile of FB groups and I'm trying to replace them one feature at a time.
-
-Happy to take critique on the architecture or the positioning. The one non-obvious thing I'm proudest of: southbound reports. CBP only publishes northbound, so there's been no data source for anyone crossing INTO Mexico. Cruzar now accepts community reports with a direction flag, and the plan is that those become the only live feed for southbound travelers.`,
+The non-obvious thing I'm proudest of: southbound community reports. CBP only publishes northbound, so there's been no live data for the half of the market crossing INTO Mexico. Direction flag + community reports = the only feed.`,
     notes: 'After posting, DO NOT touch it for 4 hours. Comment on replies, but no self-bumps.',
   },
   {
@@ -197,26 +176,18 @@ Ask me anything about the stack (Next.js 16 / Supabase / Vercel) or the regional
     color: '#ff4500',
     windowTiming: 'Sun night 8–10pm CT or Mon morning',
     submitUrl: 'https://www.reddit.com/r/UTRGV/submit',
-    title: '[Made by a UTRGV student] Live border wait app for everyone who commutes to MX for pharmacy/dental/family — free, no login needed',
-    body: `Hey Vaqueros,
+    title: 'UTRGV student here — built a free border wait app for anyone who crosses to MX',
+    body: `hey Vaqueros.
 
-If you cross to Reynosa / Nuevo Progreso / Matamoros for dental, pharmacy, barbershop, family, or anything else — **[cruzar.app](https://cruzar.app)** is live and free.
+if you cross to Reynosa / Matamoros / Nuevo Progreso for pharmacy, dental, family, whatever — built something for you:
 
-I'm a student here too (bio minor, CS vibes). Built this because I was sick of guessing. It shows:
+cruzar.app — shows the live wait at every bridge, every 15 min from the CBP feed. free, no login.
 
-- Real-time wait at Hidalgo, Pharr, Anzaldúas, Progreso, Donna, all of them
-- Map view with color-coded dots (green/yellow/red)
-- Community reports from people who just crossed
-- Live exchange rates from real casas de cambio near each puente
-- Optional alerts: "tell me when Pharr drops below 30 min"
+i'm a student here too, bio minor. built it because i was sick of guessing before leaving campus.
 
-No login required for the basics. 3 months of Pro free if you add it to your home screen (iOS: tap share → Add to Home Screen / Android: Chrome auto-prompts).
+if you commute and cross, please tap "report" when you do. one tap, helps the next car in line.
 
-If you commute to school OR to MX, I'd really appreciate a report when you cross — takes one tap. More reports = better data for everyone.
-
-Happy to answer anything — it's a solo project so you'll hear from me directly.
-
-— Diego (UTRGV)`,
+— Diego`,
   },
   {
     id: 'reddit-brownsville',
@@ -226,22 +197,14 @@ Happy to answer anything — it's a solo project so you'll hear from me directly
     color: '#ff4500',
     windowTiming: 'Thu · 10am CT',
     submitUrl: 'https://www.reddit.com/r/brownsville/submit',
-    title: 'I built a free border-wait app — Los Tomates, Veterans, Gateway. Solo dev, would love Brownsville reports',
-    body: `Hola,
+    title: 'built a free app for the puentes — Gateway, Veterans, Los Tomates',
+    body: `cruzar.app — live wait at every crossing, every 15 min from the CBP feed. free, no login.
 
-**[cruzar.app](https://cruzar.app)** — live wait times for every US–MX crossing, refreshed every 15 minutes from the CBP public feed. Free, no login needed to check the number. I'm a solo RGV builder, not VC-anything.
+solo dev from McAllen, not selling anything.
 
-**Brownsville specifically:**
-- Gateway International + Veterans + Los Tomates + Gateway to Americas all live
-- Community reports: if you just crossed, one tap tells everyone else
-- Live camera feeds where the city publishes one
-- Southbound reports (new) — CBP only publishes northbound, so I'm filling the gap with community data
+if you cross through brownsville, tap "report" when you do — those reports help the next car in line. also just added southbound reports since CBP only publishes northbound.
 
-If anyone runs trucks through here, there's a new $19.99/mo Business plan with a dispatcher→customer tracking link (paste in WhatsApp, customer sees the live status). 14-day free trial, no card. But the whole free version is the main point — just a useful thing for the border.
-
-Would love any feedback, bug reports, or roast.
-
-— Diego`,
+roast welcome.`,
   },
   {
     id: 'reddit-laredo',
@@ -251,22 +214,14 @@ Would love any feedback, bug reports, or roast.
     color: '#ff4500',
     windowTiming: 'Thu · 10am CT (post ~30min after Brownsville to avoid mod cross-flag)',
     submitUrl: 'https://www.reddit.com/r/Laredo/submit',
-    title: 'I built a free border-wait app — works for World Trade, Lincoln, Colombia, and Laredo IV. Solo dev, would love Laredo reports',
-    body: `Hola,
+    title: 'built a free app for the puentes — all 4 Laredo crossings',
+    body: `cruzar.app — live wait at World Trade, Lincoln, Colombia, Laredo IV. every 15 min from the CBP feed. free, no login.
 
-**[cruzar.app](https://cruzar.app)** — live wait times for every US–MX crossing, refreshed every 15 minutes from the CBP public feed. Free, no login needed to check the number. I'm a solo RGV builder, not VC-anything.
+solo dev from McAllen.
 
-**Laredo specifically:**
-- All 4 Laredo crossings tracked with SENTRI/commercial lane split (World Trade, Lincoln / Gateway, Colombia, Laredo IV)
-- Community reports: if you just crossed, one tap tells everyone else
-- Live camera feeds where the city publishes one
-- Southbound reports (new) — CBP only publishes northbound, so I'm filling the gap with community data
+if you cross through laredo, tap "report" when you do. just added southbound reports since CBP only publishes northbound.
 
-If anyone runs trucks through here, there's a new $19.99/mo Business plan with a dispatcher→customer tracking link (paste in WhatsApp, customer sees the live status). 14-day free trial, no card. But the whole free version is the main point — just a useful thing for the border.
-
-Would love any feedback, bug reports, or roast.
-
-— Diego`,
+roast welcome.`,
   },
   {
     id: 'news-pitch',
