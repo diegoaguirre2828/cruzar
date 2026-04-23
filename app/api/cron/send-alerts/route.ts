@@ -10,46 +10,6 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   )
 }
 
-async function sendEmail(email: string, portName: string, portId: string, wait: number, threshold: number) {
-  if (!process.env.RESEND_API_KEY) return
-  const subject = `🌉 ${portName} bajó a ${wait} min · dropped to ${wait} min`
-  const preheader = `${portName}: ${wait} min · debajo de tu umbral de ${threshold} min · below your ${threshold}-min threshold`
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL || 'Cruzar Alerts <onboarding@resend.dev>',
-      to: [email],
-      subject,
-      html: `
-        <div style="font-family:-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
-          <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
-          <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">🌉 Alerta · Alert</h2>
-          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;margin-bottom:20px;">
-            <p style="margin:0;font-size:16px;font-weight:600;color:#166534;">${portName} está en ${wait} min</p>
-            <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:#166534;">${portName} is now ${wait} min</p>
-            <p style="margin:8px 0 0;font-size:13px;color:#16a34a;">Debajo de tu umbral de ${threshold} min · Below your ${threshold}-min threshold</p>
-          </div>
-          <a href="https://cruzar.app/port/${encodeURIComponent(portId)}"
-             style="display:inline-block;background:#111827;color:white;text-decoration:none;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;">
-            Ver en vivo · View live →
-          </a>
-          <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">
-            Recibes esto porque pusiste una alerta en Cruzar · You're receiving this because you set a wait alert on Cruzar.
-            <a href="https://cruzar.app/dashboard" style="color:#6b7280;">Manage alerts · Ver alertas</a>
-          </p>
-        </div>
-      `,
-    }),
-  })
-  if (!res.ok) {
-    throw new Error(`Resend ${res.status}: ${await res.text()}`)
-  }
-}
-
 async function sendPush(userId: string, portName: string, portId: string, wait: number) {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return
   const db = getServiceClient()
@@ -152,16 +112,6 @@ export async function GET(req: NextRequest) {
       if (!latest[r.port_id]) latest[r.port_id] = r
     }
 
-    // Batch fetch all users upfront — avoids N+1 query per alert
-    const uniqueUserIds = [...new Set(alerts.map(a => a.user_id))]
-    const userMap: Record<string, { email?: string }> = {}
-    await Promise.all(
-      uniqueUserIds.map(async (uid) => {
-        const { data: { user } } = await supabase.auth.admin.getUserById(uid)
-        if (user) userMap[uid] = { email: user.email }
-      })
-    )
-
     let sent = 0
 
     for (const alert of alerts) {
@@ -176,9 +126,6 @@ export async function GET(req: NextRequest) {
 
       if (wait === null || wait >= alert.threshold_minutes) continue
 
-      const user = userMap[alert.user_id]
-      if (!user) continue
-
       // Claim the alert atomically BEFORE sending — prevents double-fire
       // if two cron instances run at the same time
       const now = new Date().toISOString()
@@ -192,12 +139,11 @@ export async function GET(req: NextRequest) {
       if (!claimed?.length) continue // another instance already claimed it
 
       const results = await Promise.allSettled([
-        user.email ? sendEmail(user.email, reading.port_name, alert.port_id, wait, alert.threshold_minutes) : null,
         sendPush(alert.user_id, reading.port_name, alert.port_id, wait),
         alert.phone ? sendSms(alert.phone, reading.port_name, alert.port_id, wait) : null,
       ])
       results.forEach((r, i) => {
-        if (r.status === 'rejected') console.error(`Alert send failed [${['email','push','sms'][i]}] user=${alert.user_id}:`, r.reason)
+        if (r.status === 'rejected') console.error(`Alert send failed [${['push','sms'][i]}] user=${alert.user_id}:`, r.reason)
       })
 
       sent++
