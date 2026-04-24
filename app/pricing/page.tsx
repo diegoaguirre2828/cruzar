@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
 import { useTier } from '@/lib/useTier'
 import { useLang } from '@/lib/LangContext'
 import { Check, ArrowLeft } from 'lucide-react'
+import { isIOSAppClient } from '@/lib/platform'
 
 export default function PricingPage() {
   const { user } = useAuth()
@@ -14,6 +15,8 @@ export default function PricingPage() {
   const es = lang === 'es'
   const [loading, setLoading] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const [isIOSApp, setIsIOSApp] = useState(false)
+  useEffect(() => { setIsIOSApp(isIOSAppClient()) }, [])
 
   const PLANS = [
     {
@@ -203,6 +206,12 @@ export default function PricingPage() {
                   >
                     {plan.cta}
                   </Link>
+                ) : isIOSApp ? (
+                  <div className="w-full text-center py-2.5 rounded-xl text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 leading-snug px-3">
+                    {es
+                      ? 'Disponible en cruzar.app'
+                      : 'Available at cruzar.app'}
+                  </div>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(plan.tier!)}

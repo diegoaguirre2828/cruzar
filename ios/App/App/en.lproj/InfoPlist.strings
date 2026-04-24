@@ -1,0 +1,4 @@
+"NSLocationWhenInUseUsageDescription" = "Cruzar uses your location to show the nearest crossing and recognize when you arrive at the bridge.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "To notify you when wait times drop at your favorite crossing, even when the app is closed.";
+"NSUserNotificationsUsageDescription" = "To send you alerts when wait times drop below your threshold at crossings you follow.";
+"CFBundleDisplayName" = "Cruzar";

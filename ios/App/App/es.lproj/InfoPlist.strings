@@ -1,0 +1,4 @@
+"NSLocationWhenInUseUsageDescription" = "Cruzar usa tu ubicación para mostrarte el puente más cercano y reconocer cuando llegas al cruce.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Para avisarte cuando baje la espera en tu cruce favorito, incluso con la app cerrada.";
+"NSUserNotificationsUsageDescription" = "Para enviarte alertas cuando la espera baje de tu umbral en los puentes que sigues.";
+"CFBundleDisplayName" = "Cruzar";
