@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/lib/ThemeContext";
 import { Footer } from "@/components/Footer";
 import { BottomNav } from "@/components/BottomNav";
 import { SWRProvider } from "@/components/SWRProvider";
-import { CruzFab } from "@/components/CruzFab";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ChunkErrorReload } from "@/components/ChunkErrorReload";
 import { LazyGlobalOverlays } from "@/components/LazyGlobalOverlays";
@@ -96,7 +95,6 @@ export default function RootLayout({
             </div>
             <Footer />
             <BottomNav />
-            <CruzFab />
             <OfflineBanner />
             <ChunkErrorReload />
             {/* All non-critical overlays mount idle, after first paint */}
