@@ -9,7 +9,6 @@ import { SWRProvider } from "@/components/SWRProvider";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ChunkErrorReload } from "@/components/ChunkErrorReload";
 import { LazyGlobalOverlays } from "@/components/LazyGlobalOverlays";
-import { RevenueCatInit } from "@/components/RevenueCatInit";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -100,8 +99,6 @@ export default function RootLayout({
             <ChunkErrorReload />
             {/* All non-critical overlays mount idle, after first paint */}
             <LazyGlobalOverlays />
-            {/* Configures RevenueCat inside Capacitor iOS (no-op on web) */}
-            <RevenueCatInit />
           </SWRProvider>
           </LangProvider>
         </ThemeProvider>
