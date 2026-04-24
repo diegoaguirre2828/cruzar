@@ -45,21 +45,73 @@ function DatosPageInner() {
   )
   const [selectedPortId, setSelectedPortId] = useState<string | null>(null)
   const [hourly, setHourly] = useState<HourlyResponse | null>(null)
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
   const loading = portsLoading
 
   useEffect(() => {
     try { localStorage.setItem('cruzar_datos_visited', '1') } catch { /* ignore */ }
   }, [])
 
+  // Detect user location once on mount so we can default the picker to
+  // the nearest bridge instead of an arbitrary first-in-list port.
+  // Mirrors the geolocation pattern used in HeroTriad / HeroLiveDelta —
+  // 4s timeout, low accuracy is fine (we only need region-level), 5min
+  // cache reuse so back-nav doesn't re-prompt.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    const timer = setTimeout(() => { /* fallback: keep userLoc null */ }, 4500)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(timer)
+        setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      },
+      () => clearTimeout(timer),
+      { maximumAge: 5 * 60 * 1000, timeout: 4000, enableHighAccuracy: false },
+    )
+    return () => clearTimeout(timer)
+  }, [])
+
   useEffect(() => {
     if (ports.length > 0 && !selectedPortId) {
       const portFromQuery = searchParams?.get('port')
-      const preferred = portFromQuery && ports.find((p) => p.portId === portFromQuery)
-        ? portFromQuery
-        : ports[0].portId
-      setSelectedPortId(preferred)
+      if (portFromQuery && ports.find((p) => p.portId === portFromQuery)) {
+        setSelectedPortId(portFromQuery)
+        return
+      }
+      // Pick the nearest port to the user via straight-line distance
+      // against portMeta coordinates. Only fires once geolocation lands;
+      // before that, keep selectedPortId null and let the picker render
+      // empty for a moment (better than committing to an arbitrary
+      // ports[0] that the user didn't ask for).
+      if (userLoc) {
+        let nearest: { id: string; d: number } | null = null
+        for (const p of ports) {
+          const meta = getPortMeta(p.portId)
+          if (!meta?.lat || !meta?.lng) continue
+          const dLat = meta.lat - userLoc.lat
+          const dLng = meta.lng - userLoc.lng
+          const d = dLat * dLat + dLng * dLng
+          if (!nearest || d < nearest.d) nearest = { id: p.portId, d }
+        }
+        if (nearest) {
+          setSelectedPortId(nearest.id)
+          return
+        }
+      }
+      // No location yet — fall back to ports[0] only after geolocation
+      // has had a fair shot (3s grace).
     }
-  }, [ports, selectedPortId, searchParams])
+  }, [ports, selectedPortId, searchParams, userLoc])
+
+  // Final fallback: 3s after ports load, if still no selection (no URL,
+  // geolocation denied/timed out, no portMeta coords), commit to ports[0].
+  useEffect(() => {
+    if (ports.length === 0 || selectedPortId) return
+    const fallback = setTimeout(() => {
+      if (!selectedPortId && ports.length > 0) setSelectedPortId(ports[0].portId)
+    }, 3000)
+    return () => clearTimeout(fallback)
+  }, [ports, selectedPortId])
 
   useEffect(() => {
     if (!selectedPortId || !isPro) return
