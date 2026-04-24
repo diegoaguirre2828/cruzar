@@ -265,24 +265,35 @@ export function PortList() {
 
   return (
     <div>
-      {/* Direction toggle */}
-      <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-4">
-        <button
-          onClick={() => setDirection('entering_us')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${direction === 'entering_us' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+      {/* Insurance nudge — moved out of the (removed) ENTERING MEXICO tab
+          so the affiliate revenue path stays visible on the consumer
+          home. Shown to non-business users only. */}
+      {!isBusiness && (
+        <a
+          href="/insurance"
+          className="flex items-center justify-between bg-indigo-600 hover:bg-indigo-700 rounded-2xl px-4 py-3.5 transition-colors mb-3"
         >
-          {t.enteringUS}
-        </button>
-        <button
-          onClick={() => setDirection('entering_mexico')}
-          className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors ${direction === 'entering_mexico' ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
-        >
-          {t.enteringMexico}
-        </button>
-      </div>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🛡️</span>
+            <div>
+              <p className="text-sm font-bold text-white">
+                {lang === 'es' ? '¿Llevas seguro para México?' : 'Do you have Mexico auto insurance?'}
+              </p>
+              <p className="text-xs text-indigo-200">
+                {lang === 'es' ? 'Obligatorio por ley — desde $7/día' : 'Required by law — from $7/day'}
+              </p>
+            </div>
+          </div>
+          <span className="text-white text-sm font-semibold flex-shrink-0 ml-2">
+            {lang === 'es' ? 'Ver →' : 'Get covered →'}
+          </span>
+        </a>
+      )}
 
-      {/* ── ENTERING MEXICO ── */}
-      {direction === 'entering_mexico' && (
+      {/* ── ENTERING MEXICO (legacy block, gated off — direction is
+            forced to 'entering_us' for consumers; southbound stays in
+            the Business pages) ── */}
+      {false && direction === 'entering_mexico' && (
         <div className="space-y-4 mb-4">
 
           {/* Insurance nudge — top of Mexico tab, hidden for business accounts */}
