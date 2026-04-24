@@ -98,7 +98,13 @@ export function BottomNav() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-all duration-150 active:scale-[0.92] relative ${
+            prefetch={true}
+            // Empty onClick + cursor-pointer fights the iOS Safari
+            // "first tap dead" quirk in PWA standalone mode where
+            // <Link> clicks sometimes need a primed click target
+            // before they register.
+            onClick={() => {}}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 cursor-pointer transition-transform duration-100 active:scale-[0.92] relative touch-manipulation ${
               tab.active
                 ? 'text-blue-600 dark:text-blue-400'
                 : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
