@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
+import { AppleButton } from '@/components/AppleButton'
+import { isIOSAppClient } from '@/lib/platform'
 import { PhoneAuthForm } from '@/components/PhoneAuthForm'
 import { useLang } from '@/lib/LangContext'
 import { PHONE_AUTH_ENABLED } from '@/lib/featureFlags'
@@ -424,6 +426,13 @@ export default function SignupPage() {
                 ? 'Los de iPhone — te enseñamos la instalación en 3 tactos. En Android ya la tienen. Los 3 meses de Pro son iguales.'
                 : "iPhone users — we'll walk you through the install in 3 taps. Android already has it. Same 3 months Pro free either way."}
             </p>
+          </div>
+        )}
+
+        {/* Apple Sign-In: iOS-app only (Apple guideline 4.8). */}
+        {isIOSAppClient() && (
+          <div className="mb-3" onClick={() => trackFunnel('signup_method_click', { method: 'apple' })}>
+            <AppleButton label={es ? 'Continuar con Apple' : 'Continue with Apple'} next="/welcome" />
           </div>
         )}
 

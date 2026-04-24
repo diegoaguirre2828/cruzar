@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { GoogleButton } from '@/components/GoogleButton'
+import { AppleButton } from '@/components/AppleButton'
+import { isIOSAppClient } from '@/lib/platform'
 import { PhoneAuthForm } from '@/components/PhoneAuthForm'
 import { useLang } from '@/lib/LangContext'
 import { PHONE_AUTH_ENABLED } from '@/lib/featureFlags'
@@ -106,6 +108,9 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+          {/* Apple Sign-In: iOS-app only (Apple guideline 4.8). Web users
+              keep the Google-first flow that funnel data favors. */}
+          {isIOSAppClient() && <AppleButton label={es ? 'Continuar con Apple' : 'Continue with Apple'} />}
           <GoogleButton label={t.continueWithGoogle} />
 
           <div className="flex items-center gap-3">
