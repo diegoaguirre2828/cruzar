@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
+import { LangToggle } from '@/components/LangToggle'
 
 interface Subsystem {
   key: string
@@ -89,14 +90,17 @@ export default function SystemAuditPage() {
             </Link>
             <h1 className="text-xl font-bold text-slate-100">System Audit</h1>
           </div>
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <LangToggle />
+            <button
+              onClick={refresh}
+              disabled={loading}
+              className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-semibold text-slate-300 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Overall status banner */}

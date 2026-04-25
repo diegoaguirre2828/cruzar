@@ -4,29 +4,39 @@ import Link from 'next/link'
 import { ArrowLeft, ShieldCheck, AlertTriangle, CheckCircle } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
 
-// AFFILIATE LINKS — replace these URLs with your actual affiliate referral URLs from each provider
-// Baja Bound affiliate program: https://www.bajabound.com/affiliate/
-// MexPro affiliate program:     https://www.mexpro.com/en-US/affiliates
-// Oscar Padilla:                contact them at info@mexicaninsurance.com
+// AFFILIATE LINKS — sourced from public NEXT_PUBLIC_ env vars so Diego
+// can update each ref/affiliate URL in the Vercel dashboard without a
+// code deploy. Diego's Baja Bound affiliate account was approved
+// 2026-04-23 — set NEXT_PUBLIC_AFFILIATE_BAJA_BOUND in Vercel to his
+// real tracking URL. The other two are still pending application.
+//
+// Programs:
+//   Baja Bound: https://www.bajabound.com/affiliate/  (APPROVED 2026-04-23)
+//   MexPro:     https://www.mexpro.com/en-US/affiliates
+//   Oscar Padilla: contact them at info@mexicaninsurance.com
+const BAJA_BOUND_URL = process.env.NEXT_PUBLIC_AFFILIATE_BAJA_BOUND || 'https://www.bajabound.com/?utm_source=cruzar&utm_medium=insurance&utm_campaign=app'
+const MEXPRO_URL     = process.env.NEXT_PUBLIC_AFFILIATE_MEXPRO     || 'https://www.mexpro.com/?utm_source=cruzar&utm_medium=insurance&utm_campaign=app'
+const OSCAR_URL      = process.env.NEXT_PUBLIC_AFFILIATE_OSCAR_PADILLA || 'https://www.mexicaninsurance.com/?utm_source=cruzar&utm_medium=insurance&utm_campaign=app'
+
 const PROVIDERS = [
   {
     name: 'Baja Bound',
     description: { en: 'Most popular choice for US residents. Instant online quotes, daily to annual coverage.', es: 'La opción más popular para residentes de EE.UU. Cotizaciones en línea al instante.' },
-    url: 'https://www.bajabound.com/?ref=cruzar', // TODO: replace with your affiliate URL
+    url: BAJA_BOUND_URL,
     badge: { en: 'Most Popular', es: 'Más Popular' },
     badgeColor: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
   },
   {
     name: 'MexPro',
     description: { en: 'Competitive rates, strong customer service. Compare rates across multiple carriers.', es: 'Tarifas competitivas y buen servicio al cliente. Compara entre múltiples aseguradoras.' },
-    url: 'https://www.mexpro.com/?ref=cruzar', // TODO: replace with your affiliate URL
+    url: MEXPRO_URL,
     badge: null,
     badgeColor: '',
   },
   {
     name: 'Oscar Padilla Mexican Insurance',
     description: { en: 'Trusted since 1979. Covers the full Mexican Republic. 24/7 roadside assistance.', es: 'De confianza desde 1979. Cobertura en toda la República. Asistencia en carretera 24/7.' },
-    url: 'https://www.mexicaninsurance.com/?ref=cruzar', // TODO: replace with your affiliate URL
+    url: OSCAR_URL,
     badge: null,
     badgeColor: '',
   },

@@ -16,7 +16,7 @@ export async function GET() {
     { cookies: { getAll: () => cookieStore.getAll() } }
   )
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ items: [] })
+  if (!user) return NextResponse.json({ error: 'Sign in.' }, { status: 401 })
 
   const db = getServiceClient()
   const { data } = await db
