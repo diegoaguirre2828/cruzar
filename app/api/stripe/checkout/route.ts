@@ -27,9 +27,15 @@ export async function POST(req: NextRequest) {
       )
     }
     if (!plan.priceId) {
-      const envName = tier === 'pro' ? 'STRIPE_PRO_PRICE_ID' : 'STRIPE_BUSINESS_PRICE_ID'
+      const envByTier: Record<string, string> = {
+        pro: 'STRIPE_PRO_PRICE_ID',
+        business: 'STRIPE_BUSINESS_PRICE_ID',
+        operator: 'STRIPE_OPERATOR_PRICE_ID',
+        express_cert: 'STRIPE_EXPRESS_CERT_PRICE_ID',
+        intelligence: 'STRIPE_INTELLIGENCE_PRICE_ID',
+      }
       return NextResponse.json(
-        { error: `Payments not configured: ${envName} is missing on the server.` },
+        { error: `Payments not configured: ${envByTier[tier] || 'price ID'} is missing on the server.` },
         { status: 500 }
       )
     }
@@ -37,18 +43,21 @@ export async function POST(req: NextRequest) {
     const stripe = getStripe()
     const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://cruzar.app'
 
+    const isOneTime = plan.mode === 'payment'
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
+      mode: plan.mode,
       payment_method_types: ['card'],
       customer_email: user.email,
       line_items: [{ price: plan.priceId, quantity: 1 }],
       success_url: `${origin}/dashboard?upgraded=${tier}`,
       cancel_url: `${origin}/pricing`,
       metadata: { userId: user.id, tier },
-      subscription_data: {
-        trial_period_days: tier === 'business' ? 14 : 7,
-        metadata: { userId: user.id, tier },
-      },
+      ...(isOneTime ? {} : {
+        subscription_data: {
+          trial_period_days: tier === 'business' ? 14 : tier === 'operator' || tier === 'intelligence' ? 7 : 7,
+          metadata: { userId: user.id, tier },
+        },
+      }),
     })
 
     if (!session.url) {
