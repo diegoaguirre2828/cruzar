@@ -49,8 +49,12 @@ export function detectBrowser(): Browser {
 
 export function detectInstallState(): InstallState {
   if (typeof window === 'undefined') return 'web'
-  // Capacitor injects a global — catches iOS App Store installs (future)
-  if ((window as Window & { Capacitor?: unknown }).Capacitor) return 'capacitor'
+  // @capacitor/core registers a window.Capacitor web-shim on every page that
+  // imports it (we pull it in via @revenuecat/purchases-capacitor in the root
+  // layout), so a truthy check tags every browser as 'capacitor'.
+  // isNativePlatform() returns true only inside the real iOS/Android shell.
+  const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+  if (cap?.isNativePlatform?.()) return 'capacitor'
   // Android TWA exposes a referrer of `android-app://` when launched
   // from Play Store. Also respects the Digital Asset Links verified
   // `navigator.getInstalledRelatedApps` future API.
