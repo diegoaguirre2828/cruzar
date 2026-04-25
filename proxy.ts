@@ -154,6 +154,6 @@ export const config = {
     // /api/saved, /api/profile, /api/reports, /api/stripe/checkout, etc.)
     // still runs through the proxy for session refresh + protected-route
     // guard.
-    '/((?!_next/static|_next/image|favicon\\.ico|\\.well-known|sitemap\\.xml|robots\\.txt|manifest\\.(?:webmanifest|json)|opengraph-image|apple-icon|icon|api/ports|api/reports/recent|api/negocios|api/exchange|api/leaderboard|api/predict|api/predictions|api/widget|api/cron|api/stripe/webhook|api/ingest|api/admin/migrate|api/track/click|api/funnel|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico|\\.well-known|sitemap\\.xml|robots\\.txt|manifest\\.(?:webmanifest|json)|opengraph-image|apple-icon|icon|api/ports|api/reports/recent|api/negocios|api/exchange|api/leaderboard|api/predict|api/predictions|api/widget|api/cron|api/stripe/webhook|api/ingest|api/track/click|api/funnel|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }
