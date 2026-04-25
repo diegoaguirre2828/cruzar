@@ -58,12 +58,18 @@ jobs:
       - name: Capacitor sync (copies webDir + native deps into ios/App)
         run: npx cap sync ios
 
-      - name: Select Xcode (iOS 18+ SDK required for App Store submission)
+      - name: Select Xcode (iOS 26 SDK required after Apple's 2026-04-28 cutoff)
         run: |
-          # macos-15 runner ships Xcode 16.x. Pick the highest available.
-          XCODE_PATH=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          # Apple is forcing iOS 26 SDK / Xcode 26 starting 2026-04-28.
+          # Prefer Xcode 26 if available, fall back to highest 16.x as
+          # transition cushion, then fail loudly if neither found.
+          XCODE_PATH=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
           if [ -z "$XCODE_PATH" ]; then
-            echo "::error::No Xcode 16.x found on runner"
+            XCODE_PATH=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+            echo "::warning::Xcode 26 not on runner — falling back to Xcode 16.x. Apple stops accepting iOS 18 SDK after 2026-04-28."
+          fi
+          if [ -z "$XCODE_PATH" ]; then
+            echo "::error::No Xcode 16.x or 26.x found on runner"
             ls -d /Applications/Xcode*.app
             exit 1
           fi
