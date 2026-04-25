@@ -79,13 +79,13 @@ export default function IosInstallPage() {
           </div>
           <h1 className="text-3xl sm:text-4xl font-black leading-[1.05]">
             {es
-              ? '3 tactos pa\' tener Cruzar en tu iPhone'
-              : '3 taps to get Cruzar on your iPhone'}
+              ? '3 tactos pa\' agregar Cruzar a tu iPhone'
+              : '3 taps to add Cruzar to your iPhone'}
           </h1>
           <p className="text-sm text-amber-50 leading-snug">
             {es
-              ? 'En Android ya tienen la app con un tap. En iPhone son 3 — te lo enseñamos. Te ganas 3 meses de Pro gratis al terminar.'
-              : 'Android users already got the app with one tap. iPhone takes 3 — we\'ll walk you through it. You get 3 months of Pro free when you finish.'}
+              ? 'En Android lo agregan con un tap. En iPhone son 3 — te lo enseñamos. Te ganas 3 meses de Pro gratis al terminar.'
+              : 'Android adds it with one tap. iPhone takes 3 — we\'ll walk you through it. You get 3 months of Pro free when you finish.'}
           </p>
         </header>
 

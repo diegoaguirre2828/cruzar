@@ -85,19 +85,50 @@ export function ClaimProInPwa() {
         setClaiming(false)
         return
       }
-      if (data.ok) {
+
+      // Three response shapes from /api/user/claim-pwa-pro:
+      //   { ok:true, granted:true,  days, pro_via_pwa_until }   → real grant
+      //   { ok:true, granted:false, pending:true, next_grant_at } → 24h gate
+      //   { ok:true, granted:false } w/ no pending → already on paid Pro
+      //
+      // Bug fix 2026-04-25: previously this branch wrote
+      // PWA_GRANT_CLAIMED_KEY for ALL data.ok responses, including the
+      // pending one. Result: user taps "Claim" within 24h of install →
+      // server returns pending → client locks the card permanently →
+      // user never makes the second call → never gets Pro. Affected
+      // ~all PWA users on the page (49 PWA installs, only 47 Pro out
+      // of 246 total at time of fix). Now we only write the dedupe
+      // flag on a real grant; pending sets the short dismiss timer
+      // instead so the card returns next session.
+      if (data.granted === true) {
         try { localStorage.setItem(PWA_GRANT_CLAIMED_KEY, String(Date.now())) } catch {}
-        trackEvent('pwa_grant_claimed_manual', {
-          granted: data.granted || false,
-          days: data.days || null,
-        })
-        if (data.granted && data.days) {
+        trackEvent('pwa_grant_claimed_manual', { granted: true, days: data.days || null })
+        if (data.days) {
           window.dispatchEvent(
             new CustomEvent('cruzar:pwa-grant-claimed', { detail: { days: data.days } }),
           )
         }
         setVisible(false)
+        return
       }
+
+      if (data.pending) {
+        trackEvent('pwa_grant_pending', { next_grant_at: data.next_grant_at || null })
+        // Hide for the dismiss window only — card returns next session
+        // so the second (post-24h) call has a path to fire.
+        try { localStorage.setItem(CLAIM_DISMISSED_KEY, String(Date.now())) } catch {}
+        setError(es
+          ? '⏳ Activando tu Pro — vuelve mañana, ya casi.'
+          : '⏳ Activating your Pro — come back tomorrow, almost there.')
+        setClaiming(false)
+        return
+      }
+
+      // ok:true but neither granted nor pending → user already has paid
+      // Pro / Business. Mark claimed so the card doesn't pester them.
+      try { localStorage.setItem(PWA_GRANT_CLAIMED_KEY, String(Date.now())) } catch {}
+      trackEvent('pwa_grant_already_paid')
+      setVisible(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setClaiming(false)

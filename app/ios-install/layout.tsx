@@ -6,22 +6,22 @@ import type { Metadata } from 'next'
 // is the Next 16 App Router way to ship static SEO on a 'use client'
 // page without fighting the compiler.
 export const metadata: Metadata = {
-  title: 'Cruzar on iPhone — 3 taps to install',
-  description: 'Get the free app on your iPhone in 3 taps. No App Store needed.',
+  title: 'Cruzar on iPhone — add to home screen in 3 taps',
+  description: 'Add Cruzar to your iPhone home screen in 3 taps. Works like an app, no App Store install.',
   alternates: {
     canonical: 'https://cruzar.app/ios-install',
   },
   openGraph: {
-    title: 'Cruzar on iPhone — 3 taps to install',
-    description: 'Get the free app on your iPhone in 3 taps. No App Store needed.',
+    title: 'Cruzar on iPhone — add to home screen in 3 taps',
+    description: 'Add Cruzar to your iPhone home screen in 3 taps. Works like an app, no App Store install.',
     url: 'https://cruzar.app/ios-install',
     siteName: 'Cruzar',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cruzar on iPhone — 3 taps to install',
-    description: 'Get the free app on your iPhone in 3 taps. No App Store needed.',
+    title: 'Cruzar on iPhone — add to home screen in 3 taps',
+    description: 'Add Cruzar to your iPhone home screen in 3 taps. Works like an app, no App Store install.',
   },
 }
 
