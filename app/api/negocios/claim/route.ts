@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   // Rate limit — previously unguarded. An attacker could mass-flag
   // every business as claim_pending and flood Diego's moderation
   // queue. Hourly cap 10, burst 3.
-  const rl = checkRateLimit(keyFromRequest(req), 10, 3)
+  const rl = await checkRateLimit(keyFromRequest(req), 10, 3)
   if (!rl.ok) {
     return NextResponse.json(
       { error: 'Too many claim requests. Try again later.' },

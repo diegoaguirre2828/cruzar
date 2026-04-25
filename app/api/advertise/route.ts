@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   // cap 3 — enough for legitimate advertiser inquiries, not enough to
   // abuse.
   const rlKey = keyFromRequest(req)
-  const rl = checkRateLimit(rlKey, 5, 3)
+  const rl = await checkRateLimit(rlKey, 5, 3)
   if (!rl.ok) {
     return NextResponse.json(
       { error: 'Too many submissions. Try again later.' },

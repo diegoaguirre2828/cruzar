@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 // on GET; until that lands we apply a per-IP rate limit so a single
 // origin can't burst a bunch of fake clicks. Tight cap: 30/hr, burst 5.
 export async function POST(req: NextRequest) {
-  const rl = checkRateLimit(keyFromRequest(req), 30, 5)
+  const rl = await checkRateLimit(keyFromRequest(req), 30, 5)
   if (!rl.ok) {
     return NextResponse.json(
       { ok: true },

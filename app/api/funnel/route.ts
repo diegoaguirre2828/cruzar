@@ -20,7 +20,7 @@ import { keyFromRequest, checkRateLimit } from '@/lib/ratelimit'
 
 export async function POST(req: NextRequest) {
   try {
-    const rl = checkRateLimit(keyFromRequest(req), 300, 60)
+    const rl = await checkRateLimit(keyFromRequest(req), 300, 60)
     if (!rl.ok) {
       return NextResponse.json(
         { ok: false, error: 'rate_limited' },

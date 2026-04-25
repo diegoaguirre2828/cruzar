@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   // through the `note` field as a high-urgency push. 6 pings/hour with
   // a burst of 2 is enough for legitimate "heads up" use and tight
   // enough that abusers hit the wall before any victim taps.
-  const rl = checkRateLimit(`circle-ping:${user.id}`, 6, 2)
+  const rl = await checkRateLimit(`circle-ping:${user.id}`, 6, 2)
   if (!rl.ok) {
     return NextResponse.json(
       { error: 'Too many pings. Wait a bit and try again.' },
