@@ -9,6 +9,7 @@ export const POINTS = {
   waiting_mode_bonus: 5,      // extra points when reporting from the crossing (geolocation)
   referral_signup: 15,        // referrer earns when referred user signs up
   referral_report: 10,        // referrer earns when referred user submits first report
+  auto_geofence_crossing: 10, // confirmed auto-detected bridge crossing
 } as const
 
 export interface Badge {

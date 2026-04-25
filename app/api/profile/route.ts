@@ -48,9 +48,13 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json()
   const allowed = ['display_name', 'full_name', 'company', 'role', 'bio']
-  const updates: Record<string, string> = {}
+  const updates: Record<string, string | boolean> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]
+  }
+  // Boolean settings — currently just the auto-crossing opt-in.
+  if (typeof body.auto_geofence_opt_in === 'boolean') {
+    updates.auto_geofence_opt_in = body.auto_geofence_opt_in
   }
 
   // Validate display_name against the same rules as auto-generated
@@ -59,11 +63,12 @@ export async function PATCH(req: NextRequest) {
   // rejected so users can't smuggle spaces, emojis, or offensive
   // characters into the public leaderboard.
   if (updates.display_name !== undefined) {
-    const err = validateHandle(updates.display_name)
+    const handle = updates.display_name as string
+    const err = validateHandle(handle)
     if (err) {
       return NextResponse.json({ error: err }, { status: 400 })
     }
-    updates.display_name = normalizeHandle(updates.display_name)
+    updates.display_name = normalizeHandle(handle)
   }
 
   const db = getServiceClient()

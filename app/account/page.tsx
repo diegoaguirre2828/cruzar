@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/useAuth'
 import { createClient } from '@/lib/auth'
 import { BADGES } from '@/lib/points'
 import { useLang } from '@/lib/LangContext'
-import { ArrowLeft, Save, CreditCard, LogOut, User, Building2, FileText, Trophy } from 'lucide-react'
+import { ArrowLeft, Save, CreditCard, LogOut, User, Building2, FileText, Trophy, Navigation } from 'lucide-react'
 
 export default function AccountPage() {
   const { user, loading: authLoading } = useAuth()
@@ -34,6 +34,8 @@ export default function AccountPage() {
   const [saved, setSaved] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [portalError, setPortalError] = useState('')
+  const [autoOptIn, setAutoOptIn] = useState(false)
+  const [autoOptInSaving, setAutoOptInSaving] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) router.push('/login')
@@ -51,8 +53,21 @@ export default function AccountPage() {
         company:   d.profile?.company || '',
         bio:       d.profile?.bio || '',
       })
+      setAutoOptIn(!!d.profile?.auto_geofence_opt_in)
     })
   }, [user])
+
+  async function toggleAutoOptIn() {
+    const next = !autoOptIn
+    setAutoOptIn(next)
+    setAutoOptInSaving(true)
+    await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auto_geofence_opt_in: next }),
+    })
+    setAutoOptInSaving(false)
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -275,6 +290,47 @@ export default function AccountPage() {
             {saved ? t.profileSaved : saving ? t.savingProfile : t.saveProfile}
           </button>
         </form>
+
+        {/* Auto-crossing detection (opt-in, defaults OFF) */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div className="flex items-start gap-2">
+              <Navigation className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  {lang === 'es' ? 'Rastreo automático de cruce' : 'Auto-crossing detection'}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {lang === 'es'
+                    ? 'Toca "Estoy en la fila" en el puente y la app detecta cuándo cruzas. Datos anónimos — sin tu identidad ni ruta GPS.'
+                    : 'Tap "I\'m in line now" at the bridge and the app detects when you cross. Anonymous — no identity, no GPS trace stored.'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoOptIn}
+              onClick={toggleAutoOptIn}
+              disabled={autoOptInSaving}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                autoOptIn ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  autoOptIn ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <Link
+            href="/privacy#auto-crossing"
+            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            {lang === 'es' ? 'Cómo manejamos estos datos' : 'How we handle this data'}
+          </Link>
+        </div>
 
         {/* Account actions */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">

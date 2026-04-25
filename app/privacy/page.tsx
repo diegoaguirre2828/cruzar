@@ -18,7 +18,7 @@ export default function PrivacyPage() {
             {lang === 'es' ? 'Política de Privacidad' : 'Privacy Policy'}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            {lang === 'es' ? 'Última actualización: 29 de marzo de 2026' : 'Last updated: March 29, 2026'}
+            {lang === 'es' ? 'Última actualización: 25 de abril de 2026' : 'Last updated: April 25, 2026'}
           </p>
         </div>
 
@@ -117,9 +117,47 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          <section id="auto-crossing">
+            <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {lang === 'es'
+                ? '6. Rastreo Automático de Cruce (opcional)'
+                : '6. Auto-Crossing Detection (opt-in)'}
+            </h2>
+            <p>
+              {lang === 'es'
+                ? 'Si activas "Rastreo automático de cruce" en tu cuenta, la app puede detectar cuándo cruzas un puente y registrar el tiempo de espera. Esta función está APAGADA por defecto y solo se activa cuando tú la enciendes.'
+                : 'If you turn on "Auto-crossing detection" in your account, the app can detect when you cross a bridge and record the wait time. This feature is OFF by default and only runs when you turn it on.'}
+            </p>
+            <p className="mt-2">
+              {lang === 'es' ? 'Cuando está activo:' : 'When active:'}
+            </p>
+            <ul className="list-disc pl-4 mt-1 space-y-1">
+              <li>
+                {lang === 'es'
+                  ? 'Tu posición GPS se procesa SOLO en tu dispositivo — nunca se envía ni se guarda en nuestros servidores.'
+                  : 'Your GPS position is processed ONLY on your device — it is never sent to or stored on our servers.'}
+              </li>
+              <li>
+                {lang === 'es'
+                  ? 'Lo único que guardamos es el tiempo entre que tocas "Estoy en la fila" y que cruzas — sin tu identidad y sin tu ruta.'
+                  : 'The only thing we save is the time between you tapping "I\'m in line" and crossing — with no identity and no route attached.'}
+              </li>
+              <li>
+                {lang === 'es'
+                  ? 'Estos datos anónimos mejoran las predicciones de tiempo de espera para todos los usuarios.'
+                  : 'This anonymous data improves wait-time predictions for all users.'}
+              </li>
+              <li>
+                {lang === 'es'
+                  ? 'Puedes apagar el rastreo en cualquier momento desde tu cuenta.'
+                  : 'You can turn tracking off at any time from your account.'}
+              </li>
+            </ul>
+          </section>
+
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? '6. Retención de Datos' : '6. Data Retention'}
+              {lang === 'es' ? '7. Retención de Datos' : '7. Data Retention'}
             </h2>
             <p>
               {lang === 'es'
@@ -130,7 +168,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? '7. Tus Derechos' : '7. Your Rights'}
+              {lang === 'es' ? '8. Tus Derechos' : '8. Your Rights'}
             </h2>
             <p>
               {lang === 'es' ? (
@@ -143,7 +181,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? '8. Menores de Edad' : '8. Children'}
+              {lang === 'es' ? '9. Menores de Edad' : '9. Children'}
             </h2>
             <p>
               {lang === 'es'
@@ -154,7 +192,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {lang === 'es' ? '9. Contacto' : '9. Contact'}
+              {lang === 'es' ? '10. Contacto' : '10. Contact'}
             </h2>
             <p>
               {lang === 'es' ? (
