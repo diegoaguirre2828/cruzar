@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'node:crypto'
 import { getServiceClient } from '@/lib/supabase'
-import { postPhoto, fbPostUrl } from '@/lib/fbGraph'
+import { postPhoto, postVideo, fbPostUrl, fbVideoUrl } from '@/lib/fbGraph'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
@@ -122,7 +122,91 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Step 4: post to Graph API.
+  // Step 4a: decide PHOTO vs VIDEO.
+  // Video preference: if a fresh WaitTimes 4x5/9x16 MP4 exists in
+  // public_assets (rendered by video-generator + uploaded to Vercel Blob)
+  // AND the current cron slot is the evening peak (7 PM CT, when feed
+  // engagement is highest), post the video instead. Photo is the
+  // default for the other 3 slots — keeps daily variety AND fb-publish
+  // works even before the video pipeline is ever exercised.
+  let useVideo = false
+  let videoUrl: string | null = null
+  try {
+    const { data: assetRow } = await db
+      .from('public_assets')
+      .select('value, updated_at')
+      .eq('name', 'video_manifest')
+      .single()
+    const manifest = assetRow?.value as
+      | { videos?: Array<{ url: string; compositionId: string; aspect: string }> }
+      | null
+    const fresh =
+      assetRow?.updated_at &&
+      Date.now() - new Date(assetRow.updated_at).getTime() < 36 * 60 * 60 * 1000
+    if (fresh && manifest?.videos?.length) {
+      // Prefer 4:5 (portrait feed) → 9:16 (Reels) → 1:1 → first available.
+      const preferOrder = ['4x5', '9x16', '1x1']
+      const pick = preferOrder
+        .map(asp => manifest.videos!.find(v => v.compositionId === 'WaitTimes' && v.aspect === asp))
+        .find(Boolean)
+        || manifest.videos.find(v => v.compositionId === 'WaitTimes')
+      if (pick?.url) {
+        // Slot detection: cron-job.org fires at 5:30/11:30/15:30/19:00 CT.
+        // 19:00 CT = "evening" slot. Allow ±90 min tolerance for clock
+        // drift / delayed cron fires.
+        const ctHour = parseInt(
+          new Date().toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/Chicago' }),
+          10,
+        )
+        const isEveningSlot = ctHour >= 18 && ctHour <= 21
+        if (isEveningSlot || force) {
+          useVideo = true
+          videoUrl = pick.url
+        }
+      }
+    }
+  } catch { /* no manifest yet — stay on photo */ }
+
+  // Step 4b: post to Graph API (photo or video).
+  if (useVideo && videoUrl) {
+    const fb = await postVideo({
+      pageId,
+      accessToken: pageToken,
+      videoUrl,
+      description: caption,
+      title: 'Tiempos en los puentes — Cruzar',
+    })
+    if (fb.ok) {
+      await db.from('social_posts').insert({
+        platform: 'facebook_page',
+        caption,
+        caption_hash: hash,
+        video_url: videoUrl,
+        image_kind: 'video',
+        fb_post_id: fb.videoId || null,
+        fb_posted_at: new Date().toISOString(),
+      })
+      return NextResponse.json({
+        ok: true,
+        posted: true,
+        kind: 'video',
+        fbVideoId: fb.videoId,
+        fbVideoUrl: fb.videoId ? fbVideoUrl(pageId, fb.videoId) : null,
+      })
+    }
+    // Video post failed — fall through to photo as fallback so we don't
+    // skip the slot entirely. Log the video error for visibility.
+    await db.from('social_posts').insert({
+      platform: 'facebook_page',
+      caption,
+      caption_hash: hash + '-vfail',
+      video_url: videoUrl,
+      image_kind: 'video',
+      fb_post_error: `video-fallback: ${fb.error || `HTTP ${fb.rawStatus}`}`,
+    })
+  }
+
+  // Step 5: photo path (default + video fallback).
   const fb = await postPhoto({
     pageId,
     accessToken: pageToken,
@@ -130,8 +214,6 @@ export async function GET(req: NextRequest) {
     caption,
   })
 
-  // Step 5: insert the row carrying fb_post_id (or fb_post_error). This is
-  // the row our own dedupe gate (Step 1) checks for in subsequent runs.
   if (fb.ok) {
     await db.from('social_posts').insert({
       platform: 'facebook_page',
@@ -145,6 +227,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       posted: true,
+      kind: 'photo',
       fbPostId: fb.postId,
       fbPostUrl: fb.postId ? fbPostUrl(fb.postId) : null,
     })

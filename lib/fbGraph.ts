@@ -79,6 +79,64 @@ export async function postPhoto(args: PostPhotoArgs): Promise<PostPhotoResult> {
   }
 }
 
+export interface PostVideoArgs {
+  pageId: string
+  accessToken: string
+  // Public URL of an MP4 (Vercel Blob). FB Graph fetches it server-side.
+  videoUrl: string
+  description: string
+  title?: string
+}
+
+export interface PostVideoResult {
+  ok: boolean
+  // The /videos endpoint returns just `id` — that's the video object id.
+  // Note: it's NOT the same composite as /photos `post_id`. The public
+  // URL is https://www.facebook.com/{pageId}/videos/{id}.
+  videoId?: string
+  error?: string
+  rawStatus?: number
+  rawBody?: string
+}
+
+export async function postVideo(args: PostVideoArgs): Promise<PostVideoResult> {
+  const { pageId, accessToken, videoUrl, description, title } = args
+
+  // POST /{page-id}/videos with form-encoded body.
+  // 'file_url' = remote MP4 we host on Vercel Blob; FB pulls it.
+  // 'description' is the caption; 'message' is NOT honored on /videos.
+  // Published immediately by default — no `published=false` needed for
+  // hosted-URL uploads.
+  const body = new URLSearchParams()
+  body.set('file_url', videoUrl)
+  body.set('description', description)
+  if (title) body.set('title', title)
+  body.set('access_token', accessToken)
+
+  const endpoint = `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/videos`
+  const res = await fetch(endpoint, { method: 'POST', body })
+  const text = await res.text()
+
+  let parsed: { id?: string; error?: { message?: string } } = {}
+  try { parsed = JSON.parse(text) } catch { /* keep as text */ }
+
+  if (!res.ok || parsed.error) {
+    return {
+      ok: false,
+      error: parsed.error?.message || `HTTP ${res.status}`,
+      rawStatus: res.status,
+      rawBody: text.slice(0, 500),
+    }
+  }
+
+  return { ok: true, videoId: parsed.id }
+}
+
+// Public FB URL for a video object id on a Page. Used by the admin panel.
+export function fbVideoUrl(pageId: string, videoId: string): string {
+  return `https://www.facebook.com/${pageId}/videos/${videoId}`
+}
+
 export interface PageInsightsArgs {
   pageId: string
   accessToken: string
