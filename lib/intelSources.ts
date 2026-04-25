@@ -20,58 +20,64 @@ export interface IntelSource {
 
 export const INTEL_SOURCES: IntelSource[] = [
   {
-    id: 'cbp-newsroom',
-    url: 'https://www.cbp.gov/newsroom/rss/all/feed',
-    language: 'en',
-    defaultImpact: 'policy',
-    impactKeywords: [
-      { tag: 'cartel',  words: ['cartel', 'sinaloa', 'cjng', 'fentanyl', 'narcotics'] },
-      { tag: 'tariff',  words: ['tariff', 'duty', 'trade enforcement'] },
-      { tag: 'infra',   words: ['port of entry', 'lane closure', 'bridge'] },
-    ],
-  },
-  {
-    id: 'ustr-press',
-    url: 'https://ustr.gov/about-us/policy-offices/press-office/press-releases/rss.xml',
-    language: 'en',
-    defaultImpact: 'tariff',
-    impactKeywords: [
-      { tag: 'policy', words: ['usmca', 'agreement', 'consultation', 'dispute'] },
-    ],
-  },
-  {
-    id: 'milenio-frontera',
-    url: 'https://www.milenio.com/rss/frontera',
-    language: 'es',
-    defaultImpact: 'other',
-    defaultCorridor: 'rgv-laredo',
-    impactKeywords: [
-      { tag: 'cartel',  words: ['cdg', 'cdn', 'cártel', 'narco', 'sicarios', 'enfrentamiento', 'balacera'] },
-      { tag: 'protest', words: ['bloqueo', 'manifestación', 'cierre', 'huelga', 'paro'] },
-      { tag: 'vucem',   words: ['vucem', 'aduanas', 'sat', 'caída del sistema'] },
-      { tag: 'infra',   words: ['puente', 'cruce', 'inspección'] },
-    ],
-  },
-  {
-    id: 'reforma-frontera',
-    url: 'https://www.reforma.com/rss/frontera.xml',
-    language: 'es',
-    defaultImpact: 'other',
-    defaultCorridor: 'rgv-laredo',
-    impactKeywords: [
-      { tag: 'cartel',  words: ['cártel', 'narco', 'enfrentamiento'] },
-      { tag: 'protest', words: ['bloqueo', 'manifestación'] },
-      { tag: 'vucem',   words: ['vucem', 'aduanas'] },
-    ],
-  },
-  {
     id: 'el-financiero-economia',
     url: 'https://www.elfinanciero.com.mx/rss/economia/',
     language: 'es',
     defaultImpact: 'tariff',
     impactKeywords: [
-      { tag: 'tariff',  words: ['arancel', 'comercio'] },
-      { tag: 'policy',  words: ['t-mec', 'sat'] },
+      { tag: 'tariff',   words: ['arancel', 'comercio'] },
+      { tag: 'policy',   words: ['t-mec', 'sat'] },
+      { tag: 'cartel',   words: ['cártel', 'narco'] },
+      { tag: 'protest',  words: ['bloqueo', 'manifestación'] },
+      { tag: 'vucem',    words: ['vucem', 'aduanas'] },
+    ],
+  },
+  {
+    id: 'el-financiero-empresas',
+    url: 'https://www.elfinanciero.com.mx/rss/empresas/',
+    language: 'es',
+    defaultImpact: 'other',
+    impactKeywords: [
+      { tag: 'tariff', words: ['arancel'] },
+      { tag: 'infra',  words: ['puerto', 'logística', 'transporte'] },
+    ],
+  },
+  {
+    id: 'borderreport',
+    url: 'https://www.borderreport.com/feed/',
+    language: 'en',
+    defaultImpact: 'other',
+    defaultCorridor: 'rgv-laredo-elpaso',
+    impactKeywords: [
+      { tag: 'cartel',  words: ['cartel', 'sinaloa', 'cjng', 'fentanyl', 'narcotics', 'kidnap'] },
+      { tag: 'protest', words: ['blockade', 'protest', 'shutdown'] },
+      { tag: 'vucem',   words: ['vucem', 'aduanas', 'sat'] },
+      { tag: 'tariff',  words: ['tariff', 'duty', 'usmca'] },
+      { tag: 'infra',   words: ['bridge', 'port of entry', 'lane closure', 'inspection'] },
+      { tag: 'policy',  words: ['title 42', 'asylum', 'border policy'] },
+    ],
+  },
+  {
+    id: 'reuters-mx',
+    url: 'https://www.reutersagency.com/feed/?best-topics=mexico&post_type=best',
+    language: 'en',
+    defaultImpact: 'policy',
+    impactKeywords: [
+      { tag: 'cartel',  words: ['cartel', 'narco', 'sinaloa'] },
+      { tag: 'tariff',  words: ['tariff', 'usmca', 'trade'] },
+      { tag: 'policy',  words: ['sheinbaum', 'amlo', 'lopez obrador'] },
+    ],
+  },
+  {
+    id: 'eluniversal-nacion',
+    url: 'https://www.eluniversal.com.mx/rss/nacion.xml',
+    language: 'es',
+    defaultImpact: 'other',
+    impactKeywords: [
+      { tag: 'cartel',  words: ['cártel', 'narco', 'enfrentamiento', 'balacera', 'cdg', 'cdn'] },
+      { tag: 'protest', words: ['bloqueo', 'manifestación', 'paro'] },
+      { tag: 'tariff',  words: ['arancel', 't-mec'] },
+      { tag: 'vucem',   words: ['vucem', 'aduanas'] },
     ],
   },
 ]

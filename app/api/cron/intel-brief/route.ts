@@ -104,13 +104,14 @@ async function runBrief() {
     .join('\n')
     .trim()
 
-  // Pull title + summary from the first H2 / first paragraph of the
-  // generated brief so the index card can show a teaser without
-  // re-rendering the full markdown.
-  const titleMatch = md.match(/^##\s+(.+)$/m)
-  const title = titleMatch ? titleMatch[1].slice(0, 200) : `Border Brief ${new Date().toISOString().slice(0, 10)}`
-  const summaryMatch = md.match(/^##\s+Today's Headline\s*\n+([^\n]+)/i)
-  const summary = (summaryMatch ? summaryMatch[1] : md.slice(0, 240)).trim().slice(0, 240)
+  // Title = first sentence under the "Today's Headline" section.
+  // Summary = same content, capped. Falls back to the first
+  // paragraph of body if the brief skipped the headline section.
+  const headlineMatch = md.match(/^##\s+Today'?s Headline\s*\n+([^\n]+)/im)
+  const headline = headlineMatch ? headlineMatch[1].trim() : null
+  const isoDate = new Date().toISOString().slice(0, 10)
+  const title = (headline ? headline : `Border Brief ${isoDate}`).slice(0, 200)
+  const summary = (headline ? headline : md.replace(/^#.*$/gm, '').trim().split('\n').find((l) => l.trim())?.trim() || md.slice(0, 240)).slice(0, 240)
 
   const { data: brief, error } = await db.from('intel_briefs').insert({
     cadence: 'daily',
