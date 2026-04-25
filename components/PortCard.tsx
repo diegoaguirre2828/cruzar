@@ -129,7 +129,7 @@ export function PortCard({ port, signal }: Props) {
 
   return (
     <Link href={`/cruzar/${slugForPort(port.portId)}`}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]">
+      <div className="cruzar-press bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 cursor-pointer">
         <div className="flex items-start justify-between mb-3">
           <div>
             <div className="flex items-center gap-2">

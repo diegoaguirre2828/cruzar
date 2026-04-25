@@ -23,40 +23,49 @@
   transform: scale(0.97);
 }
 
-/* Multi-layer shadow pill — gives the home pill row a 3D pressable
-   feel without color baggage. Stacks (1) a soft inner top highlight
-   for the bevel, (2) a tight 1px shadow that anchors the pill to the
-   surface, and (3) a wider ambient shadow for depth. Active state
-   collapses the ambient layer + drops the pill 1px so the press
-   reads as "going into the page." Color-agnostic — works on white
-   pills, gradient pills, and dark-bg pills. */
-.cruzar-pill {
+/* Multi-layer 3D press treatment for any tappable surface that
+   should feel like a physical button: pills, port cards, primary
+   CTAs. Five shadow layers stack to deliver a clear "lifted off the
+   page" silhouette while remaining color-agnostic so it works on
+   white cards, gradient pills, and dark-bg surfaces:
+     1. inset top highlight    — bevel / 3D edge
+     2. inset bottom hairline  — subtle ridge that grounds the volume
+     3. tight 1-2px shadow     — anchor to the surface
+     4. mid-falloff shadow     — body of the lift
+     5. wide ambient shadow    — long projection that sells "popping
+                                  out of the screen"
+   Active state collapses layers 4-5 + drops the element 2px so the
+   press reads as the surface deflating into the page. Shared with
+   .cruzar-press alias for non-pill use sites. */
+.cruzar-pill, .cruzar-press {
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    0 1px 1px rgba(15, 23, 42, 0.08),
-    0 2px 4px -1px rgba(15, 23, 42, 0.10),
-    0 6px 14px -3px rgba(15, 23, 42, 0.10);
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 -1px 0 rgba(15, 23, 42, 0.04) inset,
+    0 1px 2px rgba(15, 23, 42, 0.10),
+    0 5px 10px -2px rgba(15, 23, 42, 0.18),
+    0 14px 28px -8px rgba(15, 23, 42, 0.22);
   transition: transform 120ms ease-out, box-shadow 120ms ease-out;
 }
-.dark .cruzar-pill {
+.dark .cruzar-pill, .dark .cruzar-press {
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 3px 6px -2px rgba(0, 0, 0, 0.40),
-    0 8px 16px -4px rgba(0, 0, 0, 0.35);
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.35) inset,
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 6px 12px -2px rgba(0, 0, 0, 0.55),
+    0 16px 32px -8px rgba(0, 0, 0, 0.50);
 }
-.cruzar-pill:active {
-  transform: translateY(1px) scale(0.98);
+.cruzar-pill:active, .cruzar-press:active {
+  transform: translateY(2px) scale(0.985);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
     0 1px 1px rgba(15, 23, 42, 0.10),
-    0 1px 2px rgba(15, 23, 42, 0.06);
+    0 2px 3px rgba(15, 23, 42, 0.08);
 }
-.dark .cruzar-pill:active {
+.dark .cruzar-pill:active, .dark .cruzar-press:active {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 1px 2px rgba(0, 0, 0, 0.55),
-    0 1px 3px rgba(0, 0, 0, 0.30);
+    0 1px 2px rgba(0, 0, 0, 0.60),
+    0 2px 4px rgba(0, 0, 0, 0.40);
 }
 
 :root {
