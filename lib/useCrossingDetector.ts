@@ -37,6 +37,19 @@ const INLAND_MAX_DWELL_MS = 6 * 60 * 60 * 1000 // safety cap
 const INLAND_TRACK_MS = 4 * 60 * 60 * 1000     // shut down inland watch after 4h
 const SESSION_KEY = 'cruzar_crossing_session'
 
+// Best-effort platform tag for data-quality filtering. iOS Capacitor
+// exposes window.Capacitor.isNativePlatform()/getPlatform(); web users
+// fall back to a coarse mobile-vs-desktop bucket. Never used to identify
+// the user — only to weight sample fidelity downstream.
+export function detectPlatform(): 'ios_native' | 'web_mobile' | 'web_desktop' {
+  if (typeof window === 'undefined') return 'web_desktop'
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } }).Capacitor
+  if (cap?.isNativePlatform?.() && cap.getPlatform?.() === 'ios') return 'ios_native'
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || ''
+  if (/iphone|ipad|ipod|android/i.test(ua)) return 'web_mobile'
+  return 'web_desktop'
+}
+
 function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -145,6 +158,7 @@ export function useCrossingDetector(optedIn: boolean) {
             checkpoint_zone: state.zone,
             direction: state.direction,
             dt_minutes: dtMinutes,
+            platform: detectPlatform(),
           }),
         })
       } catch {

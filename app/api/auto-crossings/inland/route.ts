@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic'
 
 const VALID_ZONES = new Set(INLAND_CHECKPOINTS.map((c) => c.zone))
 const VALID_DIRECTIONS = new Set(['northbound', 'southbound'])
+const ALLOWED_PLATFORMS = new Set(['ios_native', 'web_mobile', 'web_desktop'])
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let body: { checkpoint_zone?: string; direction?: string; dt_minutes?: number }
+  let body: { checkpoint_zone?: string; direction?: string; dt_minutes?: number; platform?: string }
   try {
     body = await req.json()
   } catch {
@@ -46,6 +47,8 @@ export async function POST(req: NextRequest) {
   const dt = typeof body.dt_minutes === 'number' && Number.isFinite(body.dt_minutes)
     ? Math.round(body.dt_minutes)
     : null
+  const platformRaw = typeof body.platform === 'string' ? body.platform.trim().toLowerCase() : ''
+  const platform = ALLOWED_PLATFORMS.has(platformRaw) ? platformRaw : null
 
   if (!VALID_ZONES.has(zone)) {
     return NextResponse.json({ error: 'Unknown checkpoint_zone' }, { status: 400 })
@@ -78,6 +81,7 @@ export async function POST(req: NextRequest) {
     direction,
     dt_minutes: dt,
     source: 'auto_geofence',
+    platform,
   })
 
   if (error) {

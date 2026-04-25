@@ -53,8 +53,13 @@ export async function PATCH(req: NextRequest) {
     if (body[key] !== undefined) updates[key] = body[key]
   }
   // Boolean settings — currently just the auto-crossing opt-in.
+  // We also stamp auto_geofence_opt_in_at on the upgrade edge (false→true)
+  // so we have an audit trail of when the user explicitly accepted the
+  // auto-detection terms. NULL means never opted in or currently off.
+  let stampOptInAt = false
   if (typeof body.auto_geofence_opt_in === 'boolean') {
     updates.auto_geofence_opt_in = body.auto_geofence_opt_in
+    if (body.auto_geofence_opt_in === true) stampOptInAt = true
   }
 
   // Validate display_name against the same rules as auto-generated
@@ -72,6 +77,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const db = getServiceClient()
+  if (stampOptInAt) {
+    updates.auto_geofence_opt_in_at = new Date().toISOString()
+  }
   const { error } = await db.from('profiles').update(updates).eq('id', user.id)
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

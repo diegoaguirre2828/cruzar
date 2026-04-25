@@ -21,6 +21,8 @@ export const dynamic = 'force-dynamic'
 
 const ALLOWED_LANES = new Set(['general', 'sentri', 'commercial', 'pedestrian'])
 const ALLOWED_SIDES = new Set(['US', 'MX'])
+const ALLOWED_REASONS = new Set(['docs', 'inspection', 'construction', 'protest', 'other'])
+const ALLOWED_PLATFORMS = new Set(['ios_native', 'web_mobile', 'web_desktop'])
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies()
@@ -48,6 +50,8 @@ export async function POST(req: NextRequest) {
     side_out?: string
     dt_minutes?: number
     lane_guess?: string
+    reason_tag?: string
+    platform?: string
   }
   try {
     body = await req.json()
@@ -63,6 +67,10 @@ export async function POST(req: NextRequest) {
     : null
   const laneRaw = typeof body.lane_guess === 'string' ? body.lane_guess.trim().toLowerCase() : 'general'
   const lane = ALLOWED_LANES.has(laneRaw) ? laneRaw : 'general'
+  const reasonRaw = typeof body.reason_tag === 'string' ? body.reason_tag.trim().toLowerCase() : ''
+  const reasonTag = ALLOWED_REASONS.has(reasonRaw) ? reasonRaw : null
+  const platformRaw = typeof body.platform === 'string' ? body.platform.trim().toLowerCase() : ''
+  const platform = ALLOWED_PLATFORMS.has(platformRaw) ? platformRaw : null
 
   if (!portId || !PORT_META[portId]) {
     return NextResponse.json({ error: 'Unknown port_id' }, { status: 400 })
@@ -119,6 +127,8 @@ export async function POST(req: NextRequest) {
     hour_of_day: now.getUTCHours(),
     source: 'auto_geofence',
     lane_guess: lane,
+    reason_tag: reasonTag,
+    platform,
   })
 
   if (error) {

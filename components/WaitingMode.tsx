@@ -6,7 +6,7 @@ import { useLang } from '@/lib/LangContext'
 import { Navigation, X, MapPin, Clock } from 'lucide-react'
 import { PORT_META } from '@/lib/portMeta'
 import { trackEvent } from '@/lib/trackEvent'
-import { useCrossingDetector } from '@/lib/useCrossingDetector'
+import { useCrossingDetector, detectPlatform } from '@/lib/useCrossingDetector'
 
 // Derived from PORT_META so geofence coverage matches the map. Adding a port
 // to portMeta.ts automatically enables the "are you at X?" prompt there.
@@ -45,6 +45,8 @@ export function WaitingMode({ onNearCrossing }: Props) {
   const [permPromptDismissed, setPermPromptDismissed] = useState(false)
   const [optedIn, setOptedIn] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [confirmLane, setConfirmLane] = useState<'general' | 'sentri' | 'commercial' | 'pedestrian'>('general')
+  const [confirmReason, setConfirmReason] = useState<'docs' | 'inspection' | 'construction' | 'protest' | 'other' | null>(null)
   const lastPosRef = useRef<{ lat: number; lng: number } | null>(null)
 
   const { inLine, elapsedMin, crossed, startInLine, cancelInLine, dismissCrossed } =
@@ -194,15 +196,21 @@ export function WaitingMode({ onNearCrossing }: Props) {
           side_in: crossed.sideIn,
           side_out: crossed.sideOut,
           dt_minutes: crossed.dtMinutes,
-          lane_guess: 'general',
+          lane_guess: confirmLane,
+          reason_tag: confirmReason,
+          platform: detectPlatform(),
         }),
       })
       trackEvent('auto_crossing_confirmed', {
         port_id: crossed.portId,
         dt_minutes: String(crossed.dtMinutes),
+        lane: confirmLane,
+        reason: confirmReason || 'none',
       })
     } finally {
       setConfirming(false)
+      setConfirmLane('general')
+      setConfirmReason(null)
       dismissCrossed()
     }
   }
@@ -211,6 +219,8 @@ export function WaitingMode({ onNearCrossing }: Props) {
     if (crossed) {
       trackEvent('auto_crossing_rejected', { port_id: crossed.portId })
     }
+    setConfirmLane('general')
+    setConfirmReason(null)
     dismissCrossed()
   }
 
@@ -221,7 +231,23 @@ export function WaitingMode({ onNearCrossing }: Props) {
   // Highest-priority banner: a confirmed crossing waiting for the user
   // to acknowledge. Render even if the bridge geofence isn't currently
   // matching anything, since the user is now well past the bridge.
+  // The lane + reason chips here are the data-quality layer — without
+  // them every auto-crossing is a "general lane, no reason" row, which
+  // makes the dataset noisy for the Phase 3 intelligence layer.
   if (crossed) {
+    const laneOptions: { id: 'general' | 'sentri' | 'commercial' | 'pedestrian'; labelEs: string; labelEn: string }[] = [
+      { id: 'general',     labelEs: 'General',    labelEn: 'General' },
+      { id: 'sentri',      labelEs: 'SENTRI',     labelEn: 'SENTRI' },
+      { id: 'commercial',  labelEs: 'Comercial',  labelEn: 'Commercial' },
+      { id: 'pedestrian',  labelEs: 'A pie',      labelEn: 'Pedestrian' },
+    ]
+    const reasonOptions: { id: 'docs' | 'inspection' | 'construction' | 'protest' | 'other'; labelEs: string; labelEn: string }[] = [
+      { id: 'docs',         labelEs: 'Papeleo',     labelEn: 'Docs' },
+      { id: 'inspection',   labelEs: 'Inspección',  labelEn: 'Inspection' },
+      { id: 'construction', labelEs: 'Obra',        labelEn: 'Construction' },
+      { id: 'protest',      labelEs: 'Bloqueo',     labelEn: 'Blockade' },
+      { id: 'other',        labelEs: 'Otro',        labelEn: 'Other' },
+    ]
     return (
       <div className="mb-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4">
         <div className="flex items-start gap-2 mb-3">
@@ -239,6 +265,47 @@ export function WaitingMode({ onNearCrossing }: Props) {
             </p>
           </div>
         </div>
+
+        <p className="text-[11px] uppercase tracking-wide font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">
+          {lang === 'es' ? 'Carril' : 'Lane'}
+        </p>
+        <div className="grid grid-cols-4 gap-1.5 mb-3">
+          {laneOptions.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setConfirmLane(opt.id)}
+              disabled={confirming}
+              className={`py-2 px-1 rounded-lg text-xs font-semibold transition-colors ${
+                confirmLane === opt.id
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              }`}
+            >
+              {lang === 'es' ? opt.labelEs : opt.labelEn}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-[11px] uppercase tracking-wide font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">
+          {lang === 'es' ? '¿Qué te demoró? (opcional)' : 'What slowed you? (optional)'}
+        </p>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {reasonOptions.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setConfirmReason((prev) => (prev === opt.id ? null : opt.id))}
+              disabled={confirming}
+              className={`py-1.5 px-2.5 rounded-full text-xs font-medium transition-colors ${
+                confirmReason === opt.id
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              }`}
+            >
+              {lang === 'es' ? opt.labelEs : opt.labelEn}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={confirmCrossed}
