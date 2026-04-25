@@ -177,14 +177,15 @@ async function maybeUpload(results) {
   const uploaded = [];
   for (const r of results) {
     const data = await readFile(r.outputPath);
-    // access: 'public' is required so FB Graph API can fetch the file
-    // via /{page-id}/videos `file_url`. Private Vercel Blob URLs use a
-    // tokenized hostname that FB's fetcher cannot resolve — first try
-    // 2026-04-25 returned "Unable to fetch video file from URL." The
-    // video is meant to be public anyway (it's about to be posted on
-    // FB), so public-blob is the right access mode.
+    // access: 'private' — Diego's Vercel Blob store is configured
+    // private-only, can't upload as public. The cruzar-side route
+    // /api/video/[name] proxies these private blobs through Cruzar's
+    // public surface (fetches with the BLOB token server-side, streams
+    // to the caller) so FB Graph's /{page-id}/videos file_url sees a
+    // clean public cruzar.app URL it can fetch. Don't switch this back
+    // to 'public' without first reconfiguring the Vercel Blob store.
     const blob = await put(`videos/${r.outputName}`, data, {
-      access: 'public',
+      access: 'private',
       token: blobToken,
       contentType: 'video/mp4',
     });

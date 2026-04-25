@@ -144,12 +144,29 @@ export async function GET(req: NextRequest) {
       assetRow?.updated_at &&
       Date.now() - new Date(assetRow.updated_at).getTime() < 36 * 60 * 60 * 1000
     if (fresh && manifest?.videos?.length) {
-      // Prefer 4:5 (portrait feed) → 9:16 (Reels) → 1:1 → first available.
-      const preferOrder = ['4x5', '9x16', '1x1']
-      const pick = preferOrder
-        .map(asp => manifest.videos!.find(v => v.compositionId === 'WaitTimes' && v.aspect === asp))
-        .find(Boolean)
-        || manifest.videos.find(v => v.compositionId === 'WaitTimes')
+      // Composition preference for the evening boost slot:
+      //   1. HookFbGroup — story-driven 22s ad (problem→solution→CTA),
+      //      built for paid boosts. Single-bridge focus avoids the
+      //      all-regions confusion the broad WaitTimes snapshot has.
+      //   2. AlertDemo — Pro-alert demo, conversion-driven.
+      //   3. SocialProof153 — community-proof angle.
+      //   4. WaitTimes — daily snapshot (organic-style fallback).
+      // Within a composition: 4:5 portrait → 9:16 reels → 1:1 → any.
+      const compPriority = ['HookFbGroup', 'AlertDemo', 'SocialProof153', 'WaitTimes']
+      const aspectPriority = ['4x5', '9x16', '1x1']
+      let pick: typeof manifest.videos[number] | undefined
+      for (const comp of compPriority) {
+        for (const asp of aspectPriority) {
+          pick = manifest.videos!.find(v => v.compositionId === comp && v.aspect === asp)
+          if (pick) break
+        }
+        if (pick) break
+        // No exact-aspect match — accept any aspect for this composition
+        pick = manifest.videos!.find(v => v.compositionId === comp)
+        if (pick) break
+      }
+      // Last resort: any video at all
+      if (!pick) pick = manifest.videos[0]
       if (pick?.url && pick.outputName) {
         // Slot detection: cron-job.org fires at 5:30/11:30/15:30/19:00 CT.
         // 19:00 CT = "evening" slot. Allow ±3 hr tolerance for clock
