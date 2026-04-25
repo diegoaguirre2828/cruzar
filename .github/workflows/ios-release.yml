@@ -93,6 +93,20 @@ jobs:
           create-keychain: false
           keychain-password: ${{ secrets.IOS_CERT_P12_PASSWORD }}
 
+      - name: Install App Store provisioning profile
+        env:
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+          PROFILE_PATH="$PROFILE_DIR/Cruzar_App_Store.mobileprovision"
+          echo "$PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+          # Extract UUID and rename to <UUID>.mobileprovision so Xcode finds it
+          UUID=$(security cms -D -i "$PROFILE_PATH" 2>/dev/null | plutil -extract UUID raw -)
+          echo "Provisioning profile UUID: $UUID"
+          mv "$PROFILE_PATH" "$PROFILE_DIR/${UUID}.mobileprovision"
+          echo "PROFILE_UUID=${UUID}" >> "$GITHUB_ENV"
+
       - name: Set marketing + build version
         working-directory: ios/App
         run: |
@@ -130,7 +144,14 @@ jobs:
             <key>teamID</key>
             <string>${APPLE_TEAM_ID}</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>app.cruzar.ios</key>
+              <string>Cruzar App Store</string>
+            </dict>
             <key>uploadSymbols</key>
             <true/>
             <key>stripSwiftSymbols</key>
