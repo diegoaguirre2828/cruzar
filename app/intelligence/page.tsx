@@ -45,10 +45,11 @@ export default async function IntelligencePage() {
             happens. Specialist for US-Mexico, bilingual, built by RGV.
           </p>
           <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5 mb-4">
-            <li>• Cartel disruption + blockade alerts (MX-source, no else does this)</li>
+            <li>• Border disruption alerts — blockades, system outages, security events, infrastructure incidents</li>
             <li>• VUCEM / SAT / SAAI uptime tracking</li>
             <li>• Tariff / USMCA / trade-policy whiplash</li>
             <li>• Corridor-level impact tagging (Laredo, Pharr, Otay Mesa, Cd. Juárez)</li>
+            <li>• Bilingual MX-source synthesis (no other tool processes Spanish-language signals)</li>
             <li>• Daily brief in your inbox by 7am CT</li>
           </ul>
           <SubscribeForm />
@@ -67,17 +68,32 @@ export default async function IntelligencePage() {
           </div>
         )}
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-5">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-5 mb-3">
           <p className="text-sm font-bold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-2">
-            <Mail className="w-4 h-4" /> Cruzar Intelligence Pro — $499/mo
+            <Mail className="w-4 h-4" /> Cruzar Intelligence — $49/mo
           </p>
           <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">
-            For supply chain VPs, underwriters, and government. Includes
-            real-time event alerts (not just the daily brief), corridor-
-            specific forecasts, dataset access, and direct analyst contact.
+            Real-time push alerts when border events fire. Per-category
+            and per-corridor filters. Full event dataset + CSV export.
+            Subscriber dashboard with searchable history. Daily brief
+            included. 7-day free trial.
           </p>
           <Link href="/pricing#intelligence" className="inline-block text-xs font-bold px-4 py-2 rounded-xl bg-blue-600 text-white">
-            Subscribe
+            Subscribe — $49/mo
+          </Link>
+        </div>
+
+        <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-2xl p-5">
+          <p className="text-sm font-bold text-violet-800 dark:text-violet-300 mb-1">
+            Intelligence Enterprise — $499/mo
+          </p>
+          <p className="text-xs text-violet-700 dark:text-violet-400 mb-3">
+            For supply chain VPs, underwriters, and government. Adds
+            direct analyst access via Slack, custom corridor reports
+            on demand, SLA on alert latency, and bespoke onboarding.
+          </p>
+          <Link href="/pricing#intelligence_enterprise" className="inline-block text-xs font-bold px-4 py-2 rounded-xl bg-violet-700 text-white">
+            Talk to sales
           </Link>
         </div>
       </div>

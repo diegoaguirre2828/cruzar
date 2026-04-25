@@ -149,30 +149,60 @@ export default function PricingPage() {
     {
       id: 'intelligence',
       name: 'Intelligence',
-      price: '$499',
+      price: '$49',
       period: '/month',
       color: 'border-purple-500',
-      badge: es ? 'Para VPs y aseguradoras' : 'For VPs & underwriters',
+      badge: es ? 'Brief + alertas + dataset' : 'Brief + alerts + dataset',
       desc: es
-        ? 'El brief diario de inteligencia fronteriza US-MX. Eventos de cártel, bloqueos, caídas de VUCEM, aranceles — sintetizados con 6 horas de anticipación.'
-        : 'Daily US-MX border intelligence brief. Cartel events, blockades, VUCEM outages, tariffs — synthesized 6 hours ahead.',
+        ? 'Alertas push en tiempo real cuando algo pasa en la frontera. Brief diario sintetizado. Filtros por categoría y corredor. Acceso completo al dataset.'
+        : 'Real-time push alerts when border events fire. Daily synthesized brief. Per-category + per-corridor filters. Full dataset access.',
       features: es
         ? [
+            'Alertas en tiempo real (cada 15 min) por correo',
+            'Filtros por categoría (cártel, bloqueo, VUCEM, etc.) y corredor',
             'Brief diario por correo — 7am CT',
-            'Alertas en tiempo real de eventos de impacto',
-            'Etiquetas por corredor (Laredo, Pharr, Otay Mesa, Cd. Juárez)',
+            'Acceso al dataset + descarga CSV',
+            'Panel de suscriptor con historial',
             'Síntesis bilingüe — fuentes en español que nadie más procesa',
-            'Acceso al dataset completo',
           ]
         : [
+            'Real-time alerts (every 15 min) by email',
+            'Per-category (cartel, blockade, VUCEM, etc.) + per-corridor filters',
             'Daily brief by email — 7am CT',
-            'Real-time impact-event alerts',
-            'Corridor tagging (Laredo, Pharr, Otay Mesa, Cd. Juárez)',
-            'Bilingual synthesis — Spanish sources nobody else processes',
-            'Full dataset access',
+            'Full dataset access + CSV export',
+            'Subscriber dashboard with history',
+            'Bilingual MX-source synthesis (no one else does this)',
           ],
-      cta: es ? 'Empezar prueba gratis' : 'Start free trial',
+      cta: es ? 'Empezar prueba gratis 7 días' : 'Start 7-day free trial',
       tier: 'intelligence',
+    },
+    {
+      id: 'intelligence_enterprise',
+      name: 'Intelligence Enterprise',
+      price: '$499',
+      period: '/month',
+      color: 'border-violet-700',
+      badge: es ? 'Hablamos contigo' : 'Talk to us',
+      desc: es
+        ? 'Para VPs de cadena de suministro, aseguradoras y gobierno. Acceso directo a analista vía Slack, reportes personalizados, SLA en latencia de alertas.'
+        : 'For supply chain VPs, underwriters, and government. Direct analyst access via Slack, custom reports, alert-latency SLA.',
+      features: es
+        ? [
+            'Todo lo de Intelligence',
+            'Canal de Slack con analista directo',
+            'Reportes personalizados por corredor a demanda',
+            'SLA en latencia de alertas',
+            'Onboarding + integración a la medida',
+          ]
+        : [
+            'Everything in Intelligence',
+            'Slack channel with direct analyst access',
+            'Custom corridor reports on demand',
+            'SLA on alert latency',
+            'Bespoke onboarding + integration support',
+          ],
+      cta: es ? 'Hablar con ventas' : 'Talk to sales',
+      tier: 'intelligence_enterprise',
     },
   ]
 

@@ -58,14 +58,15 @@ export async function POST(req: NextRequest) {
       }, { onConflict: 'user_id' })
 
       // Intelligence tier also creates an intel_subscriber row so the
-      // brief-send cron knows where to deliver.
-      if (tier === 'intelligence') {
+      // brief-send + alerts crons know where to deliver. Enterprise
+      // gets the 'enterprise' tier for SLA + analyst access logic.
+      if (tier === 'intelligence' || tier === 'intelligence_enterprise') {
         const { data: u } = await supabase.auth.admin.getUserById(userId)
         if (u?.user?.email) {
           await supabase.from('intel_subscribers').upsert({
             email: u.user.email,
             user_id: userId,
-            tier: 'pro',
+            tier: tier === 'intelligence_enterprise' ? 'enterprise' : 'pro',
             stripe_subscription_id: session.subscription as string,
             active: true,
           }, { onConflict: 'email' })

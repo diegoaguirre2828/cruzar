@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
         operator: 'STRIPE_OPERATOR_PRICE_ID',
         express_cert: 'STRIPE_EXPRESS_CERT_PRICE_ID',
         intelligence: 'STRIPE_INTELLIGENCE_PRICE_ID',
+        intelligence_enterprise: 'STRIPE_INTELLIGENCE_ENTERPRISE_PRICE_ID',
       }
       return NextResponse.json(
         { error: `Payments not configured: ${envByTier[tier] || 'price ID'} is missing on the server.` },

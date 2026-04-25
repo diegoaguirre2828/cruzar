@@ -29,6 +29,14 @@ const INTEL_CRON_JOBS = [
     path: 'intel-brief',
     schedule: { hours: [12], minutes: [30] },
   },
+  {
+    title: '🔔 Cruzar Intel — Real-time alerts :15',
+    path: 'intel-alerts',
+    // 4× hour: every 15 min — :15, :30, :45, :00 (the :00 expressed
+    // as 0). cron-job.org's UI lists these as integers, so we list
+    // 4 minutes.
+    schedule: { hours: [-1], minutes: [0, 15, 30, 45] },
+  },
 ]
 
 export async function POST(req: NextRequest) {

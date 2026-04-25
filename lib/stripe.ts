@@ -12,6 +12,7 @@ const STRIPE_BUSINESS_PRICE_ID = process.env.STRIPE_BUSINESS_PRICE_ID?.trim()
 const STRIPE_OPERATOR_PRICE_ID = process.env.STRIPE_OPERATOR_PRICE_ID?.trim()
 const STRIPE_EXPRESS_CERT_PRICE_ID = process.env.STRIPE_EXPRESS_CERT_PRICE_ID?.trim()
 const STRIPE_INTELLIGENCE_PRICE_ID = process.env.STRIPE_INTELLIGENCE_PRICE_ID?.trim()
+const STRIPE_INTELLIGENCE_ENTERPRISE_PRICE_ID = process.env.STRIPE_INTELLIGENCE_ENTERPRISE_PRICE_ID?.trim()
 
 // Intentionally do NOT pin apiVersion — mismatched pins cause fake
 // "connection" errors on every request. Let the SDK use its own default.
@@ -75,15 +76,29 @@ export const PLANS = {
   },
   intelligence: {
     name: 'Intelligence',
-    price: 49900,
+    price: 4900,
     priceId: STRIPE_INTELLIGENCE_PRICE_ID!,
     mode: 'subscription' as const,
     features: [
-      'Daily US-MX border intelligence brief',
-      'Cartel / blockade / VUCEM / tariff alerts',
-      'Bilingual MX-source synthesis (no one else does this)',
-      'Corridor-level impact tagging',
-      '6-hour-ahead disruption forecasts',
+      'Real-time push alerts when border events fire',
+      'Per-impact + per-corridor alert filters',
+      'Daily synthesized brief by 7am CT',
+      'Full event dataset access + CSV export',
+      'Bilingual MX-source ingestion',
+      'Subscriber dashboard w/ history + filters',
+    ],
+  },
+  intelligence_enterprise: {
+    name: 'Intelligence Enterprise',
+    price: 49900,
+    priceId: STRIPE_INTELLIGENCE_ENTERPRISE_PRICE_ID!,
+    mode: 'subscription' as const,
+    features: [
+      'Everything in Intelligence',
+      'Slack channel with direct analyst access',
+      'Custom corridor reports on demand',
+      'SLA on alert latency',
+      'Bespoke onboarding + integration support',
     ],
   },
 }
