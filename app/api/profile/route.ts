@@ -47,8 +47,8 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const allowed = ['display_name', 'full_name', 'company', 'role', 'bio']
-  const updates: Record<string, string | boolean> = {}
+  const allowed = ['display_name', 'full_name', 'company', 'role', 'bio', 'favorite_port_id']
+  const updates: Record<string, string | boolean | null> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]
   }
@@ -61,6 +61,8 @@ export async function PATCH(req: NextRequest) {
     updates.auto_geofence_opt_in = body.auto_geofence_opt_in
     if (body.auto_geofence_opt_in === true) stampOptInAt = true
   }
+  // Allow explicit clear of favorite_port_id via null
+  if (body.favorite_port_id === null) updates.favorite_port_id = null
 
   // Validate display_name against the same rules as auto-generated
   // handles — lowercase letters, digits, underscore, hyphen; 3-30

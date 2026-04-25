@@ -25,6 +25,8 @@ import { HeroTriad } from '@/components/HeroTriad'
 import { UserCrossingInsights } from '@/components/UserCrossingInsights'
 import { HomeForecast } from '@/components/HomeForecast'
 import { PriorityNudge, type NudgeSpec } from '@/components/PriorityNudge'
+import { FavoriteHero } from '@/components/FavoriteHero'
+import { SetFavoriteBanner } from '@/components/SetFavoriteBanner'
 
 // PERF (2026-04-25 audit): below-the-fold + conditional surfaces split
 // into their own chunks. Cuts the home-page first-load JS by deferring
@@ -598,6 +600,16 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
 
         {/* Business Command Center — visible only to business tier */}
         <BusinessCommandWidget />
+
+        {/* Personalized hero — favorite bridge first, then "faster
+            alternative" if one exists. Renders nothing for anon users
+            or users without a favorite. */}
+        {!isBusiness && <FavoriteHero ports={(initialPorts || []) as unknown as Array<{ port_id: string; port_name?: string; vehicle_wait?: number | null; pedestrian_wait?: number | null; commercial_wait?: number | null }>} />}
+
+        {/* Soft prompt for logged-in users who haven't picked a favorite
+            yet. Quick-pick of the 4 most common RGV bridges + "see all"
+            expand. Sessionstorage-dismissable per day. */}
+        {!isBusiness && <SetFavoriteBanner user={user ? { id: user.id } : null} ports={(initialPorts || []) as unknown as Array<{ port_id: string }>} />}
 
         {/* Geolocation — shows if user is near a crossing */}
         <WaitingMode />
