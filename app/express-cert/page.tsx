@@ -51,9 +51,7 @@ export default function ExpressCertPage() {
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    if (!authLoading && !user) router.push('/login?next=/express-cert')
-  }, [user, authLoading, router])
+  // No redirect for anon visitors — they see the public hero first.
 
   async function save() {
     setSaving(true)
@@ -99,8 +97,72 @@ export default function ExpressCertPage() {
     router.push(`/express-cert/${app.id}/print`)
   }
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>
+  }
+
+  // Public hero for anonymous visitors — explains C-TPAT / OEA value,
+  // points to pricing for purchase. The 20-question form unlocks
+  // after sign-in.
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="max-w-2xl mx-auto px-4 pb-16">
+          <div className="pt-6 pb-4 flex items-center justify-between gap-3">
+            <Link href="/" className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <LangToggle />
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-4">
+            <p className="text-[11px] uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" />
+              {lang === 'es' ? 'Cruzar Express Cert · $499 una sola vez' : 'Cruzar Express Cert · $499 one-time'}
+            </p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+              {lang === 'es'
+                ? 'Carriles verdes permanentes — sin contratar consultor'
+                : 'Permanent green-lane status — without paying a $5k consultant'}
+            </h1>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+              {lang === 'es'
+                ? 'C-TPAT (US) y OEA (México) son los programas de "comerciante confiable" que reducen los tiempos de espera fronterizos hasta 50%. Pero la solicitud es un laberinto de 100+ campos. Nuestra IA te ayuda a llenarla en 30 minutos.'
+                : 'C-TPAT (US) and OEA (Mexico) are the "trusted trader" programs that reduce border wait times by up to 50%. But the application is a 100+ field labyrinth. Our AI fills it in 30 minutes.'}
+            </p>
+            <Link href="/login?next=/express-cert" className="block py-2.5 px-4 rounded-xl bg-emerald-600 text-white text-sm font-bold text-center hover:bg-emerald-700 transition-colors mb-2">
+              {lang === 'es' ? 'Empezar — $499 una sola vez' : 'Get started — $499 one-time'}
+            </Link>
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              {lang === 'es' ? 'Te ahorra $50k+/año en demoras una vez aprobado' : 'Saves $50k+/yr in delays once approved'}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {lang === 'es' ? '¿Qué obtienes?' : 'What you get'}
+            </h2>
+            <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5">
+              <li>{lang === 'es' ? '• Cuestionario inteligente de 20 preguntas — 30 min' : '• Smart 20-question intake — 30 min'}</li>
+              <li>{lang === 'es' ? '• IA expande tus respuestas en una solicitud completa de C-TPAT u OEA' : '• AI expands your answers into a complete C-TPAT or OEA application'}</li>
+              <li>{lang === 'es' ? '• Documento listo para imprimir, firmar y enviar' : '• Document ready to print, sign, and submit'}</li>
+              <li>{lang === 'es' ? '• Instrucciones específicas de envío (a quién, dónde, cómo)' : '• Specific submission instructions (who, where, how)'}</li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {lang === 'es' ? '¿Vale la pena?' : 'Is it worth it?'}
+            </h2>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              {lang === 'es'
+                ? 'Una flota mediana pierde $50k–$200k/año en demoras fronterizas. C-TPAT/OEA reduce esas demoras hasta 50%. $499 una vez vs un consultor que cobra $3k–$8k para la misma solicitud — y tarda 6 semanas.'
+                : 'A mid-size fleet loses $50k–$200k/yr to border delays. C-TPAT/OEA cuts those delays by up to 50%. $499 once vs a consultant who charges $3k–$8k for the same application — and takes 6 weeks.'}
+            </p>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   return (

@@ -40,10 +40,7 @@ export default function OperatorPage() {
   const [result, setResult] = useState<ValidationResult | null>(null)
   const [history, setHistory] = useState<ValidationResult[]>([])
 
-  useEffect(() => {
-    if (!authLoading && !user) router.push('/login?next=/operator')
-  }, [user, authLoading, router])
-
+  // No redirect for anon visitors — they see the public hero + sample.
   useEffect(() => {
     if (!user) return
     fetch('/api/profile').then(r => r.json()).then(d => setTier(String(d?.profile?.tier ?? 'free')))
@@ -71,8 +68,84 @@ export default function OperatorPage() {
     setFile(null)
   }
 
-  if (authLoading || !user) {
+  if (authLoading) {
     return <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" /></div>
+  }
+
+  // Public hero for anonymous visitors — explains the product, links
+  // to the live sample, points to pricing for signup. No upload form
+  // until they sign in + subscribe.
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        <div className="max-w-2xl mx-auto px-4 pb-16">
+          <div className="pt-6 pb-4 flex items-center justify-between gap-3">
+            <Link href="/" className="p-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <LangToggle />
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-4">
+            <p className="text-[11px] uppercase tracking-wide font-semibold text-blue-600 dark:text-blue-400 mb-1">
+              Cruzar Operator · $99/mo
+            </p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+              {lang === 'es'
+                ? 'Cuts pedimento prep from 2 hours to 3 minutes'
+                : 'Cuts pedimento prep from 2 hours to 3 minutes'}
+            </h1>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+              {lang === 'es'
+                ? 'Sube tu pedimento, factura comercial, certificado USMCA, lista de empaque o BL. La IA marca cada error que dispararía una inspección secundaria — antes de que tu camión llegue al puente. Hasta 34% más rápido en el cruce.'
+                : 'Upload your pedimento, commercial invoice, USMCA cert, packing list, or BOL. AI flags every error that would trigger secondary inspection — before your truck reaches the bridge. Up to 34% faster clearance.'}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+              <Link href="/operator/sample" className="py-2.5 px-4 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm font-bold text-center hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                {lang === 'es' ? 'Ver una validación de muestra →' : 'See a sample validation →'}
+              </Link>
+              <Link href="/pricing#operator" className="py-2.5 px-4 rounded-xl bg-blue-600 text-white text-sm font-bold text-center hover:bg-blue-700 transition-colors">
+                {lang === 'es' ? 'Empezar prueba gratuita' : 'Start free trial'}
+              </Link>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {lang === 'es' ? '7 días gratis · cancela cuando quieras · sin tarjeta' : '7 days free · cancel anytime · no card required'}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {lang === 'es' ? 'Documentos que validamos' : 'Documents we validate'}
+            </h2>
+            <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5">
+              <li>{lang === 'es' ? '• Pedimento (entrada México) — número, RFC, valor en aduana, fracciones arancelarias' : '• Pedimento (Mexican entry) — number, RFC, valor en aduana, HS codes'}</li>
+              <li>{lang === 'es' ? '• Factura comercial — Incoterm, país de origen, sumas, tax IDs' : '• Commercial invoice — Incoterm, country of origin, totals, tax IDs'}</li>
+              <li>{lang === 'es' ? '• Certificado USMCA — período, criterio de origen, firma, HS clasificación' : '• USMCA Certificate — blanket period, origin criterion, signature, HS classification'}</li>
+              <li>{lang === 'es' ? '• Lista de empaque — pesos, marcas, PO, descripciones' : '• Packing list — weights, marks, PO, descriptions'}</li>
+              <li>{lang === 'es' ? '• Bill of Lading — sellos, contenedor, freight terms' : '• Bill of Lading — seals, container, freight terms'}</li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {lang === 'es' ? 'Cómo funciona' : 'How it works'}
+            </h2>
+            <ol className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5 list-decimal list-inside">
+              <li>{lang === 'es' ? 'Suscríbete por $99/mes (7 días gratis)' : 'Subscribe for $99/mo (7-day free trial)'}</li>
+              <li>{lang === 'es' ? 'Sube cualquiera de los 5 documentos arriba (PDF, PNG, JPEG)' : 'Upload any of the 5 documents above (PDF, PNG, JPEG)'}</li>
+              <li>{lang === 'es' ? 'En menos de 60 segundos: lista de errores con corrección sugerida por campo' : 'In under 60 seconds: list of issues with field-by-field suggested fixes'}</li>
+              <li>{lang === 'es' ? 'Corriges antes de que tu broker la presente — evitas la inspección secundaria' : 'Fix before your broker submits — avoid secondary inspection'}</li>
+            </ol>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link href="/express-cert" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+              {lang === 'es' ? 'Acelera tu certificación C-TPAT / OEA →' : 'Express C-TPAT / OEA certification →'}
+            </Link>
+          </div>
+        </div>
+      </main>
+    )
   }
 
   const isOperator = tier === 'operator' || tier === 'business'
