@@ -73,7 +73,7 @@ export function GuardianProgressCard({ variant = 'card' }: GuardianCardProps = {
     return (
       <Link
         href="/leaderboard"
-        className="inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full pl-2 pr-3 py-1.5 active:scale-[0.97] transition-transform"
+        className="cruzar-pill inline-flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-full pl-2 pr-3 py-1.5"
         title={currentLabel}
       >
         <span className="text-base leading-none">{curr?.emoji || '🌱'}</span>

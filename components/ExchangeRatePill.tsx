@@ -47,7 +47,7 @@ export function ExchangeRatePill() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full pl-2 pr-3 py-1.5 text-xs shadow-sm active:scale-[0.97] transition-transform hover:border-emerald-400 dark:hover:border-emerald-500 max-w-full"
+        className="cruzar-pill inline-flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full pl-2 pr-3 py-1.5 text-xs hover:border-emerald-400 dark:hover:border-emerald-500 max-w-full"
       >
         <span className="text-base leading-none">💱</span>
         <span className="font-semibold text-gray-700 dark:text-gray-200 tabular-nums">

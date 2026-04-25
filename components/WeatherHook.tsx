@@ -155,7 +155,7 @@ export function WeatherHook({ variant = 'card' }: WeatherHookProps = {}) {
         : (es ? `en ${warning.hoursAway}h` : `in ${warning.hoursAway}h`)
     return (
       <div
-        className="inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-full pl-2 pr-3 py-1.5"
+        className="cruzar-pill inline-flex items-center gap-1.5 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800 rounded-full pl-2 pr-3 py-1.5"
         title={es ? c.es : c.en}
       >
         <span className="text-base leading-none">{c.emoji}</span>

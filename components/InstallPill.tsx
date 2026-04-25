@@ -61,7 +61,7 @@ export function InstallPill() {
   return (
     <Link
       href="/mas"
-      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-full pl-2 pr-1.5 py-1.5 shadow-sm active:scale-[0.97] transition-transform max-w-full"
+      className="cruzar-pill inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-full pl-2 pr-1.5 py-1.5 max-w-full"
     >
       <span className="text-base leading-none">📲</span>
       <span className="text-[11px] font-black whitespace-nowrap">

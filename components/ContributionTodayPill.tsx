@@ -53,7 +53,7 @@ export function ContributionTodayPill() {
   return (
     <Link
       href="/leaderboard"
-      className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full pl-2 pr-3 py-1.5 text-white shadow-sm active:scale-[0.97] transition-transform"
+      className="cruzar-pill inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full pl-2 pr-3 py-1.5 text-white"
       title={es ? 'Tu contribución hoy' : 'Your contribution today'}
     >
       <span className="text-base leading-none">📣</span>

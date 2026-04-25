@@ -16,7 +16,7 @@ export function CirclesPill() {
   return (
     <Link
       href="/dashboard?tab=circle"
-      className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/40 text-[11px] font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors max-w-full"
+      className="cruzar-pill inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700/40 text-[11px] font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 max-w-full"
     >
       <span>👥</span>
       <span>{es ? 'Mi círculo' : 'My circle'}</span>

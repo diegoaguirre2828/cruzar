@@ -23,6 +23,42 @@
   transform: scale(0.97);
 }
 
+/* Multi-layer shadow pill — gives the home pill row a 3D pressable
+   feel without color baggage. Stacks (1) a soft inner top highlight
+   for the bevel, (2) a tight 1px shadow that anchors the pill to the
+   surface, and (3) a wider ambient shadow for depth. Active state
+   collapses the ambient layer + drops the pill 1px so the press
+   reads as "going into the page." Color-agnostic — works on white
+   pills, gradient pills, and dark-bg pills. */
+.cruzar-pill {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.55) inset,
+    0 1px 1px rgba(15, 23, 42, 0.08),
+    0 2px 4px -1px rgba(15, 23, 42, 0.10),
+    0 6px 14px -3px rgba(15, 23, 42, 0.10);
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+}
+.dark .cruzar-pill {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 3px 6px -2px rgba(0, 0, 0, 0.40),
+    0 8px 16px -4px rgba(0, 0, 0, 0.35);
+}
+.cruzar-pill:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 1px 1px rgba(15, 23, 42, 0.10),
+    0 1px 2px rgba(15, 23, 42, 0.06);
+}
+.dark .cruzar-pill:active {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 1px 3px rgba(0, 0, 0, 0.30);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
