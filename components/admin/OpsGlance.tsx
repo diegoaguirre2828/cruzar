@@ -11,7 +11,8 @@ import { RefreshCw } from 'lucide-react'
 //
 // Data source: /api/admin/ops-glance (one aggregated endpoint that
 // issues ~20 parallel count() queries). Client-side refresh every
-// 60s by default, manual button too.
+// 5 min by default (was 60s — see PERF audit 2026-04-25), manual
+// button too.
 
 interface OpsData {
   users: { total: number; pro: number; business: number; new24h: number; new7d: number }
@@ -108,7 +109,7 @@ export function OpsGlance() {
           <p className="text-xs font-black uppercase tracking-widest text-gray-400">Ops at a glance</p>
           <p className="text-[10px] text-gray-500">
             {refreshedAt ? `Refreshed ${timeAgo(refreshedAt.toISOString())}` : '…'}
-            {' · auto-refresh 60s'}
+            {' · auto-refresh 5m'}
           </p>
         </div>
         <button
