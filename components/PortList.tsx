@@ -603,7 +603,7 @@ export function PortList() {
                     {lang === 'es' ? 'Ver todos →' : 'See all →'}
                   </Link>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-5">
                   {favPorts.map(port => (
                     <PortCard key={`fav-${port.portId}`} port={port} signal={signals[port.portId]} />
                   ))}
@@ -612,13 +612,13 @@ export function PortList() {
             )
           })()}
 
-          <div className="space-y-5">
+          <div className="space-y-7">
             {Object.entries(grouped).map(([region, regionPorts]) => (
               <div key={region}>
-                <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-1">
+                <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-1">
                   {region === 'Other' ? (lang === 'es' ? 'Otros' : 'Other') : region}
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-5">
                   {regionPorts.map(port => (
                     <PortCard key={`${port.portId}-${port.crossingName}`} port={port} signal={signals[port.portId]} />
                   ))}
