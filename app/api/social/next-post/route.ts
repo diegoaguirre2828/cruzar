@@ -121,11 +121,15 @@ Ve todos los puentes en vivo
 📱 cruzar.app
 
 Gratis · En vivo · Sin grupos
-🎁 Primeros 1,000 se llevan 3 meses de Pro gratis
 
 ${hashtags}`
 
-  const imageUrl = `${apiBase}/opengraph-image`
+  // Live wait-time card rendered by /api/social-image. Cache-busted so
+  // Graph API always pulls a fresh PNG when /api/cron/fb-publish posts.
+  // Was the static /opengraph-image until 2026-04-25 — that gave FB a
+  // generic brand card on every post; the live card lets the photo
+  // itself carry the wait-time data the caption is talking about.
+  const imageUrl = `${apiBase}/api/social-image?ts=${now.getTime()}`
   const hash = captionHash(caption)
 
   // Record this post BEFORE returning so the next call dedupes against it.
