@@ -177,8 +177,14 @@ async function maybeUpload(results) {
   const uploaded = [];
   for (const r of results) {
     const data = await readFile(r.outputPath);
+    // access: 'public' is required so FB Graph API can fetch the file
+    // via /{page-id}/videos `file_url`. Private Vercel Blob URLs use a
+    // tokenized hostname that FB's fetcher cannot resolve — first try
+    // 2026-04-25 returned "Unable to fetch video file from URL." The
+    // video is meant to be public anyway (it's about to be posted on
+    // FB), so public-blob is the right access mode.
     const blob = await put(`videos/${r.outputName}`, data, {
-      access: 'private',
+      access: 'public',
       token: blobToken,
       contentType: 'video/mp4',
     });
