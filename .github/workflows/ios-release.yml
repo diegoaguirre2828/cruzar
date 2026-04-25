@@ -34,7 +34,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
@@ -58,8 +58,17 @@ jobs:
       - name: Capacitor sync (copies webDir + native deps into ios/App)
         run: npx cap sync ios
 
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_15.4.app
+      - name: Select Xcode (iOS 18+ SDK required for App Store submission)
+        run: |
+          # macos-15 runner ships Xcode 16.x. Pick the highest available.
+          XCODE_PATH=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$XCODE_PATH" ]; then
+            echo "::error::No Xcode 16.x found on runner"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          echo "Using $XCODE_PATH"
+          sudo xcode-select -switch "$XCODE_PATH"
 
       - name: Show Xcode version
         run: xcodebuild -version
