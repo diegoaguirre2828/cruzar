@@ -90,8 +90,9 @@ export async function POST(req: NextRequest) {
     console.warn("mcp-key log insert:", logErr);
   }
 
-  // Email the plaintext key
+  // Email the plaintext key + notify operator (fire-and-forget for the latter)
   const sent = await sendKeyEmail(email, key, key_prefix, service);
+  notifyOperator(email, use_case, key_prefix, ip, service).catch(() => {});
   if (!sent.ok) {
     // Key is created. If email failed, expose to user so they can copy manually.
     return NextResponse.json({
@@ -109,6 +110,34 @@ export async function POST(req: NextRequest) {
     message: `Key sent to ${email}. Check inbox + spam.`,
     key_prefix,
   });
+}
+
+async function notifyOperator(email: string, use_case: string, key_prefix: string, ip: string, service: string): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+  const from = process.env.RESEND_FROM_EMAIL || "Cruzar Alerts <alerts@cruzar.app>";
+  const ownerEmail = process.env.OWNER_EMAIL || "diegonaguirre@icloud.com";
+  const body = [
+    `New self-serve MCP key signup at cruzar.app/insights/get-key:`,
+    ``,
+    `Service: ${service}`,
+    `Email: ${email}`,
+    `Use case: ${use_case}`,
+    `Key prefix: ...${key_prefix}`,
+    `IP: ${ip}`,
+    `Time: ${new Date().toISOString()}`,
+    ``,
+    `Reply to them or check the mcp_keys table for the full row.`,
+  ].join("\n");
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from,
+      to: [ownerEmail],
+      subject: `[Cruzar Insights] new MCP key signup — ${email}`,
+      text: body,
+    }),
+  }).catch(() => {});
 }
 
 async function sendKeyEmail(to: string, key: string, prefix: string, service: string): Promise<{ ok: boolean; detail?: string }> {
