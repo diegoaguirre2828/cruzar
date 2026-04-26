@@ -6,6 +6,8 @@ import { getServiceClient } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(req.nextUrl.searchParams.get('limit') || '50', 10), 100)
+  const directionParam = req.nextUrl.searchParams.get('direction')
+  const direction = directionParam === 'southbound' || directionParam === 'northbound' ? directionParam : null
   // 2026-04-19 widened 12h → 48h: low-report windows were making the home-page
   // feed look dead for every visitor during overnight/weekday lulls. A 48h
   // window keeps at least some social proof visible while reports stay
@@ -14,13 +16,15 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
   const db = getServiceClient()
 
-  const { data, error } = await db
+  let query = db
     .from('crossing_reports')
-    .select('id, user_id, port_id, report_type, description, wait_minutes, upvotes, created_at, username, source, source_meta, location_confidence')
+    .select('id, user_id, port_id, report_type, description, wait_minutes, upvotes, created_at, username, source, source_meta, location_confidence, direction')
     .is('hidden_at', null)  // v35 moderation: skip reports an admin flagged
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(limit)
+  if (direction) query = query.eq('direction', direction)
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

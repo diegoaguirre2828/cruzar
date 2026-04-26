@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { Copy, Check, RefreshCw } from 'lucide-react'
+import { Copy, Check, RefreshCw, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { getPortMeta } from '@/lib/portMeta'
 import type { PortWaitTime } from '@/types'
 
@@ -26,6 +26,8 @@ type RegionKey =
   | 'mexicali'
   | 'all'
 
+type Direction = 'north' | 'south'
+
 const REGIONS: { key: RegionKey; label: string; emoji: string }[] = [
   { key: 'rgv',         label: 'McAllen / Reynosa',       emoji: '🌵' },
   { key: 'progreso',    label: 'Progreso / N. Progreso',  emoji: '🌾' },
@@ -43,31 +45,8 @@ const REGIONS: { key: RegionKey; label: string; emoji: string }[] = [
   { key: 'all',         label: 'All Mega-Regions',        emoji: '🌎' },
 ]
 
-// Maps the admin region keys to portMeta mega-region slugs
-const REGION_TO_MEGA: Record<RegionKey, string[]> = {
-  rgv:         ['rgv'],
-  progreso:    ['rgv'],
-  roma:        ['rgv'],
-  brownsville: ['rgv'],
-  laredo:      ['laredo'],
-  eagle_pass:  ['coahuila-tx'],
-  del_rio:     ['coahuila-tx'],
-  el_paso:     ['el-paso'],
-  nogales:     ['sonora-az'],
-  douglas:     ['sonora-az'],
-  san_luis:    ['sonora-az'],
-  tijuana:     ['baja'],
-  mexicali:    ['baja'],
-  all:         [],
-}
-
-// Also allow by city-name match for fallback (portMeta has `.city`). The
-// mega-region sets are too coarse to separate e.g. Tijuana from Mexicali
-// (both are `baja`), so the city filter is the real disambiguator.
-// Matchers are ordered so narrower cities go into their own region
-// and don't leak back into rgv — Progreso / Donna / Roma / Rio Grande
-// City used to all be bundled under rgv, which meant picking "RGV"
-// featured them and picking "Progreso" didn't exist at all.
+// City-name matchers — see PortList.tsx for canonical mapping. Mega-region
+// alone is too coarse (Tijuana + Mexicali both `baja`).
 const REGION_CITY_MATCH: Record<RegionKey, (city: string) => boolean> = {
   rgv:         (c) => ['McAllen', 'Hidalgo', 'Pharr'].some(s => c.includes(s)),
   progreso:    (c) => c.includes('Progreso') || c.includes('Donna'),
@@ -119,56 +98,152 @@ function waitLabel(min: number | null): string {
   return `${min} min`
 }
 
+function minutesAgo(iso: string | null): number | null {
+  if (!iso) return null
+  const t = new Date(iso).getTime()
+  if (isNaN(t)) return null
+  return Math.max(0, Math.round((Date.now() - t) / 60000))
+}
+
+function freshnessLabel(min: number | null): string {
+  if (min == null) return 'sin marca de tiempo'
+  if (min < 1) return 'ahorita mismo'
+  if (min === 1) return 'hace 1 min'
+  if (min < 60) return `hace ${min} min`
+  const h = Math.floor(min / 60)
+  return `hace ${h}h`
+}
+
+interface SouthboundReport {
+  port_id: string
+  wait_minutes: number | null
+  created_at: string
+  direction: string | null
+}
+
+// Aggregate southbound community reports into a per-port shape the card can
+// render with the same code path as the CBP-driven northbound view.
+function aggregateSouthbound(reports: SouthboundReport[]): Map<string, { vehicle: number; n: number; latestAt: string }> {
+  const byPort = new Map<string, SouthboundReport[]>()
+  for (const r of reports) {
+    if (r.wait_minutes == null) continue
+    const arr = byPort.get(r.port_id) ?? []
+    arr.push(r)
+    byPort.set(r.port_id, arr)
+  }
+  const out = new Map<string, { vehicle: number; n: number; latestAt: string }>()
+  for (const [portId, arr] of byPort) {
+    // Median is more robust than mean for sparse community reports
+    const sorted = arr.map(r => r.wait_minutes!).sort((a, b) => a - b)
+    const median = sorted[Math.floor(sorted.length / 2)]
+    const latestAt = arr.reduce((acc, r) => (r.created_at > acc ? r.created_at : acc), arr[0].created_at)
+    out.set(portId, { vehicle: median, n: arr.length, latestAt })
+  }
+  return out
+}
+
 export function HeroGenerator() {
   const [ports, setPorts] = useState<PortWaitTime[]>([])
+  const [southbound, setSouthbound] = useState<Map<string, { vehicle: number; n: number; latestAt: string }>>(new Map())
   const [loading, setLoading] = useState(true)
   const [region, setRegion] = useState<RegionKey>('rgv')
+  const [direction, setDirection] = useState<Direction>('north')
   const [slot, setSlot] = useState<TimeSlot>(currentTimeSlot())
   const [captionIdx, setCaptionIdx] = useState(0)
   const [copied, setCopied] = useState<'caption' | null>(null)
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {
-    loadPorts()
+    loadAll()
   }, [])
 
-  async function loadPorts() {
+  async function loadAll() {
     setLoading(true)
     try {
-      const res = await fetch('/api/ports', { cache: 'no-store' })
-      const data = await res.json()
-      setPorts(data.ports || [])
+      const [portsRes, southRes] = await Promise.all([
+        fetch('/api/ports', { cache: 'no-store' }),
+        fetch('/api/reports/recent?direction=southbound&limit=100', { cache: 'no-store' }),
+      ])
+      const portsData = await portsRes.json()
+      const southData = await southRes.json()
+      setPorts(portsData.ports || [])
+      setSouthbound(aggregateSouthbound(southData.reports || []))
     } finally {
       setLoading(false)
       setNow(new Date())
     }
   }
 
-  // Filter ports to the selected region and pick the 4 with valid data
+  // Filter ports to the selected region. For southbound view we still
+  // anchor on /api/ports (so port metadata is consistent), but overlay
+  // wait minutes from the southbound community aggregate.
   const featured = useMemo(() => {
     const match = REGION_CITY_MATCH[region]
-    const filtered = ports.filter((p) => {
+    const inRegion = ports.filter((p) => {
       if (!match) return true
       const meta = getPortMeta(p.portId)
       if (!meta) return false
       return match(meta.city)
     })
-    const withData = filtered.filter((p) => p.vehicle != null && !p.isClosed)
-    // Sort by vehicle wait ascending so the fastest is shown first
-    return withData
+
+    if (direction === 'north') {
+      const withData = inRegion.filter((p) => p.vehicle != null && !p.isClosed)
+      return withData
+        .sort((a, b) => (a.vehicle ?? 9999) - (b.vehicle ?? 9999))
+        .slice(0, 4)
+    }
+
+    // Southbound: rebuild PortWaitTime-shaped objects with community data.
+    // Skip ports with no recent southbound reports.
+    const overlaid: PortWaitTime[] = inRegion.flatMap((p) => {
+      const sb = southbound.get(p.portId)
+      if (!sb) return []
+      const out: PortWaitTime = {
+        ...p,
+        vehicle: sb.vehicle,
+        sentri: null,
+        pedestrian: null,
+        commercial: null,
+        isClosed: false,
+        source: 'community',
+        recordedAt: sb.latestAt,
+        reportCount: sb.n,
+        // Suppress historicalVehicle for southbound — it's based on
+        // northbound CBP readings and isn't comparable.
+        historicalVehicle: null,
+      }
+      return [out]
+    })
+
+    return overlaid
       .sort((a, b) => (a.vehicle ?? 9999) - (b.vehicle ?? 9999))
       .slice(0, 4)
-  }, [ports, region])
+  }, [ports, southbound, region, direction])
 
-  // Find the fastest and slowest in the region to call out
   const fastest = featured[0]
   const slowest = featured[featured.length - 1]
+  const savings = fastest && slowest && featured.length >= 2
+    ? Math.max(0, (slowest.vehicle ?? 0) - (fastest.vehicle ?? 0))
+    : 0
 
-  // Build the caption variants. Depth-biased for ES because that's the
-  // primary posting language.
+  // Median CBP staleness across featured ports — used for top-right freshness label
+  const medianStaleMin = useMemo(() => {
+    const ages = featured
+      .map((p) => minutesAgo(p.recordedAt))
+      .filter((m): m is number => m != null)
+      .sort((a, b) => a - b)
+    if (ages.length === 0) return null
+    return ages[Math.floor(ages.length / 2)]
+  }, [featured])
+
   const captions = useMemo(() => {
     const greeting = timeSlotGreetingEs(slot)
-    if (featured.length === 0) return ['Sin datos disponibles pa\' esta región.']
+    const dirLabel = direction === 'north' ? 'pa\' Estados Unidos' : 'pa\' México'
+    if (featured.length === 0) {
+      return direction === 'north'
+        ? ['Sin datos disponibles pa\' esta región ahorita.']
+        : ['Aún pocos reportes pa\' México por este lado. Si vas cruzando, sube el dato en cruzar.app — ayudas a la raza.']
+    }
 
     const fastWait = fastest?.vehicle ?? 0
     const slowWait = slowest?.vehicle ?? 0
@@ -177,20 +252,25 @@ export function HeroGenerator() {
     const fastName = fastMeta?.localName || fastest?.portName || ''
     const slowName = slowMeta?.localName || slowest?.portName || ''
 
+    const sourceTag = direction === 'north'
+      ? 'Datos en vivo de CBP'
+      : `Datos de la raza (${featured.reduce((s, p) => s + (p.reportCount ?? 0), 0)} reportes)`
+
     return [
-      // Variant 1 — straight info
-      `${greeting}. Así están los puentes ahorita:\n\n${featured
+      // Variant 1 — full info dump with lanes
+      `${greeting}. Así están los puentes ${dirLabel} ahorita:\n\n${featured
         .map((p) => {
           const m = getPortMeta(p.portId)
           const name = m?.localName || p.portName
-          return `• ${name} — ${waitLabel(p.vehicle)}`
+          const lanes = p.vehicleLanesOpen != null && direction === 'north' ? ` · ${p.vehicleLanesOpen} carril${p.vehicleLanesOpen === 1 ? '' : 'es'}` : ''
+          return `• ${name} — ${waitLabel(p.vehicle)}${lanes}`
         })
-        .join('\n')}\n\nPa' ver en vivo y con alertas: cruzar.app`,
+        .join('\n')}\n\n${sourceTag} · cruzar.app`,
 
-      // Variant 2 — highlights the contrast
-      featured.length >= 2 && slowWait - fastWait >= 15
-        ? `${greeting}. Ojo: ${fastName} va en ${fastWait} min pero ${slowName} ${slowWait} min. Si pueden, jálenle al que está fluyendo.\n\nTiempos actualizados cada rato en cruzar.app`
-        : `${greeting}. Los puentes ahorita están así:\n\n${featured
+      // Variant 2 — savings hook
+      savings >= 15
+        ? `${greeting}. Ahorra ${savings} min cruzando por ${fastName} (${fastWait} min) en vez de ${slowName} (${slowWait} min). ${dirLabel}.\n\nTiempos en vivo en cruzar.app`
+        : `${greeting}. Los puentes ${dirLabel} están parejos hoy:\n\n${featured
             .map((p) => {
               const m = getPortMeta(p.portId)
               const name = m?.localName || p.portName
@@ -198,16 +278,39 @@ export function HeroGenerator() {
             })
             .join('\n')}\n\nVean en vivo: cruzar.app`,
 
-      // Variant 3 — short, call to action
-      `${greeting}. Antes de salir pa'l puente, chéquenlo en cruzar.app — ahí salen los tiempos en vivo de ${featured
+      // Variant 3 — short CTA
+      `${greeting}. Antes de salir pa'l puente ${dirLabel}, chéquenlo en cruzar.app — ahí salen los tiempos en vivo de ${featured
         .map((p) => {
           const m = getPortMeta(p.portId)
           return m?.localName?.split(' / ')[0] || p.portName
         })
         .slice(0, 3)
-        .join(', ')} y más. Ahorita el que va más rápido es ${fastName} en ${fastWait} min.`,
+        .join(', ')} y más. Ahorita el más rápido es ${fastName} en ${fastWait} min.`,
+
+      // Variant 4 — vs usual angle (only when we have historical context)
+      (() => {
+        const withHist = featured.filter((p) => p.historicalVehicle != null && p.vehicle != null)
+        if (withHist.length === 0 || direction === 'south') {
+          return `${greeting}. Cruzar ${dirLabel}: el más rápido ahorita es ${fastName} en ${fastWait} min. Más en cruzar.app.`
+        }
+        const better = withHist.filter((p) => (p.vehicle ?? 0) < (p.historicalVehicle ?? 999) - 5)
+        const worse  = withHist.filter((p) => (p.vehicle ?? 0) > (p.historicalVehicle ?? 0) + 10)
+        if (better.length > 0) {
+          const b = better[0]
+          const m = getPortMeta(b.portId)
+          const name = m?.localName || b.portName
+          return `${greeting}. ${name} está fluyendo: ${b.vehicle} min vs los ~${b.historicalVehicle} min normales pa' esta hora. Aprovecha. cruzar.app`
+        }
+        if (worse.length > 0) {
+          const w = worse[0]
+          const m = getPortMeta(w.portId)
+          const name = m?.localName || w.portName
+          return `${greeting}. Aguas con ${name} — está en ${w.vehicle} min, normalmente a esta hora son ~${w.historicalVehicle}. Si pueden, vayan por ${fastName} (${fastWait} min). cruzar.app`
+        }
+        return `${greeting}. Los puentes están como siempre a esta hora. Más rápido: ${fastName} en ${fastWait} min. cruzar.app`
+      })(),
     ]
-  }, [featured, slot, fastest, slowest])
+  }, [featured, slot, fastest, slowest, savings, direction])
 
   const caption = captions[captionIdx % captions.length]
 
@@ -218,12 +321,13 @@ export function HeroGenerator() {
   }
 
   const timestamp = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const dateLabel = now.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
     <div className="space-y-5">
       <div>
         <p className="text-sm font-semibold text-gray-900">Hero Generator</p>
-        <p className="text-xs text-gray-500 mt-0.5">Pick a region, screenshot the card, copy the caption. Target specific Facebook groups.</p>
+        <p className="text-xs text-gray-500 mt-0.5">Pick region + direction, screenshot the card, copy the caption.</p>
       </div>
 
       {/* Controls */}
@@ -245,6 +349,28 @@ export function HeroGenerator() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Direction</p>
+          <div className="flex gap-1.5">
+            {(['north', 'south'] as Direction[]).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDirection(d)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  direction === d
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                }`}
+              >
+                {d === 'north' ? '🇺🇸 Norte (CBP)' : '🇲🇽 Sur (raza)'}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">
+            Norte = CBP en vivo. Sur = mediana de reportes comunitarios (últimas 48h).
+          </p>
         </div>
 
         <div>
@@ -271,7 +397,7 @@ export function HeroGenerator() {
         </div>
 
         <button
-          onClick={loadPorts}
+          onClick={loadAll}
           disabled={loading}
           className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:opacity-50"
         >
@@ -293,25 +419,39 @@ export function HeroGenerator() {
           }}
         >
           {/* Brand row */}
-          <div className="flex items-start justify-between mb-5">
+          <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-3xl font-black leading-none tracking-tight">
                 Cruzar<span className="text-blue-300">.app</span>
               </p>
-              <p className="text-[11px] text-blue-200 font-semibold mt-0.5">Tiempos de espera en vivo</p>
+              <p className="text-[11px] text-blue-200 font-semibold mt-0.5">
+                {direction === 'north' ? 'Tiempos pa\' Estados Unidos · en vivo' : 'Tiempos pa\' México · reportes de la raza'}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-blue-200 uppercase tracking-wider">Actualizado</p>
-              <p className="text-sm font-bold tabular-nums">{timestamp}</p>
+              <p className="text-[10px] text-blue-200 uppercase tracking-wider">{dateLabel}</p>
+              <p className="text-sm font-bold tabular-nums leading-tight">{timestamp}</p>
+              <p className="text-[10px] text-blue-200 mt-0.5">{freshnessLabel(medianStaleMin)}</p>
             </div>
           </div>
 
-          {/* Region tag */}
-          <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 mb-4 border border-white/20">
-            <span className="text-xs">{REGIONS.find((r) => r.key === region)?.emoji}</span>
-            <span className="text-[11px] font-bold uppercase tracking-wider">
-              {REGIONS.find((r) => r.key === region)?.label}
-            </span>
+          {/* Region tag + savings callout */}
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 border border-white/20">
+              <span className="text-xs">{REGIONS.find((r) => r.key === region)?.emoji}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                {REGIONS.find((r) => r.key === region)?.label}
+              </span>
+              <span className="text-[10px] text-blue-200 ml-1">
+                · {direction === 'north' ? '🇺🇸 norte' : '🇲🇽 sur'}
+              </span>
+            </div>
+            {savings >= 10 && (
+              <div className="inline-flex items-center gap-1.5 bg-green-400/20 border border-green-300/40 rounded-full px-3 py-1">
+                <span className="text-[10px] font-bold text-green-200 uppercase tracking-wider">Ahorra</span>
+                <span className="text-sm font-black text-green-100 tabular-nums">{savings} min</span>
+              </div>
+            )}
           </div>
 
           {/* Bridges list */}
@@ -319,7 +459,11 @@ export function HeroGenerator() {
             <div className="h-40 bg-white/5 rounded-2xl animate-pulse" />
           ) : featured.length === 0 ? (
             <div className="bg-white/10 rounded-2xl p-6 text-center">
-              <p className="text-sm font-medium">Sin datos pa' esta región ahorita</p>
+              <p className="text-sm font-medium">
+                {direction === 'north'
+                  ? 'Sin datos pa\' esta región ahorita'
+                  : 'Pocos reportes pa\' México por este lado — sé el primero en cruzar.app'}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -329,27 +473,78 @@ export function HeroGenerator() {
                 const cityLabel = meta?.city || ''
                 const wait = p.vehicle
                 const color = waitColor(wait)
+                const portStaleMin = minutesAgo(p.recordedAt)
+                const isStale = direction === 'north' && portStaleMin != null && portStaleMin > 30
+                const hist = direction === 'north' ? p.historicalVehicle : null
+                const histDelta = hist != null && wait != null ? wait - hist : null
+                const histTrendIcon = histDelta != null
+                  ? (histDelta <= -5 ? <ArrowDownRight className="w-3 h-3 inline" /> : histDelta >= 10 ? <ArrowUpRight className="w-3 h-3 inline" /> : null)
+                  : null
+                const histColor = histDelta == null ? 'text-blue-200'
+                  : histDelta <= -5 ? 'text-green-300'
+                  : histDelta >= 10 ? 'text-red-300'
+                  : 'text-blue-200'
+
+                // Lanes available only for northbound (CBP-driven)
+                const lanesOpen = direction === 'north' ? p.vehicleLanesOpen : null
+                const sentri = direction === 'north' ? p.sentri : null
+                const ped = direction === 'north' ? p.pedestrian : null
+
                 return (
                   <div
                     key={p.portId}
-                    className={`flex items-center justify-between gap-3 px-4 py-3 rounded-2xl ${
+                    className={`px-4 py-3 rounded-2xl ${
                       i === 0 ? 'bg-white/20 border-2 border-white/40' : 'bg-white/10 border border-white/15'
                     }`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black truncate leading-tight">
-                        {displayName}
-                        {i === 0 && (
-                          <span className="ml-2 inline-block align-middle bg-green-400 text-green-900 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                            + rápido
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[10px] text-blue-200 truncate">{cityLabel}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black truncate leading-tight">
+                          {displayName}
+                          {i === 0 && (
+                            <span className="ml-2 inline-block align-middle bg-green-400 text-green-900 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                              + rápido
+                            </span>
+                          )}
+                          {isStale && (
+                            <span className="ml-1.5 inline-block align-middle bg-amber-400/30 text-amber-200 text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide border border-amber-300/40">
+                              viejo
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-[10px] text-blue-200 truncate">{cityLabel}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-2xl font-black tabular-nums">{waitLabel(wait)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
-                      <span className="text-2xl font-black tabular-nums">{waitLabel(wait)}</span>
+
+                    {/* Sub-info row: lanes + history delta + south report count */}
+                    <div className="mt-2 flex items-center gap-3 flex-wrap text-[10px]">
+                      {lanesOpen != null && (
+                        <span className="text-blue-100">
+                          🛣 {lanesOpen} carril{lanesOpen === 1 ? '' : 'es'}
+                        </span>
+                      )}
+                      {sentri != null && (
+                        <span className="text-blue-100">SENTRI {waitLabel(sentri)}</span>
+                      )}
+                      {ped != null && (
+                        <span className="text-blue-100">A pie {waitLabel(ped)}</span>
+                      )}
+                      {hist != null && histDelta != null && (
+                        <span className={histColor}>
+                          {histTrendIcon}
+                          {' '}vs normal ~{hist}m
+                          {histDelta > 0 ? ` (+${histDelta})` : histDelta < 0 ? ` (${histDelta})` : ''}
+                        </span>
+                      )}
+                      {direction === 'south' && p.reportCount != null && (
+                        <span className="text-blue-100">
+                          📣 {p.reportCount} reporte{p.reportCount === 1 ? '' : 's'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )
@@ -359,7 +554,11 @@ export function HeroGenerator() {
 
           {/* Footer CTA */}
           <div className="mt-5 pt-4 border-t border-white/20 text-center">
-            <p className="text-xs text-blue-100">Tiempos en vivo · Alertas gratis · cruzar.app</p>
+            <p className="text-xs text-blue-100">
+              {direction === 'north'
+                ? 'Datos CBP en vivo · Alertas gratis · cruzar.app'
+                : 'Reportes de la raza · Sube el tuyo · cruzar.app'}
+            </p>
           </div>
         </div>
       </div>
@@ -369,7 +568,7 @@ export function HeroGenerator() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-semibold text-gray-900">Caption {captionIdx + 1} of {captions.length}</p>
-            <p className="text-[11px] text-gray-500">Rotate variants so the same copy-paste doesn't spam the group</p>
+            <p className="text-[11px] text-gray-500">Rotate variants so the same copy-paste doesn&apos;t spam the group</p>
           </div>
           <div className="flex gap-1">
             <button
@@ -411,11 +610,11 @@ export function HeroGenerator() {
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
         <p className="text-xs font-bold text-amber-800 mb-1">📌 How to use this</p>
         <ol className="text-xs text-amber-700 space-y-1 list-decimal list-inside">
-          <li>Pick a region (matches the Facebook groups you're targeting)</li>
-          <li>Screenshot the hero card above — that's the visual</li>
-          <li>Copy the caption — paste it into the Facebook group along with your screenshot</li>
-          <li>Rotate through the caption variants so repeat viewers don't see the same text</li>
-          <li>Post it during peak hours: 5:30am · 11:30am · 3:30pm · 7:00pm</li>
+          <li>Pick a region + direction (Norte for US-bound groups, Sur for MX-bound)</li>
+          <li>Screenshot the hero card above — that&apos;s the visual</li>
+          <li>Cycle captions and pick the one that matches the angle (savings, vs-usual, info)</li>
+          <li>Paste into the FB group along with the screenshot</li>
+          <li>Post during peak hours: 5:30am · 11:30am · 3:30pm · 7:00pm</li>
         </ol>
       </div>
     </div>
