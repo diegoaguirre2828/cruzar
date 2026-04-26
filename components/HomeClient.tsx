@@ -17,7 +17,6 @@ import { LiveActivityTicker } from '@/components/LiveActivityTicker'
 import { HeroCarousel } from '@/components/HeroCarousel'
 import { WeatherHook } from '@/components/WeatherHook'
 import { GuardianProgressCard } from '@/components/GuardianProgressCard'
-import { InstallPill } from '@/components/InstallPill'
 import { ContributionTodayPill } from '@/components/ContributionTodayPill'
 import { CirclesPill } from '@/components/CirclesPill'
 import { ReciprocityCard } from '@/components/ReciprocityCard'
@@ -25,14 +24,12 @@ import { HeroTriad } from '@/components/HeroTriad'
 import { UserCrossingInsights } from '@/components/UserCrossingInsights'
 import { HomeForecast } from '@/components/HomeForecast'
 import { PriorityNudge, type NudgeSpec } from '@/components/PriorityNudge'
-import { FavoriteHero } from '@/components/FavoriteHero'
 import { SetFavoriteBanner } from '@/components/SetFavoriteBanner'
+import { ConversionRibbon } from '@/components/ConversionRibbon'
+import { HomeSwipe, type SwipePanel } from '@/components/HomeSwipe'
 
-// PERF (2026-04-25 audit): below-the-fold + conditional surfaces split
-// into their own chunks. Cuts the home-page first-load JS by deferring
-// modules that won't render until the user scrolls (or never, for
-// guests / non-holiday windows). Each is fine to render client-only —
-// none provide SEO content for the home route.
+// PERF: below-the-fold + conditional surfaces split into their own
+// chunks so they don't bloat the home-page initial JS.
 const HomeReportsFeed = dynamic(
   () => import('@/components/HomeReportsFeed').then((m) => ({ default: m.HomeReportsFeed })),
   { ssr: false },
@@ -53,8 +50,6 @@ import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
 import { useSessionPing } from '@/lib/useSessionPing'
-import { GuestSignupBanner } from '@/components/GuestSignupBanner'
-import { GuestStickyStrip } from '@/components/GuestStickyStrip'
 import { PwaFirstLaunchWelcome } from '@/components/PwaFirstLaunchWelcome'
 import { SocialProofStrip } from '@/components/SocialProofStrip'
 import { armNudge } from '@/lib/useNudge'
@@ -64,99 +59,11 @@ import type { PortWaitTime } from '@/types'
 import type { RecentReport } from '@/lib/recentReports'
 import { slugForPort } from '@/lib/portSlug'
 
-function ProNoAlertBanner({ lang, tier, user }: { lang: string; tier: string; user: { id: string } | null }) {
-  // Prominent one-time soft nag for Pro/Business users who haven't set
-  // any alerts. Alerts are the retention mechanism — without one, the
-  // user never comes back. Dismissable with a 7-day cooldown. Renders
-  // inline on the homepage above the port list. Fetches alert count
-  // once on mount.
-  const [alertCount, setAlertCount] = useState<number | null>(null)
-  const [dismissed, setDismissed] = useState(true) // start hidden; flip after checks pass
-  const es = lang === 'es'
-  const isPro = tier === 'pro' || tier === 'business'
-
-  useEffect(() => {
-    if (!user || !isPro) { setDismissed(true); return }
-    try {
-      const raw = localStorage.getItem('cruzar_pro_no_alert_dismissed_at')
-      if (raw) {
-        const ageDays = (Date.now() - parseInt(raw, 10)) / (1000 * 60 * 60 * 24)
-        if (ageDays < 7) { setDismissed(true); return }
-      }
-    } catch { /* ignore */ }
-    fetchWithTimeout('/api/alerts', { cache: 'no-store' }, 5000)
-      .then((r) => r.ok ? r.json() : { alerts: [] })
-      .then((data) => {
-        const n = Array.isArray(data?.alerts) ? data.alerts.length : 0
-        setAlertCount(n)
-        if (n === 0) {
-          setDismissed(false)
-          trackEvent('alert_nudge_shown', { source: 'home_pro_no_alert' })
-        }
-      })
-      .catch(() => { /* keep dismissed */ })
-  }, [user, isPro])
-
-  if (!user || !isPro || dismissed || alertCount !== 0) return null
-
-  return (
-    <Link
-      href="/dashboard?tab=alerts"
-      onClick={() => trackEvent('alert_nudge_tapped', { source: 'home_pro_no_alert' })}
-      className="block mt-3 relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-pink-600 p-4 shadow-lg cruzar-shimmer active:scale-[0.99] transition-transform"
-    >
-      <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-300/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="relative flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-black text-white leading-tight">
-            {es
-              ? '🔔 Ya eres Pro pero no has activado una alerta'
-              : "🔔 You're Pro but haven't set an alert yet"}
-          </p>
-          <p className="text-[11px] text-amber-50 mt-0.5 leading-snug">
-            {es
-              ? 'Te avisamos cuando tu puente baje — sin andar chequeando.'
-              : "We'll ping you when your bridge clears — no checking needed."}
-          </p>
-        </div>
-        <span className="flex-shrink-0 bg-white text-orange-700 text-[11px] font-black px-3 py-1.5 rounded-full whitespace-nowrap">
-          {es ? 'Activar →' : 'Set one →'}
-        </span>
-        <button
-          type="button"
-          aria-label={es ? 'Descartar' : 'Dismiss'}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            try { localStorage.setItem('cruzar_pro_no_alert_dismissed_at', String(Date.now())) } catch { /* ignore */ }
-            trackEvent('alert_nudge_dismissed', { source: 'home_pro_no_alert' })
-            setDismissed(true)
-          }}
-          className="flex-shrink-0 text-white/80 hover:text-white text-xl leading-none px-1"
-        >
-          ×
-        </button>
-      </div>
-    </Link>
-  )
-}
-
-// Priority-ordered list of home nudges. PriorityNudge below picks the
-// first ARMED one (pending or seen) and shows just that nudge. Keeps
-// the activation surface focused — one at a time, dismiss to advance.
+// Priority-ordered list of feature-discovery nudges. Conversion-class
+// nudges (set an alert, sign up) are now handled by ConversionRibbon
+// at the top — these are the buried-feature pointers that surface
+// inside the "Mi puente" panel after personalization.
 const HOME_NUDGES: NudgeSpec[] = [
-  {
-    nudgeKey: 'saved_bridge_set_alert',
-    emoji: '🔔',
-    titleEs: "Activa alertas pa' tu puente guardado",
-    titleEn: 'Turn on alerts for your saved bridge',
-    subEs: 'Te avisamos cuando baje de 30 min sin tener que andar chequeando',
-    subEn: "We'll ping you when it drops below 30 min — no checking needed",
-    ctaEs: 'Activar',
-    ctaEn: 'Turn on',
-    href: '/dashboard',
-    tone: 'blue',
-  },
   {
     nudgeKey: 'pro_insights_unlocked',
     emoji: '📊',
@@ -235,14 +142,7 @@ function SavedCrossings({ initialPorts }: { initialPorts: PortWaitTime[] | null 
       })
       setSaved(ports)
       setStatus('idle')
-      // Arm the alert-setup nudge the first time we see any saved
-      // bridges. armNudge is idempotent — ignored if the user has
-      // already dismissed or taken action.
-      if (ports.length > 0) armNudge('saved_bridge_set_alert')
     }).catch(() => {
-      // Surface the failure as a retry state instead of silently
-      // hiding the rail — returning users lost their saved bridges
-      // with no indication previously.
       setStatus('error')
     })
   }
@@ -310,9 +210,6 @@ interface Props {
 }
 
 export function HomeClient({ initialPorts, initialReports }: Props) {
-  // Ping /api/user/touch once per session with device + install_state so
-  // the admin panel can slice users by device / OS / PWA state. No-op
-  // for guests.
   useSessionPing()
   const { t, lang } = useLang()
   const { tier } = useTier()
@@ -320,12 +217,7 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
   const isBusiness = tier === 'business'
   const es = lang === 'es'
 
-  // ─── Personalization state (Tier 0) ────────────────────────
-  // Fetched on mount for signed-in users:
-  //   - displayName: the random-generated handle stored in
-  //     profiles.display_name (populated by the signup trigger)
-  //   - favoritePortId: first saved crossing, treated as the user's
-  //     "primary" bridge for the HeroTriad ordering
+  // ─── Personalization state ─────────────────────────────────
   const [displayName, setDisplayName] = useState<string | null>(null)
   const [favoritePortId, setFavoritePortId] = useState<string | null>(null)
 
@@ -335,8 +227,6 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
       setFavoritePortId(null)
       return
     }
-    // Parallel fetch — both are small and the home page waits for
-    // neither (HeroTriad handles missing favorite gracefully).
     Promise.all([
       fetchWithTimeout('/api/profile', {}, 5000).then((r) => r.ok ? r.json() : null).catch(() => null),
       fetchWithTimeout('/api/saved', {}, 5000).then((r) => r.ok ? r.json() : null).catch(() => null),
@@ -345,11 +235,6 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
       const firstSaved = savedData?.saved?.[0]?.port_id || null
       setFavoritePortId(firstSaved)
 
-      // Nudge arming (feature discovery for buried features):
-      //   1. Saved a bridge → invite your circle (parallel to the
-      //      existing set-alert nudge; different action, same trigger)
-      //   2. 3+ reports → see the leaderboard (guardian motivation)
-      //   3. Pro/Business who never visited /datos → insights unlocked
       if (firstSaved) armNudge('saved_bridge_invite_circle')
       const reportsCount: number = profileData?.profile?.reports_count ?? 0
       if (reportsCount >= 3) armNudge('reports_see_leaderboard')
@@ -364,7 +249,6 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
     })
   }, [user])
 
-  // Time-aware salutation — "Buenos días" / "Buenas tardes" / "Buenas noches"
   const salutation = useMemo(() => {
     const hour = new Date().getHours()
     if (hour < 12) return es ? 'Buenos días' : 'Good morning'
@@ -372,20 +256,11 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
     return es ? 'Buenas noches' : 'Good evening'
   }, [es])
 
-  // Fire retention event once per home visit for signed-in users.
-  // Diego's 2026-04-14 metric picks: D7 retention + home-visits-with-action.
-  // The visit event powers D7; the action event (fired from the triad
-  // card, SavedCrossings tap, ReportForm submit, etc.) powers the
-  // with-action rate.
   useEffect(() => {
     if (!user) return
     trackEvent('home_visited', { has_saved_bridge: !!favoritePortId })
   }, [user, favoritePortId])
 
-  // Capture referrer ID on any landing path so shares that point to the
-  // homepage ('cruzar.app/?ref=...') actually credit the inviter. Previously
-  // this was only done on port detail pages, which meant WhatsApp / FB shares
-  // pointing at the root URL lost the ref entirely.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const ref = new URLSearchParams(window.location.search).get('ref')
@@ -397,10 +272,6 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
     }
   }, [])
 
-  // Arm the "discover features" nudge after the user has visited the
-  // home page 3+ times. Gives returning users a chance to find the
-  // /features index without being hit on their first visit. Uses
-  // cruzar_home_visits counter to track visit count.
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -408,38 +279,157 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
       const visits = raw ? parseInt(raw, 10) || 0 : 0
       const next = visits + 1
       localStorage.setItem('cruzar_home_visits', String(next))
-      if (next === 3) {
-        // arm — but only if it hasn't already been dismissed or taken
-        armNudge('home_discover_features')
-      }
+      if (next === 3) armNudge('home_discover_features')
     } catch { /* ignore */ }
   }, [])
 
+  // ─── Panels ────────────────────────────────────────────────
+  // Default panel = "Cerca" (the bridge list). Universal landing
+  // surface — every visitor sees the data they came for, no scroll.
+  const cercaPanel = (
+    <>
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+        <ExchangeRatePill />
+        <WeatherHook variant="pill" />
+      </div>
+      <HolidayOverlay />
+      <ReciprocityCard />
+      <UrgentAlerts initialReports={initialReports} />
+      <SavedCrossings initialPorts={initialPorts} />
+      <div id="port-list" />
+      <PortList />
+      <SocialProofStrip />
+    </>
+  )
+
+  // Panel 2 — "Mi puente". Personal hero + forecast + insights for the
+  // user's saved bridge. For signed-in users without a favorite, this
+  // panel is the favorite-picker. For guests, a generic hero carousel
+  // + signup hook.
+  const mioPanel = (() => {
+    if (authLoading) {
+      return (
+        <div
+          aria-hidden="true"
+          className="bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 rounded-3xl p-5 shadow-2xl animate-pulse"
+        >
+          <div className="h-4 w-28 bg-white/25 rounded-full" />
+          <div className="h-8 w-48 bg-white/25 rounded-lg mt-4" />
+          <div className="h-20 w-40 bg-white/25 rounded-lg mt-3" />
+          <div className="h-12 w-full bg-white/15 rounded-2xl mt-4" />
+        </div>
+      )
+    }
+    if (user && favoritePortId) {
+      return (
+        <>
+          <HeroTriad ports={initialPorts} favoritePortId={favoritePortId} />
+          <HomeForecast favoritePortId={favoritePortId} />
+          <UserCrossingInsights />
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+            <GuardianProgressCard variant="pill" />
+            <CirclesPill />
+            <ContributionTodayPill />
+          </div>
+          <PriorityNudge
+            lang={lang}
+            nudges={HOME_NUDGES.filter(n => {
+              if (n.nudgeKey === 'pro_insights_unlocked') return tier === 'pro'
+              return tier !== 'guest'
+            })}
+          />
+        </>
+      )
+    }
+    if (user && !favoritePortId) {
+      return (
+        <>
+          <p className="mt-2 mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {es ? 'Elige tu puente' : 'Pick your bridge'}
+          </p>
+          <SetFavoriteBanner
+            user={user ? { id: user.id } : null}
+            ports={(initialPorts || []) as unknown as Array<{ port_id: string }>}
+          />
+        </>
+      )
+    }
+    return (
+      <>
+        <HeroCarousel
+          slides={[
+            {
+              key: 'hero',
+              labelEs: 'Tu cruce',
+              labelEn: 'Your crossing',
+              content: <HeroLiveDelta ports={initialPorts} />,
+            },
+            {
+              key: 'ticker',
+              labelEs: 'Reportes en vivo',
+              labelEn: 'Live reports',
+              content: <LiveActivityTicker initialReports={initialReports} />,
+            },
+          ]}
+        />
+        <Link href="/signup" className="block mt-3">
+          <div className="cruzar-press cruzar-shimmer cruzar-rise bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white">
+                {es
+                  ? '🔔 Te avisamos cuando tu puente baje'
+                  : "🔔 We'll ping you when your bridge clears"}
+              </p>
+              <p className="text-xs text-blue-100 mt-0.5">
+                {es ? 'Gratis · sin spam' : 'Free · no spam'}
+              </p>
+            </div>
+            <span className="flex-shrink-0 bg-white text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
+              {es ? 'Activar →' : 'Turn on →'}
+            </span>
+          </div>
+        </Link>
+      </>
+    )
+  })()
+
+  // Panel 3 — "Comunidad". Live activity, reports feed, regional
+  // snapshot, ad slot.
+  const comunidadPanel = (
+    <>
+      <p className="mt-1 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+        {es ? 'En vivo' : 'Live'}
+      </p>
+      <LiveActivityTicker initialReports={initialReports} />
+      <div className="mt-4">
+        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.recentReports}</h2>
+        <HomeReportsFeed initialReports={initialReports} />
+      </div>
+      <div className="mt-4">
+        <RegionalSnapshot ports={initialPorts} />
+      </div>
+      <div className="mt-4">
+        <AdBanner slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
+      </div>
+    </>
+  )
+
+  const panels: SwipePanel[] = [
+    { id: 'cerca', labelEs: 'Cerca', labelEn: 'Nearby', content: cercaPanel },
+    { id: 'mio', labelEs: 'Mi puente', labelEn: 'My bridge', content: mioPanel },
+    { id: 'comunidad', labelEs: 'Comunidad', labelEn: 'Community', content: comunidadPanel },
+  ]
+
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* First-launch welcome overlay — renders itself only once per
-          install for guests. Kept at the top of the tree so it's
-          visually above everything else. Diego 2026-04-15: walkthrough
-          of mobile PWA cold launch showed no signup CTA visible above
-          the fold — this overlay forces a deliberate choice. */}
       <PwaFirstLaunchWelcome />
-      {/* Sticky guest strip — persists after overlay dismissal so guests
-          always have an obvious entry to signup. Sits at the literal top
-          of the page, above the max-w container. */}
-      <GuestStickyStrip />
       <div className="max-w-lg mx-auto px-4 pb-10">
-        {/* Sticky app-shell header — fixed at top of viewport while the
-            content scrolls underneath. Native-app pattern; replaces the
-            "header scrolls away" web pattern. Backdrop-blur softens the
-            hand-off when content slides past. RegionPicker is pulled
-            into this sticky strip because it's the most-tapped filter —
-            users want it always-on-screen. */}
+        {/* Sticky app-shell header — always visible while panels swipe
+            underneath. Region picker pinned because it's the most-tapped
+            filter and affects what shows in the Cerca panel. */}
         <div className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-2 bg-gray-50/85 dark:bg-gray-950/85 backdrop-blur-md">
           <div className="flex items-start justify-between">
             <div className="min-w-0 flex items-center gap-3">
-              {/* Real app logo — dark navy square with a white arch bridge.
-                  Paired with the lowercase "cruzar" wordmark in the design
-                  Diego locked on 2026-04-13. Source SVG in public/logo-icon.svg. */}
               <img
                 src="/logo-icon.svg"
                 alt=""
@@ -462,243 +452,30 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             </div>
             <NavBar />
           </div>
-          {/* Region filter — always-visible second row inside the sticky
-              header. Most-tapped control on the home page. */}
           {!isBusiness && (
             <div className="mt-2 flex justify-center">
               <RegionPicker />
             </div>
           )}
+          {/* Single conversion ribbon — replaces the GuestSignupBanner +
+              ProNoAlertBanner + bottom Signup CTA stack. Visible across
+              all panels because it sits inside the sticky header. */}
+          {!isBusiness && <ConversionRibbon />}
         </div>
 
-        {/* Pill row — secondary discovery + status pills. Scroll with
-            content (RegionPicker moved up to the sticky header). */}
-        {!isBusiness && (
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-            <InstallPill />
-            <ExchangeRatePill />
-            <WeatherHook variant="pill" />
-            {tier !== 'guest' && <GuardianProgressCard variant="pill" />}
-            {tier !== 'guest' && <CirclesPill />}
-            {tier !== 'guest' && <ContributionTodayPill />}
-          </div>
-        )}
+        {/* Business tier — flat layout with the command widget; no
+            swipe panels. Fleets need their dispatcher view, not the
+            consumer hero/community split. */}
+        {isBusiness && <BusinessCommandWidget />}
 
-        {/* Holiday / heavy-day warning — fires when a known surge date
-            (Thanksgiving, Christmas, Semana Santa, etc.) is within the
-            next 14 days. Gives users planning lead time for the days
-            FB groups can't warn them about in advance. */}
-        {!isBusiness && <HolidayOverlay />}
+        {/* Consumer tier — three-panel swipe shell. */}
+        {!isBusiness && <HomeSwipe panels={panels} />}
 
-        {/* Reciprocity card — signed-in users with saved bridges see
-            a "someone reported your bridge" pill when fresh community
-            activity lands on a port they care about. Conditional and
-            rare, so kept as a widget (it's more of an alert than
-            ambient content). */}
-        {!isBusiness && tier !== 'guest' && <ReciprocityCard />}
-
-        {/* Feature-discovery + activation nudges. Previously rendered as
-            5 stacked ContextualNudge components that all fired
-            independently — two or three could be pending at once and
-            push the port list off screen. PriorityNudge picks ONE in
-            priority order and shows just that one; the next armed
-            nudge takes the slot once the current is dismissed or
-            taken. Same UX, one slot. */}
-        {!isBusiness && (
-          <PriorityNudge
-            lang={lang}
-            nudges={HOME_NUDGES.filter(n => {
-              if (n.nudgeKey === 'pro_insights_unlocked') return tier === 'pro'
-              if (n.nudgeKey === 'home_discover_features') return true
-              return tier !== 'guest'
-            })}
-          />
-        )}
-
-        {/* Hero zone — two paths (Diego's 2026-04-14 personalization spec):
-              - Signed-in user with a saved bridge → HeroTriad renders 1-3
-                distinct bridges (favorite/closest/fastest, deduped, with
-                composable badges)
-              - Everyone else (guests + signed-in-but-no-saved-bridge) →
-                existing HeroCarousel with HeroLiveDelta + LiveActivityTicker
-            Guests stay generic on purpose — "lean into the contrast"
-            so signup becomes the transform moment (project memory
-            project_cruzar_personalization_framework.md). */}
-        {!isBusiness && authLoading && (
-          <div
-            aria-hidden="true"
-            className="mt-3 bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 rounded-3xl p-5 shadow-2xl animate-pulse"
-          >
-            <div className="h-4 w-28 bg-white/25 rounded-full" />
-            <div className="h-8 w-48 bg-white/25 rounded-lg mt-4" />
-            <div className="h-20 w-40 bg-white/25 rounded-lg mt-3" />
-            <div className="h-12 w-full bg-white/15 rounded-2xl mt-4" />
-          </div>
-        )}
-        {!isBusiness && !authLoading && user && favoritePortId && (
-          <>
-            <HeroTriad ports={initialPorts} favoritePortId={favoritePortId} />
-            {/* Tier 2 — forecast card with NOW + 4-hour preview + time-shift
-                hint, scoped to the user's saved bridge. Reuses the same
-                /api/ports/[portId]/forecast endpoint that powers the port
-                detail card rail. */}
-            <HomeForecast favoritePortId={favoritePortId} />
-            {/* Tier 1 — rollup of the user's own crossing patterns.
-                Self-hides when totalReports < 3. */}
-            <UserCrossingInsights />
-          </>
-        )}
-        {!isBusiness && !authLoading && !(user && favoritePortId) && (
-          <HeroCarousel
-            slides={[
-              {
-                key: 'hero',
-                labelEs: 'Tu cruce',
-                labelEn: 'Your crossing',
-                content: <HeroLiveDelta ports={initialPorts} />,
-              },
-              {
-                key: 'ticker',
-                labelEs: 'Reportes en vivo',
-                labelEn: 'Live reports',
-                content: <LiveActivityTicker initialReports={initialReports} />,
-              },
-            ]}
-          />
-        )}
-
-        {/* Guest signup banner — persistent prominent nudge right under
-            the hero so guests see it above the fold. Sells what's
-            BEYOND the basic number (alerts/cameras/history/community)
-            instead of gating the basic info. Diego's 2026-04-14:
-            "they need more incentive to log in other than us hoping
-            that want to click something." */}
-        {!isBusiness && !authLoading && tier === 'guest' && <GuestSignupBanner />}
-
-        {/* Pro-without-alert nag — prominent inline banner for Pro/Business
-            users who graduated without setting an alert. Fires once with
-            7-day cooldown. Alerts are THE retention mechanism; only 3.4%
-            of users have one as of 2026-04-18. This is the surgical fix. */}
-        {!isBusiness && !authLoading && (
-          <ProNoAlertBanner lang={lang} tier={tier} user={user} />
-        )}
-
-        {/* Social proof strip — real community numbers + first-1000 promo.
-            Sits above the port list so guests see live evidence before
-            scrolling. Data from /api/stats/community, 60s edge-cached. */}
-        {!isBusiness && <SocialProofStrip />}
-
-        {/* NearMeRail removed 2026-04-14 per Diego's directive.
-            Rationale: the main list is now scoped to the user's home
-            region anyway, so a "near me" rail is redundant. Users who
-            want to browse outside their region use the dedicated
-            all-bridges read-only view (replacing /mapa). */}
-
-        {/* Urgent alerts — real-time accidents / inspections. Stays above
-            the list because these are actionable warnings, not fluff. */}
-        {!isBusiness && <UrgentAlerts initialReports={initialReports} />}
-
-        {/* Business Command Center — visible only to business tier */}
-        <BusinessCommandWidget />
-
-        {/* Personalized hero — favorite bridge first, then "faster
-            alternative" if one exists. Renders nothing for anon users
-            or users without a favorite. */}
-        {!isBusiness && <FavoriteHero ports={(initialPorts || []) as unknown as Array<{ port_id: string; port_name?: string; vehicle_wait?: number | null; pedestrian_wait?: number | null; commercial_wait?: number | null }>} />}
-
-        {/* Soft prompt for logged-in users who haven't picked a favorite
-            yet. Quick-pick of the 4 most common RGV bridges + "see all"
-            expand. Sessionstorage-dismissable per day. */}
-        {!isBusiness && <SetFavoriteBanner user={user ? { id: user.id } : null} ports={(initialPorts || []) as unknown as Array<{ port_id: string }>} />}
-
-        {/* Geolocation — shows if user is near a crossing */}
         <WaitingMode />
-
-        <SavedCrossings initialPorts={initialPorts} />
-        <div id="port-list" />
-        <PortList />
-
-        {/* Regional snapshot — replaces the old StaticBorderMap SVG
-            which was an abstract cloud of dots with no labels. This
-            one groups ports by border region and shows green/amber/
-            red counts + the fastest crossing in each region. Users
-            can tap a region to jump straight to its fastest bridge. */}
-        {!isBusiness && <RegionalSnapshot ports={initialPorts} />}
-
-        {/* AdSense — Pro/Business users skip automatically via AdBanner. */}
-        {!isBusiness && (
-          <div className="mt-4">
-            <AdBanner slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_HOME} />
-          </div>
-        )}
-
-        {/* Primary signup hook — guests only, now BELOW the list so the data
-            is the first thing they get, and the pitch lands after they've
-            already seen the value. */}
-        {tier === 'guest' && (
-          <Link href="/signup" className="block mt-4">
-            <div className="cruzar-press cruzar-shimmer cruzar-rise bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-white">
-                  {lang === 'es'
-                    ? '🔔 Te avisamos cuando tu puente baje de 30 min'
-                    : '🔔 We\'ll ping you when your bridge drops below 30 min'}
-                </p>
-                <p className="text-xs text-blue-100 mt-0.5">
-                  {lang === 'es'
-                    ? 'Gratis · sin spam · cancela cuando quieras'
-                    : 'Free · no spam · cancel anytime'}
-                </p>
-              </div>
-              <span className="flex-shrink-0 bg-white text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
-                {lang === 'es' ? 'Activar →' : 'Turn on →'}
-              </span>
-            </div>
-          </Link>
-        )}
-
-        {/* Home got noisy — 5 stacked banners (FB follow + Services-in-Mexico +
-            ShareApp + SENTRI + affiliate grid) were competing for attention
-            below the port list. They all live at /mas or /servicios now
-            (reachable via BottomNav). Only the conversion-critical
-            Signup CTA and Pro upsell stay here. */}
-
-        {/* Pro upsell — shown to free users only */}
-        {tier === 'free' && (
-          <Link href="/dashboard?tab=alerts" className="block mt-4">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold text-white">
-                  {lang === 'es' ? '🔔 Activa tu alerta para tu puente' : '🔔 Set an alert for your crossing'}
-                </p>
-                <p className="text-xs text-blue-100 mt-0.5">
-                  {lang === 'es' ? '1 alerta incluida gratis — sube a Pro para todas' : '1 alert free — upgrade to Pro for all your crossings'}
-                </p>
-              </div>
-              <span className="flex-shrink-0 bg-white text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
-                {lang === 'es' ? 'Activar →' : 'Set alert →'}
-              </span>
-            </div>
-          </Link>
-        )}
-
-        {/* Community reports feed — just below the list, hidden for business accounts */}
-        {!isBusiness && (
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t.recentReports}</h2>
-            <HomeReportsFeed initialReports={initialReports} />
-          </div>
-        )}
       </div>
 
-      {/* Overlays render AFTER the hero in DOM so they can't push the
-          above-the-fold hero down during hydration. They're fixed/modal
-          anyway — the position in JSX only matters for paint order.
-          CruzFab moved to app/layout.tsx so it floats on every tab,
-          not just Home. */}
       <InAppBrowserBanner />
       <OnboardingTour />
     </main>
   )
 }
-

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Bell, Video, Star, Users } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
 import { useAuth } from '@/lib/useAuth'
+import { consume, getPrompt, subscribe } from '@/lib/installPromptStore'
+import { trackEvent } from '@/lib/trackEvent'
 
 // First-launch welcome overlay. Diego 2026-04-15: mobile PWA walkthrough
 // revealed guests can install the PWA and then open it with zero
@@ -33,12 +35,22 @@ function isStandalone(): boolean {
   return (window.navigator as Navigator & { standalone?: boolean }).standalone === true
 }
 
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  // iPadOS 13+ reports as Mac with touch events
+  const isIPadOS13 = /Macintosh/.test(ua) && 'ontouchend' in document
+  return /iPad|iPhone|iPod/.test(ua) || isIPadOS13
+}
+
 export function PwaFirstLaunchWelcome() {
   const { lang } = useLang()
   const es = lang === 'es'
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const [show, show_] = useState(false)
+  const [bipReady, setBipReady] = useState(false)
+  const [iosShare, setIosShare] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
@@ -55,6 +67,15 @@ export function PwaFirstLaunchWelcome() {
     return () => clearTimeout(id)
   }, [authLoading, user])
 
+  // Track whether the Android Chrome `beforeinstallprompt` event has
+  // been captured globally — drives whether the inline "Instalar app"
+  // CTA can fire prompt() directly vs route to /mas instructions.
+  useEffect(() => {
+    setBipReady(!!getPrompt())
+    const unsub = subscribe((e) => setBipReady(!!e))
+    return unsub
+  }, [])
+
   function dismiss(reason: 'signup' | 'signin' | 'guest') {
     try { localStorage.setItem(FLAG_KEY, '1') } catch { /* ignore */ }
     show_(false)
@@ -63,9 +84,37 @@ export function PwaFirstLaunchWelcome() {
     // guest: stay on home
   }
 
+  async function install() {
+    trackEvent('pwa_welcome_install_tapped', { platform: isIOS() ? 'ios' : bipReady ? 'android_bip' : 'other' })
+    if (isIOS()) {
+      // Safari can't be triggered programmatically — show the
+      // Add-to-Home-Screen instructions inline.
+      setIosShare(true)
+      return
+    }
+    const evt = consume()
+    if (evt) {
+      try {
+        await evt.prompt()
+        const choice = await evt.userChoice
+        trackEvent('pwa_welcome_install_choice', { outcome: choice.outcome })
+        if (choice.outcome === 'accepted') {
+          try { localStorage.setItem(FLAG_KEY, '1') } catch { /* ignore */ }
+          show_(false)
+        }
+      } catch { /* ignore */ }
+      return
+    }
+    // No native prompt — route to the manual install guide.
+    try { localStorage.setItem(FLAG_KEY, '1') } catch { /* ignore */ }
+    show_(false)
+    router.push('/mas')
+  }
+
   if (!show) return null
 
   const standalone = isStandalone()
+  const showInstallButton = !standalone && (isIOS() || bipReady)
 
   return (
     <div
@@ -118,6 +167,21 @@ export function PwaFirstLaunchWelcome() {
           ))}
         </ul>
 
+        {/* iOS Add-to-Home-Screen instructions — inline, no navigation,
+            because Safari can't be triggered programmatically. */}
+        {iosShare && (
+          <div className="mx-6 mb-3 rounded-2xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 p-3">
+            <p className="text-[12px] font-bold text-blue-900 dark:text-blue-100">
+              {es ? 'Pa\' instalar en iPhone:' : 'To install on iPhone:'}
+            </p>
+            <ol className="mt-1.5 text-[12px] text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
+              <li>{es ? 'Toca el botón de Compartir 􀈂' : 'Tap the Share button 􀈂'}</li>
+              <li>{es ? 'Elige "Agregar a inicio"' : 'Choose "Add to Home Screen"'}</li>
+              <li>{es ? 'Confirma tocando "Agregar"' : 'Confirm by tapping "Add"'}</li>
+            </ol>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="px-6 pb-6 space-y-2">
           <button
@@ -127,6 +191,15 @@ export function PwaFirstLaunchWelcome() {
           >
             {es ? 'Crear cuenta gratis' : 'Create free account'}
           </button>
+          {showInstallButton && (
+            <button
+              type="button"
+              onClick={install}
+              className="w-full bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 text-sm font-black py-3 rounded-2xl border-2 border-blue-200 dark:border-blue-800 active:scale-[0.98] transition-transform"
+            >
+              {es ? '📲 Instalar app' : '📲 Install app'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => dismiss('signin')}
