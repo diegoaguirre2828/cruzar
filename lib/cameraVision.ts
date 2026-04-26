@@ -18,12 +18,15 @@
 // with CBP + HERE + community signals.
 
 import Anthropic from '@anthropic-ai/sdk'
+import { spawn } from 'node:child_process'
+import ffmpegPath from 'ffmpeg-static'
 import { BRIDGE_CAMERAS, type CameraFeed } from './bridgeCameras'
 
 const MODEL = 'claude-haiku-4-5-20251001'
 
 // Pull an HTTP(S) snapshot URL we can fetch as an image. Returns null
-// for feed kinds we can't handle without ffmpeg (hls, youtube live).
+// for feed kinds where we get the frame a different way (hls grabs via
+// ffmpeg, youtube still skipped).
 export function snapshotUrlFor(feed: CameraFeed): string | null {
   if (feed.kind === 'image') return feed.src
 
@@ -37,17 +40,112 @@ export function snapshotUrlFor(feed: CameraFeed): string | null {
     return null
   }
 
-  // hls / youtube — no free snapshot path, would need ffmpeg or youtube
-  // thumbnail. Skip in v1; can revisit once we have a frame-grabber.
+  // hls handled via extractHlsFrame, not via a snapshot URL.
+  // youtube still has no easy frame-extraction path.
   return null
 }
 
-// Returns the first analyzable feed for a port, or null.
-export function pickPrimaryFeed(portId: string): { feed: CameraFeed; snapshotUrl: string } | null {
+// Extract a single JPEG frame from an HLS stream using bundled ffmpeg.
+// Workflow: fetch the m3u8 manifest, find the latest .ts segment URL,
+// download that segment, pipe it through ffmpeg, capture stdout. The
+// segment is typically 5s of video — we just grab the first frame.
+//
+// Returns the JPEG bytes, or null on failure (timeout, no segments,
+// ffmpeg crash). Honest about non-fatal errors so the cron loop can
+// keep going across other ports.
+export async function extractHlsFrame(m3u8Url: string): Promise<Buffer | null> {
+  // 1. Fetch the m3u8 manifest
+  let manifest: string
+  try {
+    const res = await fetch(m3u8Url, { signal: AbortSignal.timeout(6000) })
+    if (!res.ok) return null
+    manifest = await res.text()
+  } catch {
+    return null
+  }
+
+  // 2. Find the latest .ts segment URL (relative to manifest)
+  const lines = manifest.split(/\r?\n/).map((l) => l.trim())
+  const segments = lines.filter((l) => l && !l.startsWith('#') && (l.endsWith('.ts') || l.includes('.ts?')))
+  if (segments.length === 0) return null
+  const lastSeg = segments[segments.length - 1]
+  const segUrl = lastSeg.startsWith('http')
+    ? lastSeg
+    : new URL(lastSeg, m3u8Url).toString()
+
+  // 3. Download the segment bytes
+  let segBuf: Buffer
+  try {
+    const res = await fetch(segUrl, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) return null
+    segBuf = Buffer.from(await res.arrayBuffer())
+    if (segBuf.length < 1000) return null
+  } catch {
+    return null
+  }
+
+  // 4. Pipe segment through ffmpeg, ask for one JPEG frame on stdout.
+  // -f mpegts is the input format hint (HLS uses MPEG-TS containers),
+  // -frames:v 1 stops after the first decoded frame, -f image2 +
+  // -update 1 makes ffmpeg emit a single image to stdout instead of
+  // expecting a numbered output filename.
+  if (!ffmpegPath) return null
+  const ffmpegBin: string = ffmpegPath
+  return await new Promise<Buffer | null>((resolve) => {
+    const chunks: Buffer[] = []
+    const proc = spawn(ffmpegBin, [
+      '-loglevel', 'error',
+      '-f', 'mpegts',
+      '-i', 'pipe:0',
+      '-frames:v', '1',
+      '-q:v', '5',
+      '-f', 'image2',
+      '-update', '1',
+      'pipe:1',
+    ])
+    const timeout = setTimeout(() => {
+      proc.kill('SIGKILL')
+      resolve(null)
+    }, 12000)
+    proc.stdout.on('data', (c: Buffer) => chunks.push(c))
+    proc.stderr.on('data', () => { /* swallow ffmpeg stderr — single failed extract isn't actionable */ })
+    proc.on('error', () => {
+      clearTimeout(timeout)
+      resolve(null)
+    })
+    proc.on('close', (code) => {
+      clearTimeout(timeout)
+      if (code !== 0) {
+        // Suppress noisy stderr — single failed extract isn't worth a log
+        resolve(null)
+        return
+      }
+      const out = Buffer.concat(chunks)
+      // Sanity check: JPEG starts with 0xFF 0xD8
+      if (out.length < 1000 || out[0] !== 0xff || out[1] !== 0xd8) {
+        resolve(null)
+        return
+      }
+      resolve(out)
+    })
+    proc.stdin.write(segBuf)
+    proc.stdin.end()
+  })
+}
+
+// Returns the first analyzable feed for a port, or null. v55b: HLS
+// feeds are now analyzable via extractHlsFrame, so they qualify too.
+export function pickPrimaryFeed(portId: string): { feed: CameraFeed; snapshotUrl: string | null } | null {
   const feeds = BRIDGE_CAMERAS[portId] ?? []
   for (const f of feeds) {
-    const url = snapshotUrlFor(f)
-    if (url) return { feed: f, snapshotUrl: url }
+    if (f.kind === 'image' || f.kind === 'iframe') {
+      const url = snapshotUrlFor(f)
+      if (url) return { feed: f, snapshotUrl: url }
+    } else if (f.kind === 'hls') {
+      // HLS feeds don't have a snapshot URL — caller routes via extractHlsFrame
+      return { feed: f, snapshotUrl: null }
+    }
+    // youtube still skipped
   }
   return null
 }
@@ -69,66 +167,61 @@ interface VisionResult {
   error_code?: string
 }
 
+function emptyResult(error_code: string, raw: unknown = null): VisionResult {
+  return {
+    cars_estimated: null, minutes_estimated: null, confidence: 'low',
+    pedestrians_estimated: null, pedestrian_minutes_estimated: null,
+    pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
+    raw, error_code,
+  }
+}
+
 // Fetch the snapshot and ask Claude Haiku to estimate the queue. Prompt
 // is tight and returns strict JSON. We calibrate cars→minutes inside
 // the model's response so it can adjust for visible lane count (harder
 // to do in post-processing because lane visibility depends on camera
 // angle, which only the model can see).
+//
+// v55b: feed can be either a snapshot URL (image/iframe-with-snapshot)
+// OR pre-fetched bytes (HLS frame extraction). Caller picks the path.
 export async function analyzeSnapshot(
   portId: string,
   snapshotUrl: string,
 ): Promise<VisionResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return {
-      cars_estimated: null, minutes_estimated: null, confidence: 'low',
-      pedestrians_estimated: null, pedestrian_minutes_estimated: null,
-      pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
-      raw: null, error_code: 'no_api_key',
-    }
-  }
-
   // Fetch image bytes. Cache-bust so we get a fresh frame every run.
-  let imageB64: string
   let imageMediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' = 'image/jpeg'
+  let buf: Buffer
   try {
     const bust = `${snapshotUrl}${snapshotUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`
     const imgRes = await fetch(bust, {
       signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': 'Cruzar-CameraVision/1.0 (+https://cruzar.app)' },
     })
-    if (!imgRes.ok) {
-      return {
-        cars_estimated: null, minutes_estimated: null, confidence: 'low',
-        pedestrians_estimated: null, pedestrian_minutes_estimated: null,
-        pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
-        raw: null, error_code: `http_${imgRes.status}`,
-      }
-    }
+    if (!imgRes.ok) return emptyResult(`http_${imgRes.status}`)
     const ct = imgRes.headers.get('content-type') || ''
     if (ct.includes('png')) imageMediaType = 'image/png'
     else if (ct.includes('webp')) imageMediaType = 'image/webp'
     else if (ct.includes('gif')) imageMediaType = 'image/gif'
-    const buf = Buffer.from(await imgRes.arrayBuffer())
+    buf = Buffer.from(await imgRes.arrayBuffer())
     // Guardrail: skip tiny responses (often a 1×1 pixel auth-wall or
     // redirect page rendered as image).
-    if (buf.length < 2000) {
-      return {
-        cars_estimated: null, minutes_estimated: null, confidence: 'low',
-        pedestrians_estimated: null, pedestrian_minutes_estimated: null,
-        pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
-        raw: null, error_code: 'image_too_small',
-      }
-    }
-    imageB64 = buf.toString('base64')
-  } catch (err) {
-    return {
-      cars_estimated: null, minutes_estimated: null, confidence: 'low',
-      pedestrians_estimated: null, pedestrian_minutes_estimated: null,
-      pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
-      raw: null, error_code: 'fetch_failed',
-    }
+    if (buf.length < 2000) return emptyResult('image_too_small')
+  } catch {
+    return emptyResult('fetch_failed')
   }
+  return await analyzeImageBytes(buf, imageMediaType)
+}
+
+// Analyze pre-fetched image bytes. Used by HLS path after ffmpeg has
+// extracted a frame, and by analyzeSnapshot above after the URL fetch.
+export async function analyzeImageBytes(
+  buf: Buffer,
+  imageMediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' = 'image/jpeg',
+): Promise<VisionResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return emptyResult('no_api_key')
+  if (buf.length < 2000) return emptyResult('image_too_small')
+  const imageB64 = buf.toString('base64')
 
   const client = new Anthropic({ apiKey })
 
@@ -175,12 +268,7 @@ Guidance:
       ],
     })
   } catch (err) {
-    return {
-      cars_estimated: null, minutes_estimated: null, confidence: 'low',
-      pedestrians_estimated: null, pedestrian_minutes_estimated: null,
-      pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
-      raw: { error: String(err) }, error_code: 'anthropic_api_error',
-    }
+    return emptyResult('anthropic_api_error', { error: String(err) })
   }
 
   const text = msg.content
@@ -195,14 +283,7 @@ Guidance:
     if (jsonMatch) parsed = JSON.parse(jsonMatch[0])
   } catch { /* fall through */ }
 
-  if (!parsed) {
-    return {
-      cars_estimated: null, minutes_estimated: null, confidence: 'low',
-      pedestrians_estimated: null, pedestrian_minutes_estimated: null,
-      pedestrian_confidence: 'low', pedestrian_lanes_visible: null,
-      raw: { text }, error_code: 'parse_failed',
-    }
-  }
+  if (!parsed) return emptyResult('parse_failed', { text })
 
   const cars = typeof parsed.cars_estimated === 'number' ? parsed.cars_estimated : null
   let mins = typeof parsed.minutes_estimated === 'number' ? parsed.minutes_estimated : null

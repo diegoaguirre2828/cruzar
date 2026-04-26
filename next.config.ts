@@ -14,6 +14,15 @@ const nextConfig: NextConfig = {
       { source: '/cameras/:path*', destination: '/camaras', permanent: true },
     ]
   },
+  // Bundle the ffmpeg-static binary with the camera-analysis cron so it
+  // can extract a single JPEG frame from HLS streams (Heroica Nogales
+  // pedestrian platforms, El Paso zoocams, etc.) and feed them to Claude
+  // Haiku just like the snapshot-able image/iframe feeds. Without this
+  // include, Vercel's NFT tracer ships the JS but not the linux-x64
+  // binary that ffmpeg-static drops at install time.
+  outputFileTracingIncludes: {
+    '/api/cron/analyze-bridge-cameras': ['./node_modules/ffmpeg-static/**'],
+  },
 };
 
 export default withSentryConfig(nextConfig, {
