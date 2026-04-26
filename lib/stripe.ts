@@ -20,23 +20,28 @@ export function getStripe() {
   return new Stripe(STRIPE_SECRET_KEY!)
 }
 
+// Display-only `price` cents fields removed 2026-04-25 — they were
+// stale cosmetic values (Pro was 499 / $4.99 here but Stripe charges
+// $2.99 from the priceId). Pricing display is now driven by /pricing
+// page strings + the actual Stripe price IDs. Anything that needs
+// the real price calls the Stripe API at runtime.
 export const PLANS = {
   pro: {
     name: 'Pro',
-    price: 499, // cents
     priceId: STRIPE_PRO_PRICE_ID!,
     mode: 'subscription' as const,
     features: [
+      'Smart route alerts — push when a faster bridge opens',
+      'Saved routes — common origin/destination auto-tracked',
+      'Predictive 6-hour-ahead bridge wait times',
+      'Custom wait-time alerts (push + SMS + email)',
+      'Historical patterns — best time to cross today',
+      'Unlimited saved crossings',
       'No ads',
-      'Historical wait time patterns',
-      'Custom alerts',
-      'Full route optimizer',
-      'Save unlimited crossings',
     ],
   },
   business: {
     name: 'Business',
-    price: 4999, // cents
     priceId: STRIPE_BUSINESS_PRICE_ID!,
     mode: 'subscription' as const,
     features: [
@@ -51,7 +56,6 @@ export const PLANS = {
   },
   operator: {
     name: 'Operator',
-    price: 9900,
     priceId: STRIPE_OPERATOR_PRICE_ID!,
     mode: 'subscription' as const,
     features: [
@@ -64,7 +68,6 @@ export const PLANS = {
   },
   express_cert: {
     name: 'Express Cert (one-time)',
-    price: 49900,
     priceId: STRIPE_EXPRESS_CERT_PRICE_ID!,
     mode: 'payment' as const,
     features: [
@@ -76,7 +79,6 @@ export const PLANS = {
   },
   intelligence: {
     name: 'Intelligence',
-    price: 4900,
     priceId: STRIPE_INTELLIGENCE_PRICE_ID!,
     mode: 'subscription' as const,
     features: [
@@ -90,7 +92,6 @@ export const PLANS = {
   },
   intelligence_enterprise: {
     name: 'Intelligence Enterprise',
-    price: 49900,
     priceId: STRIPE_INTELLIGENCE_ENTERPRISE_PRICE_ID!,
     mode: 'subscription' as const,
     features: [

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
-import { ArrowLeft, Navigation, Zap, Clock } from 'lucide-react'
+import { ArrowLeft, Navigation, Zap, Clock, Bell, Bookmark, TrendingUp, Lock } from 'lucide-react'
 import { LangToggle } from '@/components/LangToggle'
 
 interface Route {
@@ -154,10 +154,52 @@ export default function SmartRoutePage() {
               </Link>
             ))}
             <p className="text-[11px] text-gray-500 text-center mt-3">
-              {es ? 'Próximamente: integración con tráfico en vivo y predicción 6 hrs adelante.' : 'Coming soon: live traffic integration and 6hr-ahead forecasts.'}
+              {es ? 'Próximamente: integración con tráfico en vivo.' : 'Coming soon: live traffic integration.'}
             </p>
           </div>
         )}
+
+        {/* Pro upsell — what becomes available with Pro */}
+        <div className="mt-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-blue-700 dark:text-blue-400">
+              {es ? 'Smart route en automático · Pro $2.99/mes' : 'Smart route on autopilot · Pro $2.99/mo'}
+            </p>
+          </div>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">
+            {es ? 'Esto solo te dice el puente AHORITA. Pro hace el resto.' : "This only tells you the bridge RIGHT NOW. Pro does the rest."}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-blue-100 dark:border-blue-900">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Bell className="w-3.5 h-3.5 text-blue-600" />
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{es ? 'Smart route alerts' : 'Smart route alerts'}</p>
+                <Lock className="w-3 h-3 text-gray-400 ml-auto" />
+              </div>
+              <p className="text-[11px] text-gray-600 dark:text-gray-400">{es ? 'Te avisamos cuando un puente más rápido se abre.' : "Pinged the moment a faster bridge opens."}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-blue-100 dark:border-blue-900">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Bookmark className="w-3.5 h-3.5 text-blue-600" />
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{es ? 'Rutas guardadas' : 'Saved routes'}</p>
+                <Lock className="w-3 h-3 text-gray-400 ml-auto" />
+              </div>
+              <p className="text-[11px] text-gray-600 dark:text-gray-400">{es ? 'Tu trayecto diario se rastrea solo.' : "Your daily commute auto-tracked."}</p>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-3 border border-blue-100 dark:border-blue-900">
+              <div className="flex items-center gap-1.5 mb-1">
+                <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{es ? 'Predicción 6 hrs' : '6h-ahead forecast'}</p>
+                <Lock className="w-3 h-3 text-gray-400 ml-auto" />
+              </div>
+              <p className="text-[11px] text-gray-600 dark:text-gray-400">{es ? 'No solo ahorita — sabes la espera 6 horas adelante.' : "Not just right now — wait 6 hours ahead."}</p>
+            </div>
+          </div>
+          <Link href="/pricing#pro" className="block w-full text-center py-2.5 px-4 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">
+            {es ? 'Empezar 7 días gratis · $2.99/mes' : 'Start 7-day free trial · $2.99/mo'}
+          </Link>
+        </div>
       </div>
     </main>
   )

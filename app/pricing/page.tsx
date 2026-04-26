@@ -94,11 +94,29 @@ export default function PricingPage() {
       color: 'border-blue-500',
       badge: t.mostPopular,
       desc: es
-        ? 'Deja de perder tiempo en el puente. Te avisamos cuando tu cruce se despeja — por push, SMS o email. Prueba 7 días gratis.'
-        : 'Stop wasting time at the border. Get notified the moment your crossing clears up — by push, SMS, or email. Try free for 7 days.',
+        ? 'Smart route en automático. Te avisamos cuando un puente más rápido se abre — por push, SMS o email. Prueba 7 días gratis.'
+        : 'Smart route on autopilot. We ping you the moment a faster bridge opens — by push, SMS, or email. Try free for 7 days.',
       features: es
-        ? ['Todo lo de Gratis', '🔔 Alertas push + SMS + email cuando baja la espera', '🔮 Patrones históricos — mejor hora para cruzar hoy', '🗺️ Optimizador de ruta — cruce más rápido cerca de ti', 'Cruces favoritos ilimitados', 'Alertas en español o inglés']
-        : ['Everything in Free', '🔔 Push + SMS + email alerts when wait drops', '🔮 Historical patterns — best time to cross today', '🗺️ Route optimizer — fastest crossing near you right now', 'Unlimited saved crossings', 'Alerts in English or Spanish'],
+        ? [
+            'Todo lo de Gratis (incluye smart route básico)',
+            '🚨 Smart route alerts — te avisamos cuando se abre un puente más rápido',
+            '💾 Rutas guardadas — tu trayecto diario se actualiza solo',
+            '🔮 Predicción de espera 6 horas adelante (no solo ahorita)',
+            '🔔 Alertas push + SMS + email cuando baja tu cruce favorito',
+            '📊 Patrones históricos — mejor hora para cruzar hoy',
+            'Cruces favoritos ilimitados',
+            'Sin publicidad',
+          ]
+        : [
+            'Everything in Free (includes basic smart route)',
+            '🚨 Smart route alerts — pinged when a faster bridge opens',
+            '💾 Saved routes — your daily commute auto-tracked',
+            '🔮 6-hour-ahead wait predictions (not just live)',
+            '🔔 Push + SMS + email when your favorite bridge drops',
+            '📊 Historical patterns — best time to cross today',
+            'Unlimited saved crossings',
+            'No ads',
+          ],
       cta: es ? 'Empezar prueba gratis 7 días' : 'Start 7-Day Free Trial',
       tier: 'pro',
     },
