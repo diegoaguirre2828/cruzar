@@ -535,12 +535,14 @@ export function HeroGenerator() {
                         const srcTag =
                           src === 'community' ? '(la raza)'
                           : src === 'camera' ? '(cámara)'
+                          : src === 'flow_rate' ? '(cámara · flujo)'
                           : src === 'baseline' ? '(típico)'
                           : src === 'cbp' ? '(CBP)' : ''
                         const tagColor =
                           src === 'community' ? 'text-green-300'
                           : src === 'camera' ? 'text-purple-300'
-                          : src === 'baseline' ? 'text-blue-200'
+                          : src === 'flow_rate' ? 'text-purple-300'
+                          : src === 'baseline' ? 'text-blue-200/80'
                           : 'text-blue-100'
                         return (
                           <span className={tagColor}>
@@ -548,6 +550,9 @@ export function HeroGenerator() {
                             {srcTag && <span className="ml-1 text-[9px] opacity-80">{srcTag}</span>}
                             {p.cameraPedestrianCount != null && (
                               <span className="ml-1 text-[9px] opacity-80">· {p.cameraPedestrianCount} en fila</span>
+                            )}
+                            {p.pedestrianBaselineHourly != null && p.pedestrianBaselineHourly >= 20 && (
+                              <span className="ml-1 text-[9px] opacity-70">· ~{p.pedestrianBaselineHourly}/h normal</span>
                             )}
                           </span>
                         )

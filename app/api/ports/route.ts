@@ -389,27 +389,58 @@ export async function GET() {
       const cameraPedestrian = camRow?.pedMinutes ?? null
       const cameraPedestrianCount = camRow?.pedCount ?? null
       const cameraPedestrianConfidence = camRow?.pedConfidence ?? null
+      const cameraPedestrianLanes = camRow?.pedLanes ?? null
       const cameraPedestrianUsable =
         cameraPedestrian != null &&
         cameraPedestrianCount != null &&
         (cameraPedestrianConfidence === 'high' || cameraPedestrianConfidence === 'medium')
 
+      // ──── Flow-rate derived estimate ────
+      // wait = queue_count / (booths × throughput_per_minute_per_booth)
+      // CBP pedestrian booths process ~3-5 sec per person under normal
+      // conditions = ~12-20 people/min/booth. We use 15 as a midpoint.
+      // Only computed when the camera both saw the queue AND counted the
+      // booths — guessing booth count poisons the math.
+      let pedestrianFlowRateMin: number | null = null
+      if (
+        cameraPedestrianCount != null &&
+        cameraPedestrianLanes != null &&
+        cameraPedestrianLanes > 0
+      ) {
+        const throughputPerMin = cameraPedestrianLanes * 15
+        const flow = Math.round(cameraPedestrianCount / throughputPerMin)
+        pedestrianFlowRateMin = Math.max(1, Math.min(flow, 120))
+      }
+
       let pedestrianChosen: number | null = cbpPedestrian
       let pedestrianSource: PortWaitTime['pedestrianSource'] = cbpPedestrian != null ? 'cbp' : null
 
+      // Pick order:
+      //   1. Community reports tagged pedestrian — humans in the line
+      //   2. Camera-vision direct minute estimate when high/medium conf
+      //   3. Camera flow-rate (queue ÷ throughput) when conf is low but
+      //      we still got a head count + booth count — math beats nothing
+      //   4. CBP pedestrian field when present
+      //   5. BTS baseline as last-resort context value
       if (communityPedestrian != null && pedestrianReports.length >= 1) {
         pedestrianChosen = communityPedestrian
         pedestrianSource = 'community'
       } else if (cameraPedestrianUsable) {
         pedestrianChosen = cameraPedestrian
         pedestrianSource = 'camera'
+      } else if (
+        pedestrianFlowRateMin != null &&
+        (cbpPedestrian == null || cameraPedestrianCount! >= 5)
+      ) {
+        // Flow-rate wins over CBP when there's a substantive queue
+        // (≥5 people) — that signal is more concrete than a CBP estimate.
+        pedestrianChosen = pedestrianFlowRateMin
+        pedestrianSource = 'flow_rate'
       } else if (cbpPedestrian == null && btsByPort.has(p.portId)) {
         // Last resort: convert hourly baseline to a rough wait-minute
-        // estimate using a 3-second-per-person booth throughput. With
-        // 2 booths typical, X people/hour ≈ X/(2 * 1200) hours ≈
-        // X*60/2400 minutes. We surface this as 'baseline' source so
-        // the card can show "típicamente ~5 min" framing instead of
-        // claiming live data.
+        // estimate using ~3-sec-per-person booth throughput across 2
+        // typical booths. Tagged 'baseline' so the UI can render it
+        // differently from live readings.
         const hourly = btsByPort.get(p.portId)!
         const queueRoughMin = Math.round((hourly / 2400) * 60)
         pedestrianChosen = Math.max(1, Math.min(queueRoughMin, 60))
@@ -441,6 +472,7 @@ export async function GET() {
         cameraPedestrianConfidence,
         pedestrianBaselineHourly: btsByPort.get(p.portId) ?? null,
         pedestrianSource,
+        pedestrianFlowRateMin,
       }
     })
 

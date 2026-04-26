@@ -84,7 +84,12 @@ export interface PortWaitTime {
   // Where the pedestrian headline number came from. 'baseline' means we
   // had no live signal and surfaced the BTS-derived expectation as a
   // last-resort context value.
-  pedestrianSource?: 'cbp' | 'community' | 'camera' | 'baseline' | null
+  pedestrianSource?: 'cbp' | 'community' | 'camera' | 'baseline' | 'flow_rate' | null
+  // Derived wait estimate from queue depth ÷ booth throughput.
+  // Computed when camera-vision delivered both pedestrians_estimated AND
+  // pedestrian_lanes_visible. Independent of the pedestrian headline pick
+  // — surfaced in the UI as a sanity-check alongside the headline number.
+  pedestrianFlowRateMin?: number | null
 }
 
 export interface WaitTimeReading {
