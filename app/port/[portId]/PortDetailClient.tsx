@@ -23,6 +23,7 @@ import { CommunityBridgePhotos } from '@/components/CommunityBridgePhotos'
 import { PortFAQ } from '@/components/PortFAQ'
 import { cityForPortId } from '@/lib/cityMeta'
 import { PortDetailHero } from '@/components/PortDetailHero'
+import { WaitConfirmStrip } from '@/components/WaitConfirmStrip'
 import { trackEvent } from '@/lib/trackEvent'
 import { getAffiliate } from '@/lib/affiliates'
 import { AdBanner } from '@/components/AdBanner'
@@ -553,6 +554,13 @@ export function PortDetailClient({ port, portId }: Props) {
         preferredLane={null}
         exchangeRate={null}
       />
+
+      {/* Community wait-time confirmation — Bordify gap fix
+          (2026-04-26 competitor analysis). One-tap "es correcto / no"
+          on the displayed CBP wait. Builds the accuracy moat the
+          /api/cron/analyze-bridge-cameras + 230k wait_time_readings
+          already deserve to surface. */}
+      <WaitConfirmStrip portId={portId} cbpWait={port.vehicle ?? null} />
 
       {/* One-tap alert CTA — fights the 89% one-and-done retention
           problem. Users who land here came for a wait time number;
