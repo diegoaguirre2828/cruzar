@@ -633,11 +633,33 @@ function buildServer(): McpServer {
 }
 
 async function authorized(req: Request): Promise<boolean> {
-  const expected = process.env.CRUZAR_MCP_KEY;
-  if (!expected) return false;
   const auth = req.headers.get("authorization") || "";
   const token = auth.replace(/^Bearer\s+/i, "").trim();
-  return token === expected;
+  if (!token) return false;
+
+  // Legacy env-var key — kept for Diego's own integrations / cold-call demos
+  const legacy = process.env.CRUZAR_MCP_KEY;
+  if (legacy && token === legacy) return true;
+
+  // Self-serve keys live in mcp_keys (hashed). SHA-256 the bearer + look up.
+  try {
+    const { createHash } = await import("node:crypto");
+    const hash = createHash("sha256").update(token).digest("hex");
+    const db = getServiceClient();
+    const { data } = await db
+      .from("mcp_keys")
+      .select("id, revoked_at")
+      .eq("service", "cruzar-insights")
+      .eq("key_hash", hash)
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (!data) return false;
+    // Touch last_used_at, fire-and-forget
+    db.from("mcp_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id).then(() => {}, () => {});
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function handle(req: Request): Promise<Response> {

@@ -157,13 +157,16 @@ export default function InsightsPage() {
         </section>
 
         {/* CTA */}
-        <section style={{ marginBottom: 40, background: "rgba(255,255,255,0.04)", padding: 24, borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)" }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Get an API key</h2>
+        <section style={{ marginBottom: 40, background: "rgba(34,197,94,0.08)", padding: 24, borderRadius: 16, border: "1px solid rgba(34,197,94,0.2)" }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>Get an API key — self-serve, 30 seconds</h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", marginBottom: 16 }}>
-            v0.1 — keys issued manually. Email Diego with what you&apos;re building. Reply within 24h.
+            Submit your email + what you&apos;re building. Key arrives by email immediately. Free during v0.1.
           </p>
-          <a href="mailto:diegonaguirre@icloud.com?subject=Cruzar%20Insights%20API%20key%20request" style={{ display: "inline-block", background: "white", color: "#0f172a", padding: "12px 20px", borderRadius: 10, fontWeight: 700, textDecoration: "none" }}>
-            Email Diego →
+          <a href="/insights/get-key" style={{ display: "inline-block", background: "#86efac", color: "#062a14", padding: "12px 24px", borderRadius: 10, fontWeight: 700, textDecoration: "none", marginRight: 12 }}>
+            Get my key →
+          </a>
+          <a href="mailto:diegonaguirre@icloud.com?subject=Cruzar%20Insights%20question" style={{ display: "inline-block", color: "rgba(255,255,255,0.7)", padding: "12px 16px", borderRadius: 10, fontWeight: 500, textDecoration: "none", fontSize: 14 }}>
+            …or just email Diego
           </a>
         </section>
 
