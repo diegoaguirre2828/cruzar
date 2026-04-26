@@ -52,7 +52,7 @@ export default async function ExpressCertPrintPage({ params }: { params: Promise
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="no-print mb-6 flex items-center justify-between">
           <a href="/express-cert" className="text-sm text-blue-600 hover:underline">← Back</a>
-          <PrintButton />
+          <PrintButton id={id} />
         </div>
         <header className="mb-8 pb-6 border-b border-gray-300">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Cruzar Express Cert</p>
