@@ -474,29 +474,6 @@ export function PortList() {
             </div>
           </div>
 
-          {/* Insurance banner — top of list, hidden for business accounts */}
-          {!loading && filteredPorts.length > 0 && !isBusiness && (
-            <div className="mb-3 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-4 py-3">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">🛡️</span>
-                <div>
-                  <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-                    {lang === 'es' ? 'Seguro de auto para México' : 'Mexico auto insurance'}
-                  </p>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400">
-                    {lang === 'es' ? 'Obligatorio por ley — desde $7/día' : 'Required by law — from $7/day'}
-                  </p>
-                </div>
-              </div>
-              <a
-                href="/insurance"
-                className="flex-shrink-0 ml-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-xl transition-colors"
-              >
-                {lang === 'es' ? 'Ver →' : 'Get covered →'}
-              </a>
-            </div>
-          )}
-
           {/* Desktop share toast */}
           {showShareToast && (
             <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-blue-800 font-medium">
@@ -624,6 +601,32 @@ export function PortList() {
 
           {filteredPorts.length === 0 && !loading && (
             <p className="text-center text-gray-600 mt-10">No port data available.</p>
+          )}
+
+          {/* Insurance banner — footer of the bridge list, below the
+              cards. Hidden for business accounts. Moved here from above
+              the list so it doesn't interrupt the user's primary task
+              (find the bridge, see the wait). Affiliate revenue. */}
+          {!loading && filteredPorts.length > 0 && !isBusiness && (
+            <div className="mt-6 flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🛡️</span>
+                <div>
+                  <p className="text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+                    {lang === 'es' ? 'Seguro de auto para México' : 'Mexico auto insurance'}
+                  </p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400">
+                    {lang === 'es' ? 'Obligatorio por ley — desde $7/día' : 'Required by law — from $7/day'}
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/insurance"
+                className="flex-shrink-0 ml-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-xl transition-colors"
+              >
+                {lang === 'es' ? 'Ver →' : 'Get covered →'}
+              </a>
+            </div>
           )}
 
         </>

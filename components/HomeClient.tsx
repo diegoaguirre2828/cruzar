@@ -440,19 +440,20 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <PwaFirstLaunchWelcome />
       <div className="max-w-lg mx-auto px-4 pb-10">
-        {/* Sticky app-shell header — always visible while panels swipe
-            underneath. Core row (logo + wordmark + nav + chevron) is
-            always shown. Expandable section below carries the region
-            picker, status pills, and conversion ribbon — collapsable
-            to maximize vertical space for the panels. */}
-        <div className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-2 bg-gray-50/85 dark:bg-gray-950/85 backdrop-blur-md">
+        {/* Sticky app-shell header. Top row (logo + wordmark + nav) is
+            always shown. Expandable middle carries the region picker,
+            status pills, and conversion ribbon. A drawer-pull chevron
+            at the bottom toggles collapse — kept out of the top row
+            so it doesn't compete with NavBar's wrap and squeeze the
+            logo off the screen. */}
+        <div className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-1 bg-gray-50/85 dark:bg-gray-950/85 backdrop-blur-md">
           <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex items-center gap-3 flex-1">
+            <div className="min-w-0 flex items-center gap-3 flex-shrink">
               <img
                 src="/logo-icon.svg"
                 alt=""
-                width={40}
-                height={40}
+                width={36}
+                height={36}
                 className="rounded-xl flex-shrink-0"
               />
               <div className="min-w-0">
@@ -461,27 +462,16 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
                 </h1>
                 {headerOpen && (
                   user && displayName ? (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight truncate">
                       {salutation}, <span className="font-bold text-gray-700 dark:text-gray-200">{displayName}</span>
                     </p>
                   ) : (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight">{t.subtitle}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight truncate">{t.subtitle}</p>
                   )
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              {!isBusiness && (
-                <button
-                  type="button"
-                  onClick={toggleHeader}
-                  aria-label={es ? (headerOpen ? 'Colapsar' : 'Expandir') : (headerOpen ? 'Collapse' : 'Expand')}
-                  aria-expanded={headerOpen}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 active:scale-90 transition-transform"
-                >
-                  {headerOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
-              )}
+            <div className="flex-shrink-0">
               <NavBar />
             </div>
           </div>
@@ -505,6 +495,29 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
                   based on tier. Visible across all panels. */}
               <ConversionRibbon />
             </>
+          )}
+          {/* Drawer-pull chevron — bottom of header, centered. Toggles
+              collapse. Compact when expanded; slightly larger tap
+              target when collapsed since it's the only way back. */}
+          {!isBusiness && (
+            <button
+              type="button"
+              onClick={toggleHeader}
+              aria-label={es ? (headerOpen ? 'Colapsar encabezado' : 'Expandir encabezado') : (headerOpen ? 'Collapse header' : 'Expand header')}
+              aria-expanded={headerOpen}
+              className="mt-1 mx-auto flex items-center justify-center gap-1 px-3 py-1 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition-transform"
+            >
+              {headerOpen ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">
+                    {es ? 'Más' : 'More'}
+                  </span>
+                </>
+              )}
+            </button>
           )}
         </div>
 

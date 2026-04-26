@@ -108,26 +108,26 @@ export function SocialProofStrip() {
           competitors that just resell CBP. Bordify reviews complain
           "wait times DEAD WRONG" — surfacing the multi-source picture
           is the answer. */}
-      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -mt-1">
-        <span className="flex-shrink-0 text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mr-1">
+      <div className="flex flex-wrap items-center gap-1.5 -mt-1">
+        <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mr-1">
           {es ? 'Verificado por' : 'Verified by'}
         </span>
-        <span className="flex-shrink-0 text-[10px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-full px-2 py-0.5">
+        <span className="text-[10px] font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-full px-2 py-0.5">
           🛰️ CBP
         </span>
-        <span className="flex-shrink-0 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-full px-2 py-0.5">
-          🎥 {es ? 'Cámaras en vivo' : 'Live cameras'}
+        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-full px-2 py-0.5">
+          🎥 {es ? 'Cámaras' : 'Cameras'}
         </span>
-        <span className="flex-shrink-0 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full px-2 py-0.5">
+        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full px-2 py-0.5">
           👥 {es ? 'Comunidad' : 'Community'}
         </span>
-        <span className="flex-shrink-0 text-[10px] font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-full px-2 py-0.5">
+        <span className="text-[10px] font-bold text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-full px-2 py-0.5">
           📊 230k {es ? 'lecturas' : 'readings'}
         </span>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-        <div className="flex-shrink-0 flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
           <Users className="w-3.5 h-3.5 text-blue-500" />
           <span className="text-[11px] font-bold text-gray-900 dark:text-gray-100 tabular-nums">
             {stats.totalUsers.toLocaleString()}
@@ -137,7 +137,7 @@ export function SocialProofStrip() {
           </span>
         </div>
         {stats.reportsLast7d > 0 && (
-          <div className="flex-shrink-0 flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
             <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
             <span className="text-[11px] font-bold text-gray-900 dark:text-gray-100 tabular-nums">
               {stats.reportsLast7d}
@@ -148,7 +148,7 @@ export function SocialProofStrip() {
           </div>
         )}
         {firstNames.length > 0 && (
-          <div className="flex-shrink-0 flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
             <span className="text-[11px] text-gray-500 dark:text-gray-400">
               {es ? 'Top:' : 'Top:'}
             </span>
