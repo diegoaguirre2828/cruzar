@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 import { put } from '@vercel/blob'
+import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -123,9 +124,22 @@ export async function POST(req: NextRequest) {
   }
   const client = new Anthropic({ apiKey })
 
-  const docBlock = attachment.mimeType === 'application/pdf'
-    ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: attachment.contentBase64! } }
-    : { type: 'image' as const, source: { type: 'base64' as const, media_type: attachment.mimeType as 'image/png' | 'image/jpeg' | 'image/webp', data: attachment.contentBase64! } }
+  // Resize images to 1568px max-edge (cuts vision token cost ~80%).
+  let processedBase64 = attachment.contentBase64!
+  let processedMime = attachment.mimeType!
+  if (attachment.mimeType !== 'application/pdf') {
+    const resized = await sharp(buf)
+      .rotate()
+      .resize({ width: 1568, height: 1568, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85, progressive: true })
+      .toBuffer()
+    processedBase64 = resized.toString('base64')
+    processedMime = 'image/jpeg'
+  }
+
+  const docBlock = processedMime === 'application/pdf'
+    ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: processedBase64 } }
+    : { type: 'image' as const, source: { type: 'base64' as const, media_type: processedMime as 'image/png' | 'image/jpeg' | 'image/webp', data: processedBase64 } }
 
   const t0 = Date.now()
   let parsed: { extracted_fields: Record<string, unknown>; issues: Array<{ severity: string; field: string; problem: string; fix: string }>; severity: 'clean' | 'minor' | 'blocker'; ai_summary: string }
@@ -133,7 +147,7 @@ export async function POST(req: NextRequest) {
     const completion = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: [docBlock, { type: 'text', text: `Subject: ${body.subject || ''}\nExtract every clearly-labeled field. Flag blockers and minor issues. Output JSON.` }] }],
     })
     const txt = completion.content.filter((c): c is Anthropic.TextBlock => c.type === 'text').map((c) => c.text).join('\n').trim()

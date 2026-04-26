@@ -5,6 +5,7 @@ import { getServiceClient } from '@/lib/supabase'
 import { put } from '@vercel/blob'
 import Anthropic from '@anthropic-ai/sdk'
 import { checkRateLimit, keyFromRequest } from '@/lib/ratelimit'
+import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
 // Vision-capable parsing of multi-page pedimentos can take 30-60s.
@@ -136,19 +137,43 @@ export async function POST(req: NextRequest) {
   const client = new Anthropic({ apiKey })
 
   const fileBytes = Buffer.from(await file.arrayBuffer())
-  const fileBase64 = fileBytes.toString('base64')
-  const docContentBlock = mime === 'application/pdf'
-    ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: fileBase64 } }
-    : { type: 'image' as const, source: { type: 'base64' as const, media_type: mime as 'image/png' | 'image/jpeg' | 'image/webp', data: fileBase64 } }
+
+  // Cost optimization: shrink images to 1568px max-edge before
+  // sending to Claude vision. Anthropic charges per token =
+  // width*height/750, so a 4000px-wide phone photo costs 6× a
+  // 1568px-resized version. Pedimento OCR accuracy unaffected at
+  // this resolution. Skip for PDFs (Anthropic handles those natively).
+  let processedBase64: string
+  let processedMime = mime
+  if (mime === 'application/pdf') {
+    processedBase64 = fileBytes.toString('base64')
+  } else {
+    const resized = await sharp(fileBytes)
+      .rotate() // honor EXIF orientation
+      .resize({ width: 1568, height: 1568, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85, progressive: true })
+      .toBuffer()
+    processedBase64 = resized.toString('base64')
+    processedMime = 'image/jpeg'
+  }
+
+  const docContentBlock = processedMime === 'application/pdf'
+    ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: processedBase64 } }
+    : { type: 'image' as const, source: { type: 'base64' as const, media_type: processedMime as 'image/png' | 'image/jpeg' | 'image/webp', data: processedBase64 } }
 
   const aiModel = 'claude-sonnet-4-6'
   let parsed: { extracted_fields: Record<string, unknown>; issues: Array<{ severity: string; field: string; problem: string; fix: string }>; severity: 'clean' | 'minor' | 'blocker'; ai_summary: string }
 
   try {
+    // Prompt cache the broker system prompt — every validation reuses
+    // the same ~4k-token customs broker setup, so cached hits cost
+    // 0.1× the input rate (90% savings) after the first call.
     const completion = await client.messages.create({
       model: aiModel,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: [
+        { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+      ],
       messages: [{
         role: 'user',
         content: [
