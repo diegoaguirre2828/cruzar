@@ -88,10 +88,10 @@ async function runAlerts() {
     return NextResponse.json({ ok: true, processed: 0, alerted: 0, at: new Date().toISOString() })
   }
 
-  // 2) Pull paid subscribers + their prefs
+  // 2) Pull paid subscribers + their prefs (incl. Slack/Telegram channels)
   const { data: subs } = await db
     .from('intel_subscribers')
-    .select('id, email, tier, unsubscribe_token')
+    .select('id, email, tier, unsubscribe_token, slack_webhook_url, telegram_chat_id, preferred_channels')
     .eq('active', true)
     .in('tier', ['pro', 'enterprise'])
 
@@ -147,24 +147,61 @@ async function runAlerts() {
       })
       if (insErr) continue // duplicate or transient — skip
 
-      if (!resendKey) { alertsErrored++; continue }
-
       const unsubUrl = `https://www.cruzar.app/api/intelligence/unsubscribe?token=${sub.unsubscribe_token}`
-      const html = renderAlertHtml(ev, score, unsubUrl)
-      try {
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: fromEmail,
-            to: sub.email,
-            subject: `[ALERT · ${ev.impact_tag || 'border'}] ${String(ev.headline).slice(0, 90)}`,
-            html,
-          }),
-        })
-        if (res.ok) alertsSent++
-        else alertsErrored++
-      } catch { alertsErrored++ }
+      const channels: string[] = (sub.preferred_channels && sub.preferred_channels.length > 0) ? sub.preferred_channels : ['email']
+      let anyDelivered = false
+
+      // Email channel (default)
+      if (channels.includes('email') && resendKey) {
+        try {
+          const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: fromEmail,
+              to: sub.email,
+              subject: `[ALERT · ${ev.impact_tag || 'border'}] ${String(ev.headline).slice(0, 90)}`,
+              html: renderAlertHtml(ev, score, unsubUrl),
+            }),
+          })
+          if (res.ok) anyDelivered = true
+        } catch { /* swallow */ }
+      }
+
+      // Slack channel
+      if (channels.includes('slack') && sub.slack_webhook_url) {
+        try {
+          const res = await fetch(sub.slack_webhook_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: `*[${ev.impact_tag || 'border'}]* ${ev.headline}`,
+              blocks: [
+                { type: 'header', text: { type: 'plain_text', text: `${ev.impact_tag?.toUpperCase() || 'BORDER'}: ${String(ev.headline).slice(0, 140)}` } },
+                ...(ev.body ? [{ type: 'section', text: { type: 'mrkdwn', text: String(ev.body).slice(0, 600) } }] : []),
+                { type: 'context', elements: [{ type: 'mrkdwn', text: `score *${score}* · corridor: ${ev.corridor || 'n/a'} · src: ${ev.source}${ev.source_url ? ` · <${ev.source_url}|link>` : ''}` }] },
+              ],
+            }),
+          })
+          if (res.ok) anyDelivered = true
+        } catch { /* swallow */ }
+      }
+
+      // Telegram channel (relayed to bound chat_id)
+      if (channels.includes('telegram') && sub.telegram_chat_id && process.env.TELEGRAM_BOT_TOKEN) {
+        try {
+          const text = `🚨 *${(ev.impact_tag || 'border').toUpperCase()}*\n${ev.headline}\n\n${(ev.body || '').slice(0, 400)}\n\n_score ${score} · ${ev.corridor || 'n/a'} · ${ev.source}_${ev.source_url ? `\n${ev.source_url}` : ''}`
+          const res = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: sub.telegram_chat_id, text, parse_mode: 'Markdown', disable_web_page_preview: true }),
+          })
+          if (res.ok) anyDelivered = true
+        } catch { /* swallow */ }
+      }
+
+      if (anyDelivered) alertsSent++
+      else alertsErrored++
     }
   }
 

@@ -9,6 +9,56 @@ import { Check, ArrowLeft } from 'lucide-react'
 import { isIOSAppClient } from '@/lib/platform'
 import { IOSSubscribeButton } from '@/components/IOSSubscribeButton'
 
+function SalesInquiryForm({ es }: { es: boolean }) {
+  const [email, setEmail] = useState('')
+  const [company, setCompany] = useState('')
+  const [fleetSize, setFleetSize] = useState('')
+  const [useCase, setUseCase] = useState('')
+  const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
+  const [err, setErr] = useState('')
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setState('sending'); setErr('')
+    const res = await fetch('/api/sales-inquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, company, fleet_size: fleetSize, use_case: useCase, tier: 'intelligence_enterprise' }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setState('err'); setErr(data.error || `${res.status}`); return }
+    setState('ok'); setEmail(''); setCompany(''); setFleetSize(''); setUseCase('')
+  }
+  return (
+    <div id="sales-inquiry-form" className="mt-6 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-2xl p-6">
+      <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-violet-700 dark:text-violet-400 mb-1">{es ? 'Hablar con ventas' : 'Talk to sales'}</p>
+      <h3 className="text-lg font-bold text-violet-900 dark:text-violet-100 mb-1">
+        {es ? 'Cruzar Intelligence Enterprise — $499/mes' : 'Cruzar Intelligence Enterprise — $499/mo'}
+      </h3>
+      <p className="text-xs text-violet-700 dark:text-violet-400 mb-4">
+        {es
+          ? 'Para VPs de cadena de suministro, aseguradoras y gobierno. Te contactamos en 24 horas.'
+          : 'For supply chain VPs, underwriters, and government. We respond within 24 hours.'}
+      </p>
+      {state === 'ok' ? (
+        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">
+          ✓ {es ? '¡Recibido! Te contactamos en 24 horas a tu email.' : 'Got it! We\'ll be in touch within 24 hours.'}
+        </p>
+      ) : (
+        <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={es ? 'Tu correo de trabajo' : 'Work email'} className="text-sm px-3 py-2 rounded-lg border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
+          <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder={es ? 'Empresa' : 'Company'} className="text-sm px-3 py-2 rounded-lg border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" />
+          <input value={fleetSize} onChange={(e) => setFleetSize(e.target.value)} placeholder={es ? 'Tamaño de flota / volumen' : 'Fleet size / volume'} className="text-sm px-3 py-2 rounded-lg border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 sm:col-span-1" />
+          <textarea value={useCase} onChange={(e) => setUseCase(e.target.value)} rows={2} placeholder={es ? 'Caso de uso (corredores, equipo, etc.)' : 'Use case (corridors, team, etc.)'} className="text-sm px-3 py-2 rounded-lg border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 sm:col-span-2 resize-none" />
+          <button type="submit" disabled={state === 'sending'} className="sm:col-span-2 py-2.5 rounded-xl bg-violet-700 text-white text-sm font-bold disabled:opacity-50">
+            {state === 'sending' ? (es ? 'Enviando…' : 'Sending…') : (es ? 'Solicitar contacto' : 'Request contact')}
+          </button>
+          {state === 'err' && <p className="text-xs text-red-500 sm:col-span-2">{err}</p>}
+        </form>
+      )}
+    </div>
+  )
+}
+
 export default function PricingPage() {
   const { user } = useAuth()
   const { tier: currentTier } = useTier()
@@ -207,6 +257,18 @@ export default function PricingPage() {
   ]
 
   async function handleUpgrade(planTier: string) {
+    // Enterprise tier = manual sales conversation, not auto-checkout.
+    // Scroll to + focus the sales-inquiry form instead of redirecting
+    // to Stripe.
+    if (planTier === 'intelligence_enterprise') {
+      const el = typeof document !== 'undefined' ? document.getElementById('sales-inquiry-form') : null
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        const input = el.querySelector('input[name=email]') as HTMLInputElement | null
+        if (input) setTimeout(() => input.focus(), 400)
+      }
+      return
+    }
     if (!user) {
       window.location.href = `/signup?next=${encodeURIComponent('/pricing')}`
       return
@@ -342,6 +404,10 @@ export default function PricingPage() {
             )
           })}
         </div>
+
+        {/* Enterprise sales-inquiry capture form (anchored from
+            "Talk to sales" CTA). Manual lead → Diego follows up. */}
+        <SalesInquiryForm es={es} />
 
         {/* Business cost impact — the killer argument */}
         <div className="mt-6 bg-gray-900 dark:bg-gray-800 rounded-2xl p-6 text-white">

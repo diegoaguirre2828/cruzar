@@ -55,7 +55,14 @@ export async function POST(req: NextRequest) {
       metadata: { userId: user.id, tier },
       ...(isOneTime ? {} : {
         subscription_data: {
-          trial_period_days: tier === 'business' ? 14 : tier === 'operator' || tier === 'intelligence' ? 7 : 7,
+          // 14-day trial for B2B tiers (Operator, Business, Intelligence,
+          // Intelligence Enterprise) — gives them a real billing cycle's
+          // worth of value before charging. 7 days for the consumer Pro
+          // tier which converts faster on alert-driven moments.
+          trial_period_days:
+            tier === 'business' || tier === 'operator' || tier === 'intelligence' || tier === 'intelligence_enterprise'
+              ? 14
+              : 7,
           metadata: { userId: user.id, tier },
         },
       }),

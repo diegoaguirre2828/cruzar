@@ -40,6 +40,10 @@ export default function OperatorPage() {
   const [error, setError] = useState('')
   const [result, setResult] = useState<ValidationResult | null>(null)
   const [history, setHistory] = useState<ValidationResult[]>([])
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkFiles, setBulkFiles] = useState<File[]>([])
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkResults, setBulkResults] = useState<ValidationResult[]>([])
 
   // No redirect for anon visitors — they see the public hero + sample.
   useEffect(() => {
@@ -67,6 +71,27 @@ export default function OperatorPage() {
     setResult(data)
     setHistory((prev) => [data as ValidationResult, ...prev].slice(0, 50))
     setFile(null)
+  }
+
+  async function submitBulk(e: React.FormEvent) {
+    e.preventDefault()
+    if (bulkFiles.length === 0) return
+    setBulkSubmitting(true)
+    setError('')
+    setBulkResults([])
+    const fd = new FormData()
+    bulkFiles.forEach((f, i) => {
+      fd.append('files', f)
+      fd.append(`kind_${i}`, kind)
+    })
+    const res = await fetch('/api/operator/validate-bulk', { method: 'POST', body: fd })
+    const data = await res.json()
+    setBulkSubmitting(false)
+    if (!res.ok) { setError(data.error || `${res.status}`); return }
+    const succeeded = (data.results || []).filter((r: { error?: string }) => !r.error)
+    setBulkResults(succeeded as ValidationResult[])
+    setHistory((prev) => [...succeeded as ValidationResult[], ...prev].slice(0, 50))
+    setBulkFiles([])
   }
 
   const isOperator = tier === 'operator' || tier === 'business'
@@ -120,7 +145,25 @@ export default function OperatorPage() {
           </div>
         )}
 
-        <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
+        {/* Single vs Bulk mode toggle */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-3">
+          <button
+            type="button"
+            onClick={() => setBulkMode(false)}
+            className={`py-2 rounded-xl text-xs font-bold transition-colors ${!bulkMode ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500'}`}
+          >
+            {lang === 'es' ? 'Un documento' : 'Single doc'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulkMode(true)}
+            className={`py-2 rounded-xl text-xs font-bold transition-colors ${bulkMode ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500'}`}
+          >
+            {lang === 'es' ? 'Bulk (hasta 10)' : 'Bulk (up to 10)'}
+          </button>
+        </div>
+
+        <form onSubmit={bulkMode ? submitBulk : submit} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-4">
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
             {lang === 'es' ? 'Tipo de documento' : 'Document kind'}
           </label>
@@ -138,25 +181,56 @@ export default function OperatorPage() {
           </div>
 
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
-            {lang === 'es' ? 'Archivo (PDF, PNG, JPEG · 10 MB max)' : 'File (PDF, PNG, JPEG · 10 MB max)'}
+            {bulkMode
+              ? (lang === 'es' ? 'Archivos (hasta 10 · PDF/PNG/JPEG · 10 MB c/u)' : 'Files (up to 10 · PDF/PNG/JPEG · 10 MB each)')
+              : (lang === 'es' ? 'Archivo (PDF, PNG, JPEG · 10 MB max)' : 'File (PDF, PNG, JPEG · 10 MB max)')}
           </label>
-          <input
-            type="file"
-            accept="application/pdf,image/png,image/jpeg,image/webp"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full text-xs text-gray-700 dark:text-gray-300 mb-3 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:dark:bg-gray-700 file:text-gray-700 file:dark:text-gray-300"
-          />
+          {bulkMode ? (
+            <input
+              type="file"
+              multiple
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              onChange={(e) => setBulkFiles(Array.from(e.target.files || []).slice(0, 10))}
+              className="w-full text-xs text-gray-700 dark:text-gray-300 mb-3 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:dark:bg-gray-700 file:text-gray-700 file:dark:text-gray-300"
+            />
+          ) : (
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full text-xs text-gray-700 dark:text-gray-300 mb-3 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:dark:bg-gray-700 file:text-gray-700 file:dark:text-gray-300"
+            />
+          )}
+          {bulkMode && bulkFiles.length > 0 && (
+            <p className="text-[11px] text-gray-500 mb-2">{bulkFiles.length} {lang === 'es' ? 'archivo(s) seleccionado(s)' : 'file(s) selected'}</p>
+          )}
 
           <button
             type="submit"
-            disabled={!file || submitting || !isOperator}
+            disabled={(bulkMode ? bulkFiles.length === 0 : !file) || submitting || bulkSubmitting || !isOperator}
             className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center gap-2"
           >
             <Upload className="w-4 h-4" />
-            {submitting ? (lang === 'es' ? 'Analizando…' : 'Analyzing…') : (lang === 'es' ? 'Validar documento' : 'Validate document')}
+            {(submitting || bulkSubmitting) ? (lang === 'es' ? 'Analizando…' : 'Analyzing…') : bulkMode ? (lang === 'es' ? `Validar ${bulkFiles.length || ''} documento(s)` : `Validate ${bulkFiles.length || ''} doc(s)`) : (lang === 'es' ? 'Validar documento' : 'Validate document')}
           </button>
           {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
         </form>
+
+        {/* Bulk results stack */}
+        {bulkResults.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {bulkResults.map((r) => (
+              <div key={r.id} className={`rounded-xl border p-3 ${r.severity === 'blocker' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : r.severity === 'minor' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate">{(r as ValidationResult & { source_url?: string }).doc_kind || ''}</p>
+                  <span className="text-[10px] uppercase font-bold">{r.severity}</span>
+                </div>
+                <p className="text-xs text-gray-700 dark:text-gray-300">{r.ai_summary}</p>
+                {r.issues.length > 0 && <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1">{r.issues.length} {lang === 'es' ? 'aviso(s)' : 'flag(s)'}</p>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {result && (
           <div className={`rounded-2xl border p-5 shadow-sm mb-4 ${result.severity === 'blocker' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : result.severity === 'minor' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}>
