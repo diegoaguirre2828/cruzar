@@ -47,10 +47,13 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const allowed = ['display_name', 'full_name', 'company', 'role', 'bio', 'favorite_port_id']
+  const allowed = ['display_name', 'full_name', 'company', 'role', 'bio', 'favorite_port_id', 'copilot_auto_text_circle_id']
   const updates: Record<string, string | boolean | null> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]
+  }
+  if (typeof body.copilot_voice_opt_in === 'boolean') {
+    updates.copilot_voice_opt_in = body.copilot_voice_opt_in
   }
   // Boolean settings — currently just the auto-crossing opt-in.
   // We also stamp auto_geofence_opt_in_at on the upgrade edge (false→true)

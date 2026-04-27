@@ -21,6 +21,8 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { z } from "zod";
 import { getServiceClient } from "@/lib/supabase";
 import { PORT_META } from "@/lib/portMeta";
+import { SAFETY_SCRIPTS, type EmergencyKind } from "@/lib/safetyScripts";
+import { generateDeclaration, type DeclarationInput } from "@/lib/customsForms";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -458,6 +460,10 @@ function buildServer(): McpServer {
         "Use cruzar_compare_ports for a side-by-side v0.4 forecast across multiple ports at a single horizon.",
         "Use cruzar_briefing for a one-shot markdown decision summary on a single port (live + historical + v0.4 forecast — best for dispatcher / broker workflows).",
         "Use cruzar_history to pull raw recent wait readings for a port over the last N days (max 14) for power users who want the underlying time series, not a summary.",
+        "Use cruzar_load_eta for the dispatcher decision: load-tagged ETA-to-dock + P(make appointment) + detention $ exposure given origin, dock, appointment time.",
+        "Use cruzar_safety_script for bilingual EN/ES emergency scripts (secondary inspection, vehicle breakdown, accident, lost SENTRI, document seizure, medical) — Cruzar Safety Net (Pillar 6) playbook.",
+        "Use cruzar_generate_customs to compute a CBP 7501 / pedimento / IMMEX declaration draft with USMCA duty math and compliance warnings.",
+        "Use cruzar_anomaly_camera_recent to read recent bridge-camera frames captured when a port crossed the 1.5× anomaly threshold.",
       ].join(" "),
     },
   );
@@ -668,6 +674,104 @@ function buildServer(): McpServer {
         count: data?.length ?? 0,
         fetched_at: new Date().toISOString(),
       };
+      return {
+        structuredContent: result as unknown as Record<string, unknown>,
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "cruzar_safety_script",
+    {
+      title: "Bilingual emergency script for a border-crossing situation",
+      description:
+        "Returns step-by-step bilingual (EN/ES) guidance for a specific emergency kind a border traveler may face: secondary_inspection, vehicle_breakdown, accident, lost_sentri, document_seizure, medical, other. Includes ready-phrases the user can read aloud + key hotlines (911 both sides, Mexico Green Angels, US Embassy MX, MX Consulate). Drawn from Cruzar's Safety Net (Pillar 6) playbook — no AI inference, the scripts are static and reviewed.",
+      inputSchema: {
+        kind: z.enum([
+          "secondary_inspection","vehicle_breakdown","accident",
+          "lost_sentri","document_seizure","medical","other",
+        ]).describe("Type of emergency"),
+      },
+    },
+    async ({ kind }) => {
+      const s = SAFETY_SCRIPTS[kind as EmergencyKind];
+      return {
+        structuredContent: s as unknown as Record<string, unknown>,
+        content: [{ type: "text", text: JSON.stringify(s, null, 2) }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "cruzar_generate_customs",
+    {
+      title: "Generate a customs declaration draft (CBP 7501 / pedimento / IMMEX)",
+      description:
+        "Compute-only customs declaration generator. Given importer + exporter + line items with HS codes, returns structured payload + bilingual markdown + duty calculation + USMCA savings. NOT a filing — broker review required. Returns warnings for missing EIN, 10-digit HTS, or USMCA criterion gaps. Form types: cbp_7501, pace, padv, immex_manifest, generic_invoice. Does NOT persist to the user's account.",
+      inputSchema: {
+        form_type: z.enum(["cbp_7501","pace","padv","immex_manifest","generic_invoice"]).describe("Customs form type"),
+        lane: z.string().describe("Lane / port (e.g. 'Laredo WTB northbound')"),
+        importer_name: z.string(),
+        importer_ein: z.string().optional(),
+        exporter_name: z.string(),
+        origin_country: z.string().length(2).default("MX"),
+        destination_country: z.string().length(2).default("US"),
+        fta_claimed: z.enum(["USMCA","GSP","CBI","NONE"]).default("USMCA"),
+        currency: z.string().length(3).default("USD"),
+        hs_codes: z.array(z.object({
+          hs_code: z.string().describe("HTS classification — 10-digit for CBP 7501, 8-digit for MX"),
+          description: z.string(),
+          qty: z.number().positive(),
+          unit: z.string().default("EA"),
+          unit_value_usd: z.number().min(0),
+          origin_country: z.string().length(2).default("MX"),
+          fta_eligible: z.boolean().optional(),
+          fta_criterion: z.enum(["A","B","C","D"]).optional(),
+          rvc_pct: z.number().min(0).max(100).optional(),
+        })).min(1),
+      },
+    },
+    async (args) => {
+      const out = generateDeclaration(args as DeclarationInput);
+      const result = {
+        markdown: out.markdown,
+        warnings: out.warnings,
+        totals: out.payload.calculated,
+        disclaimer: "Broker-grade draft, not a filing. Verify HTS + duty rates with a licensed customs broker before submitting through ACE/SAAI.",
+      };
+      return {
+        structuredContent: result as unknown as Record<string, unknown>,
+        content: [{ type: "text", text: out.markdown }],
+      };
+    },
+  );
+
+  server.registerTool(
+    "cruzar_anomaly_camera_recent",
+    {
+      title: "Recent anomaly-triggered bridge camera frames",
+      description:
+        "Returns the most recent anomaly_camera_events rows (ports flagged with live wait ≥ 1.5× DOW × hour baseline). Each row includes port_id, anomaly ratio, captured frame URL (if camera was reachable), and source. Useful for AI-driven intelligence loops that want to combine wait-spike alerts with visual confirmation. Pull-only; cron writes the rows.",
+      inputSchema: {
+        port_id: z.string().optional().describe("Filter to a single port. Omit for all ports."),
+        hours: z.number().int().min(1).max(72).default(24).describe("Look-back window in hours."),
+        limit: z.number().int().min(1).max(200).default(50),
+      },
+    },
+    async ({ port_id, hours, limit }) => {
+      const db = getServiceClient();
+      const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+      let q = db
+        .from("anomaly_camera_events")
+        .select("id, port_id, anomaly_kind, ratio, live_wait_min, baseline_min, frame_blob_url, camera_source, triggered_at, notes")
+        .gte("triggered_at", since)
+        .order("triggered_at", { ascending: false })
+        .limit(limit);
+      if (port_id) q = q.eq("port_id", port_id);
+      const { data, error } = await q;
+      if (error) return { content: [{ type: "text", text: `DB error: ${error.message}` }], isError: true };
+      const result = { rows: data ?? [], count: data?.length ?? 0, fetched_at: new Date().toISOString() };
       return {
         structuredContent: result as unknown as Record<string, unknown>,
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],

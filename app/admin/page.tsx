@@ -1156,6 +1156,39 @@ export default function AdminPage() {
                   >
                     🧠 Register Pattern Brain cron (hourly)
                   </button>
+                  <button
+                    onClick={() => registerCustomCron({
+                      path: '/api/cron/dispatch-alerts',
+                      title: '🚨 Cruzar Insights — Operator alert dispatch (every 5 min)',
+                      schedule: { timezone: 'UTC', hours: [-1], minutes: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], mdays: [-1], months: [-1], wdays: [-1] },
+                    })}
+                    disabled={registering || !cronApiKey.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors text-left px-4"
+                  >
+                    🚨 Register operator alert-dispatch cron (every 5 min)
+                  </button>
+                  <button
+                    onClick={() => registerCustomCron({
+                      path: '/api/cron/wallet-expiry-reminders',
+                      title: '🪪 Cruzar — Wallet expiry reminders (daily 8am CT)',
+                      schedule: { timezone: 'UTC', hours: [14], minutes: [0], mdays: [-1], months: [-1], wdays: [-1] },
+                    })}
+                    disabled={registering || !cronApiKey.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors text-left px-4"
+                  >
+                    🪪 Register wallet expiry-reminder cron (daily 8am CT)
+                  </button>
+                  <button
+                    onClick={() => registerCustomCron({
+                      path: '/api/cron/anomaly-camera',
+                      title: '📡 Cruzar Vision Tier 2 — Anomaly camera capture (every 30 min)',
+                      schedule: { timezone: 'UTC', hours: [-1], minutes: [0, 30], mdays: [-1], months: [-1], wdays: [-1] },
+                    })}
+                    disabled={registering || !cronApiKey.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors text-left px-4"
+                  >
+                    📡 Register anomaly-camera cron (every 30 min)
+                  </button>
                 </div>
                 {registerStatus && (
                   <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${registerStatus.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>

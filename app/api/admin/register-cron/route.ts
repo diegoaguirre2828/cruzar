@@ -70,13 +70,24 @@ export async function POST(req: NextRequest) {
 
   const url = `https://cruzar.app${path}?secret=${cronSecret}`
 
+  // cron-job.org v1 stopped accepting `[-1]` shorthand and now requires
+  // explicit arrays (HTTP 400 otherwise). Translate "every" sentinels.
+  const allHours = Array.from({ length: 24 }, (_, i) => i)
+  const allMinutes = Array.from({ length: 60 }, (_, i) => i)
+  const allMdays = Array.from({ length: 31 }, (_, i) => i + 1)
+  const allMonths = Array.from({ length: 12 }, (_, i) => i + 1)
+  const allWdays = [0, 1, 2, 3, 4, 5, 6]
+  const expand = (a: number[] | undefined, full: number[]) => {
+    if (!a || a.length === 0 || (a.length === 1 && a[0] === -1)) return full
+    return a.filter((n) => n >= 0)
+  }
   const jobSchedule = {
     timezone: schedule.timezone || 'UTC',
-    hours: schedule.hours ?? [-1],
-    minutes: schedule.minutes ?? [-1],
-    mdays: schedule.mdays ?? [-1],
-    months: schedule.months ?? [-1],
-    wdays: schedule.wdays ?? [-1],
+    hours: expand(schedule.hours, allHours),
+    minutes: expand(schedule.minutes, allMinutes),
+    mdays: expand(schedule.mdays, allMdays),
+    months: expand(schedule.months, allMonths),
+    wdays: expand(schedule.wdays, allWdays),
   }
 
   try {
