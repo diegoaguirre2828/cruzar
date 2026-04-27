@@ -90,6 +90,17 @@ export interface PortWaitTime {
   // pedestrian_lanes_visible. Independent of the pedestrian headline pick
   // — surfaced in the UI as a sanity-check alongside the headline number.
   pedestrianFlowRateMin?: number | null
+  // Officer / booth staffing — derived from CBP's pedestrian lanes_open
+  // field. Public BWT API publishes this every poll; we expose it
+  // semantically as "officers currently open" since each pedestrian
+  // booth corresponds 1:1 with a CBP officer doing inspections.
+  pedestrianOfficersOpen?: number | null
+  // Average pedestrian lanes_open at this port at this hour-of-day,
+  // computed from the last 30 days of wait_time_readings. Lets the
+  // card surface "fewer officers than usual" as a leading indicator
+  // — wait time can still be low when CBP just understaffed a booth,
+  // but it's about to spike.
+  pedestrianOfficersTypical?: number | null
 }
 
 export interface WaitTimeReading {

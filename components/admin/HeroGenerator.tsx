@@ -562,6 +562,21 @@ export function HeroGenerator() {
                           🚶 ~{p.pedestrianBaselineHourly}/h normal
                         </span>
                       )}
+                      {direction === 'north' && p.pedestrianOfficersOpen != null && p.pedestrianOfficersOpen > 0 && (() => {
+                        const open = p.pedestrianOfficersOpen
+                        const typical = p.pedestrianOfficersTypical
+                        const delta = typical != null ? open - typical : 0
+                        const tag = open === 1 ? 'oficial' : 'oficiales'
+                        const deltaTag = typical != null && Math.abs(delta) >= 1
+                          ? (delta > 0 ? ` (+${delta} vs típico)` : ` (${delta} vs típico)`)
+                          : ''
+                        const color = delta < -1 ? 'text-red-300' : delta > 1 ? 'text-green-300' : 'text-blue-100'
+                        return (
+                          <span className={color}>
+                            🛂 {open} {tag}{deltaTag}
+                          </span>
+                        )
+                      })()}
                       {hist != null && histDelta != null && (
                         <span className={histColor}>
                           {histTrendIcon}

@@ -149,7 +149,11 @@ export async function GET() {
     // Historical averages — re-enabled 2026-04-16 after adding
     // idx_wait_time_readings_hour_port + idx_wait_time_readings_dow_hour_port.
     // Query scoped to current day_of_week + hour_of_day, last 30 days only.
+    // v55d: also pull lanes_pedestrian_open so we can compute "officers
+    // typical at this hour" — fewer officers than usual is a leading
+    // indicator of wait spikes even when current wait is still low.
     const historicalByPort = new Map<string, number>()
+    const officersTypicalByPort = new Map<string, number>()
     try {
       const nowCT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }))
       const dow = nowCT.getDay()
@@ -157,21 +161,32 @@ export async function GET() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       const { data: histRows } = await db
         .from('wait_time_readings')
-        .select('port_id, vehicle_wait')
+        .select('port_id, vehicle_wait, lanes_pedestrian_open')
         .eq('day_of_week', dow)
         .eq('hour_of_day', hour)
         .gte('recorded_at', thirtyDaysAgo)
-        .not('vehicle_wait', 'is', null)
       if (histRows) {
-        const sums = new Map<string, { total: number; count: number }>()
+        const waitSums = new Map<string, { total: number; count: number }>()
+        const officerSums = new Map<string, { total: number; count: number }>()
         for (const r of histRows) {
-          const s = sums.get(r.port_id) ?? { total: 0, count: 0 }
-          s.total += r.vehicle_wait
-          s.count++
-          sums.set(r.port_id, s)
+          if (r.vehicle_wait != null) {
+            const s = waitSums.get(r.port_id) ?? { total: 0, count: 0 }
+            s.total += r.vehicle_wait
+            s.count++
+            waitSums.set(r.port_id, s)
+          }
+          if (r.lanes_pedestrian_open != null && r.lanes_pedestrian_open > 0) {
+            const s = officerSums.get(r.port_id) ?? { total: 0, count: 0 }
+            s.total += r.lanes_pedestrian_open
+            s.count++
+            officerSums.set(r.port_id, s)
+          }
         }
-        for (const [pid, s] of sums) {
+        for (const [pid, s] of waitSums) {
           if (s.count >= 3) historicalByPort.set(pid, Math.round(s.total / s.count))
+        }
+        for (const [pid, s] of officerSums) {
+          if (s.count >= 3) officersTypicalByPort.set(pid, Math.round(s.total / s.count))
         }
       }
     } catch {
@@ -396,18 +411,26 @@ export async function GET() {
         (cameraPedestrianConfidence === 'high' || cameraPedestrianConfidence === 'medium')
 
       // ──── Flow-rate derived estimate ────
-      // wait = queue_count / (booths × throughput_per_minute_per_booth)
-      // CBP pedestrian booths process ~3-5 sec per person under normal
-      // conditions = ~12-20 people/min/booth. We use 15 as a midpoint.
-      // Only computed when the camera both saw the queue AND counted the
-      // booths — guessing booth count poisons the math.
+      // wait = queue_count / (officers × throughput_per_minute_per_officer)
+      //
+      // v55d throughput tune: pass-1 used 15/min/officer (= 4 sec/person)
+      // which matches a SENTRI card swipe but NOT a typical booth where
+      // the officer reviews documents, asks questions, and inspects
+      // belongings. GAO-13-603 + CBP operational data put real per-booth
+      // pedestrian throughput at ~30-90 sec/person depending on document
+      // type, with US-citizen passport-card lane fastest (~10-15s) and
+      // visa-waiver / B1B2 visitor lane slowest (~60-90s). Mid-mix
+      // baseline of 3 people/min/officer (= 20 sec/person) reflects
+      // the typical mixed-population queue at a US-MX pedestrian
+      // crossing. SENTRI lanes get sized faster downstream.
+      const PEDESTRIAN_THROUGHPUT_PER_OFFICER_PER_MIN = 3
       let pedestrianFlowRateMin: number | null = null
       if (
         cameraPedestrianCount != null &&
         cameraPedestrianLanes != null &&
         cameraPedestrianLanes > 0
       ) {
-        const throughputPerMin = cameraPedestrianLanes * 15
+        const throughputPerMin = cameraPedestrianLanes * PEDESTRIAN_THROUGHPUT_PER_OFFICER_PER_MIN
         const flow = Math.round(cameraPedestrianCount / throughputPerMin)
         pedestrianFlowRateMin = Math.max(1, Math.min(flow, 120))
       }
@@ -473,6 +496,11 @@ export async function GET() {
         pedestrianBaselineHourly: btsByPort.get(p.portId) ?? null,
         pedestrianSource,
         pedestrianFlowRateMin,
+        // Officer staffing — CBP exposes lanes_open every poll; this
+        // is the most-current "officers working right now" signal
+        // available without internal CBP system access.
+        pedestrianOfficersOpen: p.pedestrianLanesOpen ?? null,
+        pedestrianOfficersTypical: officersTypicalByPort.get(p.portId) ?? null,
       }
     })
 
