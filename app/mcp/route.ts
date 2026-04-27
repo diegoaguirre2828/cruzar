@@ -629,6 +629,47 @@ function buildServer(): McpServer {
     },
   );
 
+  server.registerTool(
+    "cruzar_load_eta",
+    {
+      title: "Load-tagged ETA-to-dock + detention risk",
+      description:
+        "THE dispatcher decision tool. Given a truck origin, dock destination, and appointment time, picks the bridge that maximizes P(make appointment), forecasts predicted-arrival, and surfaces dollar exposure to detention. Internally: HERE truck routing for drive segments, v0.5 ML forecast for wait, normal CDF on RMSE for confidence. Use this for every cross-border load you're dispatching today.",
+      inputSchema: {
+        origin_lat: z.number().describe("Truck's current/start latitude"),
+        origin_lng: z.number().describe("Truck's current/start longitude"),
+        dest_lat: z.number().describe("Dock destination latitude"),
+        dest_lng: z.number().describe("Dock destination longitude"),
+        appointment_at: z.string().describe("Dock appointment ISO timestamp (e.g. '2026-04-28T18:00:00-05:00')"),
+        detention_rate_per_hour: z.number().optional().describe("Detention $/hour (default 75)"),
+        detention_grace_hours: z.number().optional().describe("Free time before detention starts (default 2.0)"),
+        preferred_port_id: z.string().optional().describe("Force a specific bridge (skip auto-pick). 6-digit Cruzar port_id."),
+      },
+    },
+    async ({
+      origin_lat, origin_lng, dest_lat, dest_lng, appointment_at,
+      detention_rate_per_hour, detention_grace_hours, preferred_port_id,
+    }) => {
+      try {
+        const { computeLoadEta } = await import("@/lib/loadEta");
+        const result = await computeLoadEta({
+          origin_lat, origin_lng, dest_lat, dest_lng, appointment_at,
+          detention_rate_per_hour, detention_grace_hours,
+          preferred_port_id: preferred_port_id ?? null,
+        });
+        return {
+          structuredContent: result as unknown as Record<string, unknown>,
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        };
+      } catch (e) {
+        return {
+          content: [{ type: "text", text: `Error: ${(e as Error).message}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
   return server;
 }
 
