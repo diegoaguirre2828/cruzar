@@ -1,3 +1,5 @@
+import { MomentsNav } from "@/components/MomentsNav";
+
 // Cruzar Insights B2B landing — editorial / data-journalism rebuild.
 //
 // Audience: SMB Mexico import/export ops, customs brokers, dispatchers, fleet
@@ -143,6 +145,8 @@ export default function InsightsPage() {
   return (
     <div className="min-h-screen bg-[#0a1020] text-slate-100 selection:bg-amber-400/30 selection:text-amber-100">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldjson) }} />
+
+      <MomentsNav current="before" />
 
       {/* ─── Masthead bar ─────────────────────────────────────────── */}
       <div className="border-b border-white/[0.07] bg-[#070b18]">

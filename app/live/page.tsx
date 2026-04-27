@@ -4,8 +4,10 @@
 // Build trust by being radically transparent: brokers / dispatchers can verify
 // our predictions against what actually happens at the bridge over the next 6h.
 
+import Link from "next/link";
 import { getServiceClient } from "@/lib/supabase";
 import { PORT_META } from "@/lib/portMeta";
+import { MomentsNav } from "@/components/MomentsNav";
 
 export const runtime = "nodejs";
 export const revalidate = 60;
@@ -159,8 +161,9 @@ function statusBadge(status: PortRow["anomaly_status"], pctAbove: number | null)
 }
 
 export const metadata = {
-  title: "Live border wait-time forecasts — Cruzar Insights",
-  description: "Real-time RGV border crossing wait times + 6-hour ML forecasts (v0.4 RandomForest). Updates every 60 seconds. Covers 8 RGV crossings: Hidalgo, Pharr, Anzaldúas, Laredo WTB, Laredo I, Eagle Pass, Brownsville Veterans, Brownsville Gateway.",
+  title: "Live RGV border crossing — what's happening right now | Cruzar",
+  description: "The DURING moment. Real-time RGV wait times, anomaly badges, and 6-hour ML forecasts for 8 crossings. Auto-refreshes every 60s. Pair with /insights for planning ahead and /memory for your post-crossing log.",
+  alternates: { canonical: "https://www.cruzar.app/live" },
 };
 
 export default async function LivePage() {
@@ -175,6 +178,9 @@ export default async function LivePage() {
     "creator": { "@type": "Organization", "name": "Cruzar Insights" },
   };
 
+  const anomalyHighCount = state.rows.filter((r) => r.anomaly_status === "anomaly_high").length;
+  const anomalyLowCount = state.rows.filter((r) => r.anomaly_status === "anomaly_low").length;
+
   return (
     <div style={{ minHeight: "100vh", background: "#0f172a", color: "white", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif' }}>
       {/* eslint-disable-next-line @next/next/no-head-element */}
@@ -182,15 +188,53 @@ export default async function LivePage() {
         <meta httpEquiv="refresh" content="60" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ldjson) }} />
       </head>
-      <main style={{ maxWidth: 880, margin: "0 auto", padding: "32px 16px" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>Live RGV border wait forecasts</h1>
-        <p style={{ color: "rgba(255,255,255,0.6)", margin: "0 0 8px" }}>
-          Current wait + 6-hour ML forecast for 8 crossings. Auto-refreshes every 60s.
+      <MomentsNav current="during" />
+      <main style={{ maxWidth: 880, margin: "0 auto", padding: "24px 16px 48px" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#fbbf24", margin: "0 0 6px" }}>
+          During · Ahorita
         </p>
-        <p style={{ color: "rgba(255,255,255,0.45)", margin: "0 0 24px", fontSize: 13 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>What&rsquo;s happening at the border right now</h1>
+        <p style={{ color: "rgba(255,255,255,0.65)", margin: "0 0 8px" }}>
+          Live waits, anomaly badges, and 6-hour ML forecast for 8 RGV crossings. Auto-refreshes every 60s.
+        </p>
+        <p style={{ color: "rgba(255,255,255,0.45)", margin: "0 0 16px", fontSize: 13 }}>
           Updated {new Date(state.generated_at).toLocaleString()}
           {!state.v04_available && " · ⚠️ ML forecast offline (showing live + historical only)"}
         </p>
+
+        {/* "During"-moment summary band — actionable verdict at the top */}
+        <div style={{
+          display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center",
+          background: anomalyHighCount > 0 ? "rgba(239,68,68,0.10)" : anomalyLowCount > 0 ? "rgba(34,197,94,0.10)" : "rgba(255,255,255,0.05)",
+          border: `1px solid ${anomalyHighCount > 0 ? "rgba(239,68,68,0.35)" : anomalyLowCount > 0 ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.10)"}`,
+          borderRadius: 16, padding: "12px 14px", margin: "0 0 22px",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>
+            {anomalyHighCount > 0
+              ? `🚨 ${anomalyHighCount} crossing${anomalyHighCount > 1 ? "s" : ""} running high right now`
+              : anomalyLowCount > 0
+                ? `🟢 ${anomalyLowCount} crossing${anomalyLowCount > 1 ? "s" : ""} lighter than typical`
+                : "All crossings within their typical range"}
+          </span>
+          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>
+            {anomalyHighCount > 0
+              ? "If you&rsquo;re crossing now, scroll for the bridge that&rsquo;s clearest."
+              : "Use the 6-hour forecast column to time your crossing."}
+          </span>
+        </div>
+
+        {/* Cross-link to BEFORE moment — helps users who landed here while still planning */}
+        <Link
+          href="/insights"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)",
+            borderRadius: 999, padding: "6px 12px", margin: "0 0 18px",
+            fontSize: 12, color: "rgba(255,255,255,0.85)", textDecoration: "none",
+          }}
+        >
+          ← Planning ahead? See the BEFORE-moment forecast
+        </Link>
 
         <div style={{ display: "grid", gap: 12 }}>
           {state.rows.map((r) => {

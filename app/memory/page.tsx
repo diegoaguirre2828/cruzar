@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { getPortMeta } from '@/lib/portMeta'
+import { MomentsNav } from '@/components/MomentsNav'
 import { ArrowLeft, Trophy, MapPin, Clock, Zap, Calendar, Star, Share2 } from 'lucide-react'
 
 interface MemoryData {
@@ -109,8 +110,9 @@ export default function MemoryPage() {
   const isEmpty = data.totals.reports === 0
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 pt-6 pb-12">
-      <div className="max-w-lg mx-auto">
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <MomentsNav current="after" />
+      <div className="max-w-lg mx-auto px-4 pt-4 pb-12">
         <Link href="/dashboard" className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mb-3">
           <ArrowLeft className="w-3 h-3" /> {es ? 'Volver al panel' : 'Back to dashboard'}
         </Link>
