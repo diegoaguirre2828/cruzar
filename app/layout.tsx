@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/ThemeContext";
 import { Footer } from "@/components/Footer";
 import { BottomNav } from "@/components/BottomNav";
 import { SWRProvider } from "@/components/SWRProvider";
+import { FavoritesProvider } from "@/lib/useFavorites";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { ChunkErrorReload } from "@/components/ChunkErrorReload";
 import { LazyGlobalOverlays } from "@/components/LazyGlobalOverlays";
@@ -86,6 +87,7 @@ export default function RootLayout({
         <ThemeProvider>
           <LangProvider>
           <SWRProvider>
+            <FavoritesProvider>
             {/* Bottom padding on mobile so content clears the tab bar.
                 The calc() form accounts for Android gesture-nav phones
                 where env(safe-area-inset-bottom) adds real height to
@@ -101,6 +103,7 @@ export default function RootLayout({
             {/* All non-critical overlays mount idle, after first paint */}
             <LazyGlobalOverlays />
             <RevenueCatInit />
+            </FavoritesProvider>
           </SWRProvider>
           </LangProvider>
         </ThemeProvider>
