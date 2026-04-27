@@ -42,16 +42,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Account required' }, { status: 403 })
   }
 
-  // Free tier: max 1 alert
-  if (tier === 'free') {
-    const db = getServiceClient()
-    const { count } = await db
-      .from('alert_preferences')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-    if ((count ?? 0) >= 1) {
-      return NextResponse.json({ error: 'free_limit' }, { status: 403 })
-    }
+  // Per-account alert caps. Defense-in-depth against Twilio/Resend
+  // financial-DoS — replaces the install-age gate that was removed
+  // from claim-pwa-pro on 2026-04-26. Generous limits for legit users
+  // (most carry 1-3 alerts), tight enough that a malicious account
+  // can't fan out hundreds of phones.
+  //
+  //   free:     1   (existing)
+  //   pro:      20
+  //   business: 100
+  const ALERT_CAPS: Record<string, number> = { free: 1, pro: 20, business: 100 }
+  const cap = ALERT_CAPS[tier] ?? 1
+  const db = getServiceClient()
+  const { count } = await db
+    .from('alert_preferences')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  if ((count ?? 0) >= cap) {
+    return NextResponse.json(
+      { error: tier === 'free' ? 'free_limit' : 'tier_limit', cap, current: count ?? 0 },
+      { status: 403 },
+    )
   }
 
   const { portId, laneType, thresholdMinutes } = await req.json()

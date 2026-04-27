@@ -68,16 +68,47 @@ async function sendPush(userId: string, portName: string, portId: string, wait: 
   }
 }
 
-async function sendSms(phone: string, portName: string, portId: string, wait: number) {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) return
+// Per-account daily SMS budget. With the install-age gate removed
+// from claim-pwa-pro, a malicious user can get Pro instantly + create
+// up to 20 alerts (per the cap in /api/alerts). This budget caps the
+// actual outbound Twilio cost regardless of alert count: max N SMS
+// dispatches per user per 24h. Push remains uncapped (free).
+const DAILY_SMS_CAP = 10
+
+async function smsSentInLast24h(userId: string): Promise<number> {
+  const db = getServiceClient()
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { count } = await db
+    .from('app_events')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('event_name', 'alert_fired')
+    .filter('props->>channel', 'eq', 'sms')
+    .gte('created_at', since)
+  return count ?? 0
+}
+
+async function sendSms(userId: string, phone: string, portName: string, portId: string, wait: number): Promise<'sent' | 'capped' | 'unconfigured'> {
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) return 'unconfigured'
+  const recent = await smsSentInLast24h(userId)
+  if (recent >= DAILY_SMS_CAP) return 'capped'
   const url = `https://cruzar.app/port/${encodeURIComponent(portId)}`
   const body = `🌉 Cruzar Alert: ${portName} is now ${wait} min. ${url}`
   const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
-  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
     method: 'POST',
     headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ To: phone, From: process.env.TWILIO_PHONE_NUMBER, Body: body }).toString(),
   })
+  if (!res.ok) return 'sent'  // Twilio rejected, but we still consumed an attempt
+  // Log the SMS event so the next run sees this in smsSentInLast24h.
+  const db = getServiceClient()
+  await db.from('app_events').insert({
+    event_name: 'alert_fired',
+    props: { port_id: portId, wait, channel: 'sms' },
+    user_id: userId,
+  }).then(() => {}, () => {})
+  return 'sent'
 }
 
 export async function GET(req: NextRequest) {
@@ -140,7 +171,7 @@ export async function GET(req: NextRequest) {
 
       const results = await Promise.allSettled([
         sendPush(alert.user_id, reading.port_name, alert.port_id, wait),
-        alert.phone ? sendSms(alert.phone, reading.port_name, alert.port_id, wait) : null,
+        alert.phone ? sendSms(alert.user_id, alert.phone, reading.port_name, alert.port_id, wait) : null,
       ])
       results.forEach((r, i) => {
         if (r.status === 'rejected') console.error(`Alert send failed [${['push','sms'][i]}] user=${alert.user_id}:`, r.reason)
