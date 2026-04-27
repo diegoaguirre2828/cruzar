@@ -457,6 +457,7 @@ function buildServer(): McpServer {
         "Use cruzar_anomaly_now to check if a port is currently >1.5× or <0.67× its DOW × hour baseline (broker red-flag signal).",
         "Use cruzar_compare_ports for a side-by-side v0.4 forecast across multiple ports at a single horizon.",
         "Use cruzar_briefing for a one-shot markdown decision summary on a single port (live + historical + v0.4 forecast — best for dispatcher / broker workflows).",
+        "Use cruzar_history to pull raw recent wait readings for a port over the last N days (max 14) for power users who want the underlying time series, not a summary.",
       ].join(" "),
     },
   );
@@ -626,6 +627,51 @@ function buildServer(): McpServer {
     async ({ port_id }) => {
       const md = await briefing(port_id);
       return { content: [{ type: "text", text: md }] };
+    },
+  );
+
+  server.registerTool(
+    "cruzar_history",
+    {
+      title: "Raw recent wait readings for a port",
+      description:
+        "Returns the underlying time series of CBP wait readings for one port over the last N days (max 14). Use when the briefing/forecast summary isn't enough and you need to see the actual recorded values yourself — e.g. spotting a multi-day pattern, debugging an anomaly, or computing your own statistic. Returns ascending by recorded_at.",
+      inputSchema: {
+        port_id: z.string().describe("Cruzar port_id (e.g. '230402' = Laredo WTB)"),
+        days: z.number().int().min(1).max(14).default(3).describe("How many days back to pull. Default 3, max 14."),
+        limit: z.number().int().min(1).max(2000).default(500).describe("Max rows to return. Default 500, max 2000."),
+      },
+    },
+    async ({ port_id, days, limit }) => {
+      const meta = PORT_META[port_id];
+      if (!meta) {
+        return { content: [{ type: "text", text: `Error: unknown port_id "${port_id}"` }], isError: true };
+      }
+      const db = getServiceClient();
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await db
+        .from("wait_time_readings")
+        .select("recorded_at, vehicle_wait, sentri_wait, pedestrian_wait, commercial_wait, source")
+        .eq("port_id", port_id)
+        .gte("recorded_at", since)
+        .order("recorded_at", { ascending: true })
+        .limit(limit);
+      if (error) {
+        return { content: [{ type: "text", text: `DB error: ${error.message}` }], isError: true };
+      }
+      const result = {
+        port_id,
+        name: meta.localName || meta.city,
+        region: meta.region,
+        days,
+        rows: data ?? [],
+        count: data?.length ?? 0,
+        fetched_at: new Date().toISOString(),
+      };
+      return {
+        structuredContent: result as unknown as Record<string, unknown>,
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
     },
   );
 
