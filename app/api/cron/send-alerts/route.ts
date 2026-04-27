@@ -10,6 +10,66 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   )
 }
 
+// Staffing-drop push template (v56). Different copy + tag than the
+// wait-drop alert so the user can tell at a glance which kind fired.
+async function sendStaffingPush(
+  userId: string,
+  portName: string,
+  portId: string,
+  laneType: string,
+  officersOpen: number,
+  officersTypical: number,
+) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return
+  const db = getServiceClient()
+  const { data: subs } = await db
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('user_id', userId)
+  if (!subs?.length) return
+
+  const laneLabel = laneType === 'commercial' ? 'camión'
+    : laneType === 'pedestrian' ? 'peatonal'
+    : laneType === 'sentri' ? 'SENTRI'
+    : 'autos'
+  const delta = officersTypical - officersOpen
+
+  let anyDelivered = false
+  for (const sub of subs) {
+    if (!sub?.endpoint) continue
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify({
+          title: `⚠️ ${portName} — ${delta} oficial${delta === 1 ? '' : 'es'} menos`,
+          body: `${officersOpen} de ${officersTypical} normales en ${laneLabel}. La fila va a subir pronto · Wait spike likely in 15-30 min`,
+          url: `/cruzar/${encodeURIComponent(portId)}`,
+          tag: `staffing-alert-${portId}-${laneType}`,
+          requireInteraction: true,
+          actions: [
+            { action: 'view', title: 'Ver · View' },
+            { action: 'snooze', title: 'Snooze 1h' },
+          ],
+        }),
+        { urgency: 'high', TTL: 1800 }
+      )
+      anyDelivered = true
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
+        await db.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+      }
+    }
+  }
+
+  if (anyDelivered) {
+    await db.from('app_events').insert({
+      event_name: 'alert_fired',
+      props: { port_id: portId, alert_kind: 'staffing_drop', lane_type: laneType, officers_open: officersOpen, officers_typical: officersTypical, channel: 'push' },
+      user_id: userId,
+    }).then(() => {}, () => {})
+  }
+}
+
 async function sendPush(userId: string, portName: string, portId: string, wait: number) {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return
   const db = getServiceClient()
@@ -180,7 +240,103 @@ export async function GET(req: NextRequest) {
       sent++
     }
 
-    return NextResponse.json({ sent, checked: alerts.length })
+    // ─── v56: staffing-drop alerts ──────────────────────────────────
+    // Fires when CBP officer count for the user's lane drops 2+ below
+    // historical typical for this hour-of-week. Independent of the
+    // wait-threshold check above. Reuses alerts already fetched but
+    // filters to the staffing-enabled subset.
+    let staffingSent = 0
+    const staffingAlerts = (alerts ?? []).filter(
+      (a) =>
+        a.staffing_drop_enabled === true &&
+        (!a.last_staffing_alert_at || new Date(a.last_staffing_alert_at).getTime() < Date.now() - 60 * 60 * 1000),
+    )
+
+    if (staffingAlerts.length > 0) {
+      // Fetch the latest CBP poll per port (gives lanes_X_open right now)
+      const portIds = [...new Set(staffingAlerts.map((a) => a.port_id))]
+      const { data: cbpRows } = await supabase
+        .from('wait_time_readings')
+        .select('port_id, port_name, lanes_vehicle_open, lanes_sentri_open, lanes_commercial_open, lanes_pedestrian_open, recorded_at')
+        .in('port_id', portIds)
+        .gte('recorded_at', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+        .order('recorded_at', { ascending: false })
+      const cbpLatest: Record<string, NonNullable<typeof cbpRows>[0]> = {}
+      for (const r of cbpRows ?? []) {
+        if (!cbpLatest[r.port_id]) cbpLatest[r.port_id] = r
+      }
+
+      // Compute typicals for (port, dow, hour) over last 30 days. The
+      // /api/ports route does this on every request — here we batch it
+      // once for the alerted ports.
+      const nowCT = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }))
+      const dow = nowCT.getDay()
+      const hour = nowCT.getHours()
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: histRows } = await supabase
+        .from('wait_time_readings')
+        .select('port_id, lanes_vehicle_open, lanes_sentri_open, lanes_commercial_open, lanes_pedestrian_open')
+        .in('port_id', portIds)
+        .eq('day_of_week', dow)
+        .eq('hour_of_day', hour)
+        .gte('recorded_at', thirtyDaysAgo)
+
+      const typicals: Record<string, Record<string, number>> = {}
+      const accumulate = (portId: string, lane: string, val: number | null) => {
+        if (val == null || val <= 0) return
+        typicals[portId] = typicals[portId] ?? {}
+        const key = `${lane}_sum`
+        const ckey = `${lane}_count`
+        typicals[portId][key] = (typicals[portId][key] ?? 0) + val
+        typicals[portId][ckey] = (typicals[portId][ckey] ?? 0) + 1
+      }
+      for (const r of histRows ?? []) {
+        accumulate(r.port_id, 'vehicle', r.lanes_vehicle_open)
+        accumulate(r.port_id, 'sentri', r.lanes_sentri_open)
+        accumulate(r.port_id, 'commercial', r.lanes_commercial_open)
+        accumulate(r.port_id, 'pedestrian', r.lanes_pedestrian_open)
+      }
+      const getTypical = (portId: string, lane: string): number | null => {
+        const t = typicals[portId]
+        if (!t) return null
+        const sum = t[`${lane}_sum`]
+        const count = t[`${lane}_count`]
+        if (!count || count < 3) return null
+        return Math.round(sum / count)
+      }
+
+      for (const alert of staffingAlerts) {
+        const reading = cbpLatest[alert.port_id]
+        if (!reading) continue
+        const lane = (alert.lane_type as string) || 'vehicle'
+        const openCount = lane === 'commercial' ? reading.lanes_commercial_open
+          : lane === 'pedestrian' ? reading.lanes_pedestrian_open
+          : lane === 'sentri' ? reading.lanes_sentri_open
+          : reading.lanes_vehicle_open
+        const typical = getTypical(alert.port_id, lane)
+        if (openCount == null || typical == null) continue
+        if (typical - openCount < 2) continue // not a meaningful drop
+
+        // Atomic claim of the staffing slot — same race-protection pattern
+        // the wait-drop alert uses.
+        const now = new Date().toISOString()
+        const oneHourAgoIso = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        const { data: claimed } = await supabase
+          .from('alert_preferences')
+          .update({ last_staffing_alert_at: now })
+          .eq('id', alert.id)
+          .or(`last_staffing_alert_at.is.null,last_staffing_alert_at.lt.${oneHourAgoIso}`)
+          .select('id')
+        if (!claimed?.length) continue
+
+        await sendStaffingPush(alert.user_id, reading.port_name, alert.port_id, lane, openCount, typical).catch((e) =>
+          console.error('staffing push failed', alert.user_id, e),
+        )
+        staffingSent++
+      }
+    }
+
+    return NextResponse.json({ sent, checked: alerts.length, staffingSent, staffingChecked: staffingAlerts.length })
   } catch (err) {
     console.error('send-alerts cron error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })

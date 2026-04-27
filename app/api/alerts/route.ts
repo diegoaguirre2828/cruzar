@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { portId, laneType, thresholdMinutes } = await req.json()
+  const { portId, laneType, thresholdMinutes, staffingDropEnabled } = await req.json()
   if (!portId) return NextResponse.json({ error: 'portId required' }, { status: 400 })
   if (!thresholdMinutes || thresholdMinutes < 5 || thresholdMinutes > 180) {
     return NextResponse.json({ error: 'thresholdMinutes must be between 5 and 180' }, { status: 400 })
@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
     port_id: portId,
     lane_type: laneType || 'vehicle',
     threshold_minutes: thresholdMinutes,
+    staffing_drop_enabled: staffingDropEnabled === true,
   })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

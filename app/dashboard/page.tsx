@@ -35,6 +35,7 @@ interface AlertPref {
   lane_type: string
   threshold_minutes: number
   active: boolean
+  staffing_drop_enabled?: boolean
 }
 
 export default function DashboardPage() {
@@ -50,6 +51,8 @@ export default function DashboardPage() {
   const [newAlertThreshold, setNewAlertThreshold] = useState(20)
   const [newAlertPhone, setNewAlertPhone] = useState('')
   const [newAlertLane, setNewAlertLane] = useState('vehicle')
+  // v56: opt-in to leading-indicator staffing-drop alerts. Off by default.
+  const [newAlertStaffing, setNewAlertStaffing] = useState(false)
   const [origin, setOrigin] = useState('McAllen')
   interface RouteResult {
     best: { portId: string; portName: string; crossingName: string; vehicleWait: number | null; commercialWait: number | null; recommendation: string } | null
@@ -193,7 +196,7 @@ export default function DashboardPage() {
     const res = await fetch('/api/alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ portId: newAlertPortId, laneType: newAlertLane, thresholdMinutes: newAlertThreshold, phone: newAlertPhone || null }),
+      body: JSON.stringify({ portId: newAlertPortId, laneType: newAlertLane, thresholdMinutes: newAlertThreshold, phone: newAlertPhone || null, staffingDropEnabled: newAlertStaffing }),
     })
     if (!res.ok) {
       const data = await res.json()
@@ -625,6 +628,30 @@ export default function DashboardPage() {
                   />
                   <span className="text-sm text-gray-600 dark:text-gray-400">min</span>
                 </div>
+                {/* v56: leading-indicator officer-staffing alert. CBP officer
+                    count drops 2+ below typical = wait spike likely in
+                    15-30 min. Off by default — adds a 2nd push for users
+                    who specifically want the early-warning signal. */}
+                <label className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newAlertStaffing}
+                    onChange={e => setNewAlertStaffing(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-amber-600"
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 leading-tight">
+                      {es
+                        ? '⚠️ También avísame si bajan los oficiales'
+                        : '⚠️ Also alert me if CBP officers drop'}
+                    </p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5 leading-snug">
+                      {es
+                        ? 'Cuando CBP baja 2+ oficiales del normal, la fila sube en 15-30 min. Te avisamos antes.'
+                        : 'When CBP drops 2+ officers below typical, wait spikes in 15-30 min. We warn you first.'}
+                    </p>
+                  </div>
+                </label>
                 <button
                   onClick={addAlert}
                   disabled={!newAlertPortId}
@@ -661,6 +688,11 @@ export default function DashboardPage() {
                         {es ? `Alerta cuando ${alert.lane_type} < ${alert.threshold_minutes} min` : `Alert when ${alert.lane_type} < ${alert.threshold_minutes} min`}
                         {wait !== null && (es ? ` · Ahora: ${wait} min` : ` · Now: ${wait} min`)}
                       </p>
+                      {alert.staffing_drop_enabled && (
+                        <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 mt-0.5">
+                          ⚠️ {es ? '+ alerta de oficiales' : '+ officer-drop alert'}
+                        </p>
+                      )}
                     </div>
                     <button onClick={() => removeAlert(alert.id)} className="text-gray-300 dark:text-gray-600 hover:text-red-400 transition-colors">
                       <Trash2 className="w-4 h-4" />
