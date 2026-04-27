@@ -268,7 +268,7 @@ export default function ComparePage() {
           </div>
 
           {/* Header row */}
-          <div className="grid grid-cols-[1fr,60px,60px,60px] md:grid-cols-[1fr,100px,100px,100px] gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
+          <div className="grid grid-cols-[1fr_60px_60px_60px] md:grid-cols-[1fr_100px_100px_100px] gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800">
             <div></div>
             <div className="text-[10px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400 text-center">
               Cruzar
@@ -284,7 +284,7 @@ export default function ComparePage() {
           {ROWS.map((row, i) => (
             <div
               key={i}
-              className="grid grid-cols-[1fr,60px,60px,60px] md:grid-cols-[1fr,100px,100px,100px] gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 items-start"
+              className="grid grid-cols-[1fr_60px_60px_60px] md:grid-cols-[1fr_100px_100px_100px] gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 items-start"
             >
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 leading-snug">
@@ -366,8 +366,8 @@ export default function ComparePage() {
           </div>
           <p className="mt-4 text-[10px] text-blue-200/80">
             {es
-              ? 'Gratis · sin tarjeta · 10 segundos · agrega a pantalla de inicio = 3 meses de Pro gratis'
-              : 'Free · no card · 10 seconds · add to home screen = 3 months Pro free'}
+              ? 'Gratis · sin tarjeta · 10 segundos · agrega a pantalla de inicio = Pro de por vida (primeros 1,000)'
+              : 'Free · no card · 10 seconds · add to home screen = lifetime Pro (first 1,000)'}
           </p>
         </section>
 

@@ -463,8 +463,8 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             so it doesn't compete with NavBar's wrap and squeeze the
             logo off the screen. */}
         <div className="sticky top-0 z-30 -mx-4 px-4 pt-3 pb-1 bg-gray-50/85 dark:bg-gray-950/85 backdrop-blur-md">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex items-center gap-3 flex-shrink">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-3 flex-shrink-0">
               <img
                 src="/logo-icon.svg"
                 alt=""
@@ -473,21 +473,21 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
                 className="rounded-xl flex-shrink-0"
               />
               <div className="min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-none tracking-tight lowercase">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 leading-none tracking-tight lowercase whitespace-nowrap">
                   cruzar
                 </h1>
                 {headerOpen && (
                   user && displayName ? (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight truncate">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight whitespace-nowrap">
                       {salutation}, <span className="font-bold text-gray-700 dark:text-gray-200">{displayName}</span>
                     </p>
                   ) : (
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight truncate">{t.subtitle}</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 leading-tight whitespace-nowrap">{t.subtitle}</p>
                   )
                 )}
               </div>
             </div>
-            <div className="flex-shrink-0">
+            <div className="min-w-0 flex-shrink">
               <NavBar />
             </div>
           </div>
