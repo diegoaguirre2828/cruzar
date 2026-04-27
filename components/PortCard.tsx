@@ -366,6 +366,40 @@ export function PortCard({ port, signal }: Props) {
               {(port.pedestrian !== null || port.pedestrianClosed) && <WaitBadge minutes={port.pedestrian} label={t.laneWalk} lanesOpen={port.pedestrianLanesOpen} lanesTypical={port.pedestrianOfficersTypical} isClosed={port.pedestrianClosed} />}
               {(port.commercial !== null || port.commercialClosed) && <WaitBadge minutes={port.commercial} label={t.laneTruck} lanesOpen={port.commercialLanesOpen} lanesTypical={port.commercialOfficersTypical} isClosed={port.commercialClosed} />}
             </div>
+            {/* Camera teaser — surfaces the live-camera value hook when
+                this bridge has one. /camaras paywalls Pro internally so
+                free users see the upgrade pitch when they tap, Pro users
+                go straight to the feed. Previously a free user with live
+                wait data had no way to know a camera even existed for
+                their bridge. */}
+            {hasCamera(port.portId) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  router.push(`/camaras?port=${port.portId}`)
+                }}
+                className="mt-2 w-full flex items-center justify-between gap-2 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 px-3 py-2 active:scale-[0.99] transition-transform"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base flex-shrink-0">🎥</span>
+                  <div className="min-w-0 text-left">
+                    <p className="text-[12px] font-bold text-red-900 dark:text-red-200 leading-tight">
+                      {lang === 'es' ? 'Mira la fila en vivo' : 'Watch the line live'}
+                    </p>
+                    <p className="text-[10px] text-red-700/80 dark:text-red-300/70 leading-tight">
+                      {hasProLiveCamera(port.portId)
+                        ? (lang === 'es' ? 'Cámara HD en vivo · Pro' : 'Live HD camera · Pro')
+                        : (lang === 'es' ? 'Cámara pública del puente' : 'Public bridge camera')}
+                    </p>
+                  </div>
+                </div>
+                <span className="flex-shrink-0 text-[10px] font-black text-red-700 dark:text-red-300 uppercase tracking-wider">
+                  {lang === 'es' ? 'Ver →' : 'Watch →'}
+                </span>
+              </button>
+            )}
           </>
         ) : port.historicalVehicle != null ? (
           // Fallback: show the historical average for this port at this
