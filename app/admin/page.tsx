@@ -1132,6 +1132,18 @@ export default function AdminPage() {
                   >
                     📸 Register camera-vision cron (every 15 min)
                   </button>
+                  <button
+                    onClick={() => registerCustomCron({
+                      path: '/api/cron/weekly-retrospective',
+                      title: '🛂 Cruzar Insights — Weekly retrospective (Sun 8am CT)',
+                      // Sundays 13:00 UTC (= 8am CT). Single fire per week.
+                      schedule: { timezone: 'UTC', hours: [13], minutes: [0], mdays: [-1], months: [-1], wdays: [0] },
+                    })}
+                    disabled={registering || !cronApiKey.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors text-left px-4"
+                  >
+                    🛂 Register weekly-retrospective cron (Sun 8am CT)
+                  </button>
                 </div>
                 {registerStatus && (
                   <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-semibold ${registerStatus.startsWith('✅') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
