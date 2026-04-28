@@ -269,7 +269,15 @@ export function PortList() {
     return list
   })()
 
-  const grouped = filteredPorts.reduce<Record<string, PortWaitTime[]>>((acc, port) => {
+  // When the favorites section is rendered above the regional groups,
+  // exclude favorites from the regional list so the same bridge doesn't
+  // appear twice on screen. Falls back to the full list when the user
+  // has no favorites or isn't signed in.
+  const portsForRegionalList = (hasAccount && favorites.size > 0)
+    ? filteredPorts.filter(p => !favorites.has(p.portId))
+    : filteredPorts
+
+  const grouped = portsForRegionalList.reduce<Record<string, PortWaitTime[]>>((acc, port) => {
     const region = getPortMeta(port.portId).region
     if (!acc[region]) acc[region] = []
     acc[region].push(port)
