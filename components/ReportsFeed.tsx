@@ -93,6 +93,23 @@ export function ReportsFeed({ portId, refresh }: Props) {
       .finally(() => setLoading(false))
   }, [portId, refresh])
 
+  // Hydrate `upvoted` Set from server so the thumbs-up button reflects
+  // prior-session state. Without this, every session started with an
+  // empty Set — clicking a previously-upvoted report toggled it OFF
+  // and the count went down, which looked like "thumbs-up is broken."
+  useEffect(() => {
+    if (!user) { setUpvoted(new Set()); return }
+    let cancelled = false
+    fetch(`/api/reports/my-upvotes?portId=${encodeURIComponent(portId)}`, { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { upvoted: [] })
+      .then((d: { upvoted: string[] }) => {
+        if (cancelled) return
+        setUpvoted(new Set(d.upvoted || []))
+      })
+      .catch(() => { if (!cancelled) setUpvoted(new Set()) })
+    return () => { cancelled = true }
+  }, [user, portId, refresh])
+
   async function handleUpvote(reportId: string) {
     if (!user || upvoting) return
     setUpvoting(reportId)
@@ -105,7 +122,8 @@ export function ReportsFeed({ portId, refresh }: Props) {
       const { upvoted: nowUpvoted } = await res.json()
       setUpvoted(prev => {
         const next = new Set(prev)
-        nowUpvoted ? next.add(reportId) : next.delete(reportId)
+        if (nowUpvoted) next.add(reportId)
+        else next.delete(reportId)
         return next
       })
       setReports(prev => prev.map(r => r.id === reportId

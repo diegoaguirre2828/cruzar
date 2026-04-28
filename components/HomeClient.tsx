@@ -318,10 +318,6 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
     <>
       <LiveActivityTicker initialReports={initialReports} />
       <ReportBridgePrompt favoritePortId={favoritePortId} />
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
-        <ExchangeRatePill />
-        <WeatherHook variant="pill" />
-      </div>
       <HolidayOverlay />
       <ReciprocityCard />
       <UrgentAlerts initialReports={initialReports} />
@@ -495,6 +491,14 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             <>
               <div className="mt-2 flex justify-center">
                 <RegionPicker />
+              </div>
+              {/* Global pills — exchange rate + weather. Promoted to the
+                  header 2026-04-28 so they sit above the panel swipe and
+                  stay visible across Cerca / Mi puente / Comunidad
+                  instead of only on Cerca. */}
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                <ExchangeRatePill />
+                <WeatherHook variant="pill" />
               </div>
               {/* Personal status pills — Guardian progress + Circles +
                   daily contribution + (Pro only) Insights shortcut.
