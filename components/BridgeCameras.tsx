@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Camera, Lock } from 'lucide-react'
+import { Camera, ChevronDown, ChevronUp, Lock } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
 import { useTier } from '@/lib/useTier'
 import { getBridgeCameras, isProFeed, type CameraFeed } from '@/lib/bridgeCameras'
@@ -184,6 +184,37 @@ export function BridgeCameras({ portId, portName }: Props) {
   const defaultIdx = !isPaid && firstFreeIdx >= 0 ? firstFreeIdx : 0
   const [activeIdx, setActiveIdx] = useState(defaultIdx)
 
+  // Closed by default to avoid running a polled JPEG / HLS / iframe
+  // stream the moment the port page loads. The player is conditionally
+  // mounted only when `open === true`, so close = real teardown of the
+  // stream (HlsVideo's effect destroys hls.js on unmount). Persisted per
+  // port: a Pro user who always opens Hidalgo's camera doesn't tap on
+  // every visit.
+  const storageKey = `cruzar_cam_open_${portId}`
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (window.localStorage.getItem(storageKey) === '1') setOpen(true)
+    } catch {
+      // localStorage blocked (private mode / iframes) — silent
+    }
+  }, [storageKey])
+  function toggleOpen() {
+    setOpen((prev) => {
+      const next = !prev
+      if (typeof window !== 'undefined') {
+        try {
+          if (next) window.localStorage.setItem(storageKey, '1')
+          else window.localStorage.removeItem(storageKey)
+        } catch {
+          // localStorage blocked — silent
+        }
+      }
+      return next
+    })
+  }
+
   // State 1 — no feeds registered
   if (feeds.length === 0) {
     return (
@@ -228,10 +259,18 @@ export function BridgeCameras({ portId, portName }: Props) {
     activeFeed.kind === 'hls' ||
     activeFeed.kind === 'iframe'
 
-  // State 2 — feeds exist, free for all viewers
+  // State 2 — feeds exist. Header doubles as a toggle; player only
+  // mounts when expanded so a closed card consumes zero network /
+  // decode budget.
   return (
-    <div className="bg-gray-900 dark:bg-black rounded-2xl border border-gray-700 p-4 shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
+    <div className="bg-gray-900 dark:bg-black rounded-2xl border border-gray-700 shadow-sm">
+        <button
+          type="button"
+          onClick={toggleOpen}
+          aria-expanded={open}
+          aria-controls={`bridge-camera-${portId}`}
+          className="w-full flex items-center gap-2 px-4 py-3 text-left active:scale-[0.99] transition-transform"
+        >
           <Camera className={`w-4 h-4 ${isLiveVideo ? 'text-green-400' : 'text-blue-400'}`} />
           <h2 className="text-sm font-bold text-white">
             {isLiveVideo
@@ -239,7 +278,7 @@ export function BridgeCameras({ portId, portName }: Props) {
               : (es ? 'Webcam del puente' : 'Bridge webcam')}
           </h2>
           {isLiveVideo ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-green-400 ml-auto">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-green-400">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
@@ -247,74 +286,84 @@ export function BridgeCameras({ portId, portName }: Props) {
               {es ? 'EN VIVO' : 'LIVE'}
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 ml-auto">
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-400">
               <span className="inline-flex rounded-full h-2 w-2 bg-green-500" />
               {es ? 'Foto cada ~12s' : 'Photo every ~12s'}
             </span>
           )}
-        </div>
+          <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-gray-400">
+            {open
+              ? (es ? 'Ocultar' : 'Hide')
+              : (es ? 'Ver' : 'View')}
+            {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
 
-        {hasTabs && (
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {feeds.map((f, i) => {
-              const active = i === safeIdx
-              const locked = isProFeed(f) && !isPaid
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setActiveIdx(i)}
-                  className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition-colors ${
-                    active
-                      ? 'bg-white text-gray-900 border-white'
-                      : 'bg-white/5 text-gray-300 border-white/15 hover:bg-white/10'
-                  }`}
-                >
-                  {locked && <Lock className="w-2.5 h-2.5" />}
-                  {f.label || `Cam ${i + 1}`}
-                </button>
-              )
-            })}
+        {open && (
+          <div id={`bridge-camera-${portId}`} className="px-4 pb-4">
+            {hasTabs && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {feeds.map((f, i) => {
+                  const active = i === safeIdx
+                  const locked = isProFeed(f) && !isPaid
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setActiveIdx(i)}
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border transition-colors ${
+                        active
+                          ? 'bg-white text-gray-900 border-white'
+                          : 'bg-white/5 text-gray-300 border-white/15 hover:bg-white/10'
+                      }`}
+                    >
+                      {locked && <Lock className="w-2.5 h-2.5" />}
+                      {f.label || `Cam ${i + 1}`}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
+              {showLock ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center p-4 bg-gradient-to-br from-gray-900 via-black to-gray-900">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                    <Lock className="w-5 h-5 text-white" />
+                  </div>
+                  <p className="text-sm font-black text-white">
+                    {es ? 'Video en vivo es Pro' : 'Live video is Pro'}
+                  </p>
+                  <p className="text-[11px] text-white/70 max-w-[260px] leading-snug">
+                    {es
+                      ? '3 meses gratis — agrega Cruzar a tu pantalla de inicio y desbloquea todas las cámaras en vivo.'
+                      : '3 months free — add Cruzar to your home screen and unlock every live camera.'}
+                  </p>
+                  <Link
+                    href="/pricing"
+                    className="mt-1 inline-block bg-gradient-to-br from-amber-400 to-orange-500 text-white text-xs font-black px-4 py-2 rounded-xl active:scale-95 transition-transform"
+                  >
+                    {es ? 'Desbloquear Pro gratis →' : 'Unlock Pro free →'}
+                  </Link>
+                </div>
+              ) : (
+                <FeedPlayer feed={activeFeed} portName={portName} />
+              )}
+            </div>
+
+            {activeFeed.note && (
+              <p className="text-[10px] text-gray-400 mt-1.5 leading-snug">{activeFeed.note}</p>
+            )}
+            <p className="text-[10px] text-gray-500 mt-1">
+              {es ? 'Fuente: ' : 'Source: '}
+              {activeFeed.creditUrl ? (
+                <a href={activeFeed.creditUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-300">
+                  {activeFeed.credit}
+                </a>
+              ) : activeFeed.credit}
+            </p>
           </div>
         )}
-
-        <div className="aspect-video bg-black rounded-xl overflow-hidden border border-gray-800 relative">
-          {showLock ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center p-4 bg-gradient-to-br from-gray-900 via-black to-gray-900">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-                <Lock className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-sm font-black text-white">
-                {es ? 'Video en vivo es Pro' : 'Live video is Pro'}
-              </p>
-              <p className="text-[11px] text-white/70 max-w-[260px] leading-snug">
-                {es
-                  ? '3 meses gratis — agrega Cruzar a tu pantalla de inicio y desbloquea todas las cámaras en vivo.'
-                  : '3 months free — add Cruzar to your home screen and unlock every live camera.'}
-              </p>
-              <Link
-                href="/pricing"
-                className="mt-1 inline-block bg-gradient-to-br from-amber-400 to-orange-500 text-white text-xs font-black px-4 py-2 rounded-xl active:scale-95 transition-transform"
-              >
-                {es ? 'Desbloquear Pro gratis →' : 'Unlock Pro free →'}
-              </Link>
-            </div>
-          ) : (
-            <FeedPlayer feed={activeFeed} portName={portName} />
-          )}
-        </div>
-
-        {activeFeed.note && (
-          <p className="text-[10px] text-gray-400 mt-1.5 leading-snug">{activeFeed.note}</p>
-        )}
-        <p className="text-[10px] text-gray-500 mt-1">
-          {es ? 'Fuente: ' : 'Source: '}
-          {activeFeed.creditUrl ? (
-            <a href={activeFeed.creditUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-300">
-              {activeFeed.credit}
-            </a>
-          ) : activeFeed.credit}
-        </p>
       </div>
     )
 }
