@@ -368,8 +368,12 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
           for the full moat rationale. */}
       <AllLanesTable port={port} es={es} activeTab={activeTab} onPickLane={setActiveTab} />
 
-      {/* Card rail */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:grid md:grid-cols-3 md:gap-3 md:mx-0 md:px-0 md:overflow-visible">
+      {/* CONTEXT rail — whole-day stats: exchange rate, best/rush hours,
+          today's pattern chart. Variable count (exchange is conditional)
+          so flex-wrap lets cards size naturally without leaving empty
+          grid cells when one is missing. Mobile stays a horizontal
+          scroll rail — same as forecast row below. */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:flex-wrap md:mx-0 md:px-0 md:overflow-visible">
         {/* Exchange rate card */}
         {exchangeRate != null && (
           <CompactCard>
@@ -421,7 +425,7 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
         {forecast && forecast.todayPattern.some((h) => h.avgWait != null) && (
           <Link
             href={`/port/${encodeURIComponent(portId)}/advanced`}
-            className="flex-shrink-0 w-44 md:w-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-3 active:scale-[0.97] transition-transform"
+            className="flex-shrink-0 w-44 md:w-auto md:min-w-[180px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-3 active:scale-[0.97] transition-transform"
           >
             <div className="flex items-center justify-between mb-1.5">
               <p className="text-[9px] font-black uppercase tracking-widest text-gray-500">
@@ -454,44 +458,53 @@ export function PortDetailHero({ port, portId, preferredLane, exchangeRate }: Pr
             </div>
           </Link>
         )}
-
-        {/* Forward forecast cards — label + cards */}
-        {forecast?.forecast.some((f) => f.avgWait != null) && (
-          <div className="flex-shrink-0 flex items-center self-end pb-1">
-            <p className="text-[8px] font-bold text-gray-400 dark:text-gray-500 leading-tight max-w-[60px] text-center">
-              {es ? 'Estimado según historial' : 'Based on past trends'}
-            </p>
-          </div>
-        )}
-        {forecast?.forecast.map((f) => (
-          <CompactCard
-            key={f.delta}
-            accent={f.avgWait == null ? 'gray' : f.avgWait <= 20 ? 'green' : f.avgWait <= 45 ? 'amber' : 'red'}
-          >
-            <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
-              {f.delta === 'NOW'
-                ? (es ? 'Ahora' : 'Now')
-                : es
-                  ? `en ${f.delta.replace('+', '').replace('H', ' hr')}`
-                  : `in ${f.delta.replace('+', '').replace('H', ' hr')}`}
-            </p>
-            <p className="text-sm font-black text-gray-900 dark:text-gray-100 leading-tight mt-0.5">
-              {formatHour(f.hour)}
-            </p>
-            {f.avgWait != null ? (
-              <p className={`text-[10px] font-bold tabular-nums ${
-                f.avgWait <= 20 ? 'text-green-700 dark:text-green-400'
-                  : f.avgWait <= 45 ? 'text-amber-700 dark:text-amber-400'
-                  : 'text-red-700 dark:text-red-400'
-              }`}>
-                ~{f.avgWait} min
-              </p>
-            ) : (
-              <p className="text-[10px] font-bold text-gray-400">—</p>
-            )}
-          </CompactCard>
-        ))}
       </div>
+
+      {/* FORECAST section — header label + 5-card row. Separated from
+          the context rail above so the "Based on past trends" caption
+          doesn't occupy a grid cell, and the 5 forward-time cards form
+          their own clean row. Always-5 count maps cleanly to grid-cols-5
+          on desktop without ever leaving an empty cell. */}
+      {forecast?.forecast.some((f) => f.avgWait != null) && (
+        <>
+          <div className="mt-3 mb-2 flex items-center gap-2">
+            <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+              {es ? 'Pronóstico · según historial' : 'Forecast · based on past trends'}
+            </p>
+            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:grid md:grid-cols-5 md:gap-2 md:mx-0 md:px-0 md:overflow-visible">
+            {forecast.forecast.map((f) => (
+              <CompactCard
+                key={f.delta}
+                accent={f.avgWait == null ? 'gray' : f.avgWait <= 20 ? 'green' : f.avgWait <= 45 ? 'amber' : 'red'}
+              >
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                  {f.delta === 'NOW'
+                    ? (es ? 'Ahora' : 'Now')
+                    : es
+                      ? `en ${f.delta.replace('+', '').replace('H', ' hr')}`
+                      : `in ${f.delta.replace('+', '').replace('H', ' hr')}`}
+                </p>
+                <p className="text-sm font-black text-gray-900 dark:text-gray-100 leading-tight mt-0.5">
+                  {formatHour(f.hour)}
+                </p>
+                {f.avgWait != null ? (
+                  <p className={`text-[10px] font-bold tabular-nums ${
+                    f.avgWait <= 20 ? 'text-green-700 dark:text-green-400'
+                      : f.avgWait <= 45 ? 'text-amber-700 dark:text-amber-400'
+                      : 'text-red-700 dark:text-red-400'
+                  }`}>
+                    ~{f.avgWait} min
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-bold text-gray-400">—</p>
+                )}
+              </CompactCard>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
