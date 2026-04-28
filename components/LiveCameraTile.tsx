@@ -23,12 +23,12 @@ interface Props {
   feed: CameraFeed
 }
 
-function levelTone(mins: number | null, isClosed: boolean): { bg: string; text: string; border: string; label: string } {
-  if (isClosed) return { bg: 'bg-gray-500/15', text: 'text-gray-300', border: 'border-gray-500/30', label: 'Cerrado' }
-  if (mins === null) return { bg: 'bg-gray-500/15', text: 'text-gray-300', border: 'border-gray-500/30', label: 's/datos' }
-  if (mins <= 20) return { bg: 'bg-green-500/15', text: 'text-green-400', border: 'border-green-500/30', label: `${mins} min` }
-  if (mins <= 45) return { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30', label: `${mins} min` }
-  return { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: `${mins} min` }
+function levelTone(mins: number | null, isClosed: boolean): { text: string; border: string; label: string } {
+  if (isClosed) return { text: 'text-gray-100', border: 'border-gray-300/60', label: 'Cerrado' }
+  if (mins === null) return { text: 'text-gray-100', border: 'border-gray-300/60', label: 's/datos' }
+  if (mins <= 20) return { text: 'text-green-300', border: 'border-green-300/70', label: `${mins} min` }
+  if (mins <= 45) return { text: 'text-amber-300', border: 'border-amber-300/70', label: `${mins} min` }
+  return { text: 'text-red-300', border: 'border-red-300/70', label: `${mins} min` }
 }
 
 function Polled({ src, alt, intervalMs = 15000 }: { src: string; alt: string; intervalMs?: number }) {
@@ -213,7 +213,7 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
               <Bell className="w-3.5 h-3.5" />
             )}
           </button>
-          <div className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold tabular-nums ${tone.bg} ${tone.text} ${tone.border}`}>
+          <div className={`rounded-full border px-2.5 py-1 text-xs font-bold tabular-nums bg-black/75 backdrop-blur-sm shadow-lg ${tone.text} ${tone.border}`}>
             {tone.label}
           </div>
         </div>
