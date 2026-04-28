@@ -14,9 +14,15 @@
 //   - Page navigations      → network-first, fall back to cached shell
 //   - Static assets         → cache-first, network fallback
 
-const CACHE = 'cruzar-v7'
-const API_CACHE = 'cruzar-api-v7'
-const SHELL = ['/']
+const CACHE = 'cruzar-v8'
+const API_CACHE = 'cruzar-api-v8'
+// Intentionally NOT precaching '/' — the cached HTML shell from an old deploy
+// references Next.js chunk hashes that get deleted on every deploy. Serving
+// that stale shell on a slow-network fallback caused soft-navigations between
+// /live, /insights, /memory to fail with "Loading chunk failed" until the user
+// hard-reloaded. Network-first with empty cache is correct here; the chunk
+// hashes always match what the server is currently serving.
+const SHELL = []
 
 // API routes that are safe to serve stale-while-revalidate. These are
 // public, non-auth-bound, and the user benefits far more from seeing
@@ -86,6 +92,19 @@ self.addEventListener('fetch', e => {
 
   if (request.method !== 'GET') return
   if (url.origin !== self.location.origin) return
+
+  // CRITICAL: never intercept Next.js internals — chunks, RSC payloads,
+  // image-optimization, prefetch data. These are content-hashed by Next on
+  // every deploy; intercepting them risks serving stale references that
+  // 404 against the current deploy. Symptom: soft-nav between /live,
+  // /insights, /memory looks "down" until user hard-reloads.
+  if (
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/__nextjs') ||
+    url.search.includes('_rsc=')
+  ) {
+    return
+  }
 
   // SWR for the two public APIs the homepage depends on.
   if (url.pathname.startsWith('/api/')) {
