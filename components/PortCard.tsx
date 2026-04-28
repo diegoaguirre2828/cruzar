@@ -36,8 +36,16 @@ export function PortCard({ port, signal }: Props) {
   const meta = getPortMeta(port.portId)
   // Runtime override (set in /admin Ports tab) wins over static portMeta
   const effectiveLocalName = port.localNameOverride || meta.localName
+  // Some portMeta entries author localName with the crossing already
+  // baked in — e.g. 535501 → "Puente Viejo / B&M" — so a naive
+  // "<crossingName> / <localName>" join produces "B&M / Puente Viejo /
+  // B&M". When localName already contains the crossingName (case-insensitive
+  // substring), skip the prefix and let localName speak for itself.
+  const localContainsCrossing = !!effectiveLocalName
+    && !!port.crossingName
+    && effectiveLocalName.toLowerCase().includes(port.crossingName.toLowerCase())
   const displayCrossing = effectiveLocalName
-    ? `${port.crossingName} / ${effectiveLocalName}`
+    ? (localContainsCrossing ? effectiveLocalName : `${port.crossingName} / ${effectiveLocalName}`)
     : port.crossingName
   const allNull = port.vehicle === null && port.pedestrian === null && port.sentri === null && port.commercial === null
   const primaryLevel = getWaitLevel(port.vehicle)
