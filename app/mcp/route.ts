@@ -23,6 +23,14 @@ import { getServiceClient } from "@/lib/supabase";
 import { PORT_META } from "@/lib/portMeta";
 import { SAFETY_SCRIPTS, type EmergencyKind } from "@/lib/safetyScripts";
 import { generateDeclaration, type DeclarationInput } from "@/lib/customsForms";
+import {
+  getAllYards,
+  getYardsByMegaRegion,
+  getYardsByPort,
+  scrapedAt as transloadScrapedAt,
+  totalYardCount as transloadCount,
+} from "@/lib/transloadYards";
+import type { MegaRegion } from "@/lib/portMeta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -464,6 +472,7 @@ function buildServer(): McpServer {
         "Use cruzar_safety_script for bilingual EN/ES emergency scripts (secondary inspection, vehicle breakdown, accident, lost SENTRI, document seizure, medical) — Cruzar Safety Net (Pillar 6) playbook.",
         "Use cruzar_generate_customs to compute a CBP 7501 / pedimento / IMMEX declaration draft with USMCA duty math and compliance warnings.",
         "Use cruzar_anomaly_camera_recent to read recent bridge-camera frames captured when a port crossed the 1.5× anomaly threshold.",
+        "Use cruzar_transload_yards to find named transload, warehousing, distribution, freight-terminal, logistics-office, and freight-forwarding facilities within 50km of any US-MX port-of-entry. OSM-sourced; sparse in TX, dense in CA/Baja.",
       ].join(" "),
     },
   );
@@ -817,6 +826,66 @@ function buildServer(): McpServer {
           isError: true,
         };
       }
+    },
+  );
+
+  server.registerTool(
+    "cruzar_transload_yards",
+    {
+      title: "Transload yards near a US-MX port-of-entry",
+      description:
+        "Returns named transload-relevant facilities (warehouses, freight terminals, distribution centers, logistics offices, freight forwarders, truck stops) within a radius of a port-of-entry, OR for an entire megaRegion. Source: OpenStreetMap (ODbL public domain). Cruzar tags each yard to its nearest port by Haversine distance and classifies it into a `kind`. Sparse in TX (Laredo / RGV) where OSM is undertagged; dense in CA / Baja where every Otay Mesa cross-dock has a node.",
+      inputSchema: {
+        port_id: z
+          .string()
+          .optional()
+          .describe("Cruzar port_id (e.g. '230501'). If set, returns yards within radius_km of this port."),
+        megaRegion: z
+          .enum(["rgv", "laredo", "coahuila-tx", "el-paso", "sonora-az", "baja"])
+          .optional()
+          .describe("Filter to a megaRegion. Ignored if port_id is set."),
+        radius_km: z
+          .number()
+          .min(1)
+          .max(50)
+          .default(25)
+          .describe("Used with port_id; max 50."),
+        kind: z
+          .enum([
+            "transhipment",
+            "warehouse",
+            "distribution_center",
+            "freight_terminal",
+            "container_terminal",
+            "logistics_office",
+            "freight_forwarder",
+            "truck_stop",
+          ])
+          .optional()
+          .describe("Filter by yard kind."),
+      },
+    },
+    async ({ port_id, megaRegion, radius_km, kind }) => {
+      let yards;
+      if (port_id) {
+        yards = getYardsByPort(port_id, radius_km ?? 25);
+      } else if (megaRegion) {
+        yards = getYardsByMegaRegion(megaRegion as MegaRegion);
+      } else {
+        yards = getAllYards();
+      }
+      if (kind) yards = yards.filter((y) => y.kind === kind);
+      const result = {
+        scraped_at: transloadScrapedAt(),
+        total_in_directory: transloadCount(),
+        returned: yards.length,
+        yards,
+        attribution: "OpenStreetMap contributors (ODbL)",
+      };
+      return {
+        structuredContent: result as unknown as Record<string, unknown>,
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
     },
   );
 

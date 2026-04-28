@@ -34,6 +34,7 @@ const CATEGORIES = [
   { key: 'gas',      labelEn: 'Gas',        labelEs: 'Gasolina',    emoji: '⛽' },
   { key: 'tire',     labelEn: 'Auto',       labelEs: 'Auto',        emoji: '🔧' },
   { key: 'taxi',     labelEn: 'Taxi',       labelEs: 'Taxi',        emoji: '🚕' },
+  { key: 'transload',labelEn: 'Transload',  labelEs: 'Transbordo',  emoji: '🏗️' },
   { key: 'other',    labelEn: 'Other',      labelEs: 'Otro',        emoji: '🏪' },
 ]
 
@@ -436,6 +437,23 @@ export default function NegociosPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
+        {/* Cross-link to /transload when transload category is selected */}
+        {category === 'transload' && (
+          <Link
+            href="/transload"
+            className="block bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+          >
+            <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+              🏗️ {lang === 'es' ? 'Patios de transbordo (B2B)' : 'Transload yards (B2B)'}
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+              {lang === 'es'
+                ? 'Directorio dedicado de almacenes, terminales de carga y agentes de carga cerca de cada cruce US-México. Datos de OSM. →'
+                : 'Dedicated directory of warehouses, freight terminals, and forwarders near every US-MX crossing. OSM-sourced. →'}
+            </p>
+          </Link>
+        )}
+
         {loading ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-600 text-sm">
             {lang === 'es' ? 'Cargando...' : 'Loading...'}
