@@ -555,6 +555,12 @@ export function PortDetailClient({ port, portId }: Props) {
         exchangeRate={null}
       />
 
+      {/* Live bridge camera — promoted 2026-04-28 to sit directly under
+          the hero. Diego: "the live cameras in individual bridge pages
+          should be more up top." Verifying the wait visually is the
+          highest-leverage move right after seeing the number. */}
+      <BridgeCameras portId={portId} portName={port.portName} />
+
       {/* Community wait-time confirmation — Bordify gap fix
           (2026-04-26 competitor analysis). One-tap "es correcto / no"
           on the displayed CBP wait. Builds the accuracy moat the
@@ -758,15 +764,10 @@ export function PortDetailClient({ port, portId }: Props) {
           Still visible, no longer blocking the chat.
           ═══════════════════════════════════════════════════════════════ */}
 
-      {/* Live bridge camera — Pro-gated when a feed is registered for this
-          port. Sits below the wait number so it's the first thing after
-          the data, matching how Fronter uses cameras as the hero upsell. */}
-      <BridgeCameras portId={portId} portName={port.portName} />
-
-      {/* Community photo rail — user-submitted bridge photos. Below
-          the official DOT cameras so there's no confusion about which
-          is which. See project_cruzar_photo_metadata_moat_20260414.md
-          for the full spec. */}
+      {/* Community photo rail — user-submitted bridge photos. Live
+          DOT cameras now sit directly under the hero (moved 2026-04-28).
+          See project_cruzar_photo_metadata_moat_20260414.md for the
+          full spec. */}
       <CommunityBridgePhotos portId={portId} portName={port.portName} />
 
       {/* Contextual affiliates — surface insurance + eSIM AT THE MOMENT
