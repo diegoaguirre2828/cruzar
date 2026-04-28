@@ -90,13 +90,31 @@ export function HomeSwipe({ panels, initialPanel = 'cerca' }: Props) {
     trackEvent('home_panel_changed', { panel: panels[idx].id, via: 'tab' })
   }
 
+  // Segmented control with a sliding indicator. The connected look reads
+  // as ONE tabbed control rather than three independent nav pills, which
+  // is the affordance Diego flagged was missing — users were forgetting
+  // they could swipe between panels because the pills looked like filters
+  // or nav links, not a paginator.
+  const indicatorWidthPct = 100 / panels.length
+  const indicatorOffsetPct = activeIdx * indicatorWidthPct
+
   return (
     <div className="mt-2">
       <div
         role="tablist"
         aria-label={es ? 'Secciones del inicio' : 'Home sections'}
-        className="flex items-center justify-center gap-1.5 mb-3"
+        className="relative flex items-stretch bg-gray-100 dark:bg-gray-800/80 rounded-xl p-1 mb-2 mx-1"
       >
+        {/* Sliding active-tab pill */}
+        <div
+          aria-hidden="true"
+          className="absolute top-1 bottom-1 bg-white dark:bg-gray-700 rounded-lg shadow-sm transition-transform duration-200 ease-out"
+          style={{
+            width: `calc(${indicatorWidthPct}% - 0.25rem)`,
+            transform: `translateX(calc(${indicatorOffsetPct}% + 0.125rem))`,
+            left: 0,
+          }}
+        />
         {panels.map((p, i) => {
           const active = i === activeIdx
           return (
@@ -107,16 +125,30 @@ export function HomeSwipe({ panels, initialPanel = 'cerca' }: Props) {
               aria-selected={active}
               aria-controls={`home-panel-${p.id}`}
               onClick={() => jumpTo(i)}
-              className={`px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+              className={`relative z-10 flex-1 px-2 py-1.5 rounded-lg text-[12.5px] transition-colors ${
                 active
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                  ? 'text-gray-900 dark:text-gray-100 font-bold'
+                  : 'text-gray-500 dark:text-gray-400 font-semibold hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               {es ? p.labelEs : p.labelEn}
             </button>
           )
         })}
+      </div>
+
+      {/* Page-position dots — redundant cue that this is a paginator. */}
+      <div className="flex items-center justify-center gap-1.5 mb-3" aria-hidden="true">
+        {panels.map((p, i) => (
+          <span
+            key={p.id}
+            className={`block h-1 rounded-full transition-all duration-200 ${
+              i === activeIdx
+                ? 'w-5 bg-blue-600 dark:bg-blue-400'
+                : 'w-1 bg-gray-300 dark:bg-gray-600'
+            }`}
+          />
+        ))}
       </div>
 
       <div

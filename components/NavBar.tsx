@@ -7,7 +7,7 @@ import { useLang } from '@/lib/LangContext'
 import { useTheme } from '@/lib/ThemeContext'
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout'
 import { getTitle, getTitleColor } from '@/lib/titles'
-import { Settings, Moon, Sun, Building2, MessageCircle } from 'lucide-react'
+import { LayoutDashboard, Moon, Sun, Building2, MessageCircle } from 'lucide-react'
 
 export function NavBar() {
   const { user, loading } = useAuth()
@@ -103,12 +103,12 @@ export function NavBar() {
             )
           })()}
           <Link
-            href="/account"
+            href="/dashboard"
             className="cruzar-press-sm flex items-center p-2 text-white bg-gray-900 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-xl"
-            title="Settings"
-            aria-label="Settings"
+            title={lang === 'es' ? 'Mi panel' : 'My dashboard'}
+            aria-label={lang === 'es' ? 'Mi panel' : 'My dashboard'}
           >
-            <Settings className="w-3.5 h-3.5" />
+            <LayoutDashboard className="w-3.5 h-3.5" />
           </Link>
         </>
       ) : (
