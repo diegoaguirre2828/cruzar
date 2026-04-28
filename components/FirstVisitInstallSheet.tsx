@@ -41,17 +41,14 @@ const PORT_VIEWED_KEY = 'cruzar_port_viewed'
 // long enough to respect the "not right now" signal. Tap ≠ permanent
 // silence.
 const DISMISS_COOLDOWN_DAYS = 3
-const HIDDEN_PATHS = [
-  '/login',
-  '/signup',
-  '/welcome', // /welcome step 2 already handles forced install
-  '/reset-password',
-  '/driver',
-  '/checkin',
-  '/admin',
-  '/business',
-  '/for-fleets', // dispatcher lead page, different audience
-]
+// 2026-04-28 audit: the sheet was firing on every page that wasn't in
+// HIDDEN_PATHS, which meant it was overlaying conversion content (/pricing),
+// SEO landings (/cruzar/[slug]), product pages (/insights, /transload), and
+// the dedicated iOS install walkthrough. Inverted the policy: only fire on
+// home `/`, where install is the natural next step and there's no other
+// content to obscure. Other entry points get the install ask via /mas
+// install card, the home InstallPill, and the post-signup nudge.
+const ALLOWED_PATHS = ['/']
 
 export function FirstVisitInstallSheet() {
   const { lang } = useLang()
@@ -65,9 +62,9 @@ export function FirstVisitInstallSheet() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Route gate — don't fire on auth flows or places with their
-    // own install path.
-    if (HIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return
+    // Route gate — only fire on home. Anywhere else, the page's own
+    // content / CTA path takes priority.
+    if (!ALLOWED_PATHS.includes(pathname)) return
 
     // Increment visit counter + mark port-view on every mount (cheap).
     // These flags gate the sheet below.

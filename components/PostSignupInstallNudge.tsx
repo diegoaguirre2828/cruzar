@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Gift, X } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
 import { useTier } from '@/lib/useTier'
@@ -31,11 +32,27 @@ const SESSION_SHOWN_KEY = 'cruzar_post_signup_install_shown_session'
 const DISMISS_KEY = 'cruzar_post_signup_install_dismissed_at'
 const DISMISS_HOURS = 24
 
+// Routes that have their own install carrot or aren't a fit for a global
+// nudge. Stacking the nudge on /ios-install or /welcome step 1 obscures
+// the dedicated walkthrough.
+const HIDDEN_PATHS = [
+  '/welcome',
+  '/ios-install',
+  '/login',
+  '/signup',
+  '/reset-password',
+  '/admin',
+  '/driver',
+  '/checkin',
+  '/business',
+]
+
 export function PostSignupInstallNudge() {
   const { user, loading: authLoading } = useAuth()
   const { tier } = useTier()
   const { lang } = useLang()
   const { full: capFull } = useFoundingSlots()
+  const pathname = usePathname()
   const es = lang === 'es'
   const [show, setShow] = useState(false)
 
@@ -48,6 +65,7 @@ export function PostSignupInstallNudge() {
     // users (no grant) are the only audience for this banner.
     if (tier !== 'free') return
     if (typeof window === 'undefined') return
+    if (HIDDEN_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) return
 
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -76,7 +94,7 @@ export function PostSignupInstallNudge() {
       trackEvent('post_signup_install_nudge_shown')
     }, 800)
     return () => clearTimeout(id)
-  }, [user, authLoading, tier])
+  }, [user, authLoading, tier, pathname])
 
   function dismiss(e: React.MouseEvent) {
     e.preventDefault()
