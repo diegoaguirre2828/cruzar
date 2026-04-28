@@ -4,12 +4,17 @@ The code is shipped. The only thing standing between Cruzar and live WhatsApp me
 
 > **Why this replaces Twilio:** for the cross-border MX/US audience, WhatsApp is universal (~100% MX smartphone penetration), the cultural default, cheaper per message after setup, richer content (templates, buttons, media), and has better delivery rates (lands as a real notification, not a spam-filtered SMS). SMS adds no reach over WhatsApp + push.
 
-## Phase 1 — Meta Business Manager (~30 min, blocks for ~24-72h)
+## Phase 1 — Meta Business Manager (~30 min, no LLC needed for v0)
 
-1. **Create / verify your Meta Business Manager account**
+> **Important correction (2026-04-28):** an earlier draft of this doc suggested using Aguirre Insurance LLC if Cruzar isn't incorporated. **Don't do that.** TIER-0 memory rule: "NEVER pair Cruzar × Aguirre insurance — family agency NEVADA, Cruzar RGV. Zero overlap." Use the unverified-tier path below instead.
+
+> **You do NOT need an LLC for v0.** Meta Business Manager creation only requires a Facebook account + a business name string. No tax ID, no legal entity verification at this step. Verification is OPTIONAL and only required for: green-checkmark display name, Click-to-WhatsApp ads, or scaling beyond ~250 conv/24h. None of those matter at < 1k users.
+
+1. **Create your Meta Business Manager account (unverified is fine)**
    - https://business.facebook.com/
-   - Use the same Meta account that owns the Cruzar Facebook Page (already created per memory `reference_cruzar_facebook_main_page.md`).
-   - Verify the business: requires legal business name + tax ID (RFC for MX entities, EIN for US). Diego's family insurance LLC works if Cruzar isn't yet incorporated.
+   - Use the same Facebook account that owns the Cruzar Facebook Page (per `reference_cruzar_facebook_main_page.md`).
+   - Business name: "Cruzar" (just a string, not a legal entity).
+   - Skip the "Verify your business" prompts when they appear — they're optional.
 
 2. **Create a WhatsApp Business App**
    - In Meta Business Manager: Apps → Add → Business → WhatsApp Business Platform.
@@ -103,11 +108,14 @@ Once `WHATSAPP_ACCESS_TOKEN` lands in Vercel prod:
 
 | Channel | Per 1k msgs | Setup cost | Ongoing | Verification |
 |---|---|---|---|---|
-| WhatsApp utility | ~$5-10 | $0 (free with verified business) | None | Meta business + phone (1-2 weeks) |
+| WhatsApp utility (unverified tier) | ~$5-10 | $0 | None | None — just Facebook account + business-name string |
+| WhatsApp utility (verified tier) | ~$5-10 | $0 | None | LLC + tax ID; needed for green checkmark + > 250 conv/24h |
 | Twilio 10DLC | ~$8 + carrier fees | ~$50 (campaign reg) | $4-12/mo | Carrier vetting (similar timeline) |
 | Web Push (Cruzar PWA) | $0 | $0 | $0 | None |
 
-WhatsApp wins on cost AND user experience.
+**Defer business verification until ~1k+ users** when the green checkmark matters for trust + you're hitting message limits. Until then, unverified tier is sufficient.
+
+WhatsApp wins on cost AND user experience even unverified.
 
 ## Files in this repo today
 
