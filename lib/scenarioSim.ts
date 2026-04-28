@@ -17,8 +17,20 @@
 // CBP wait times — only the dispatcher's expected differential.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { PORT_META } from "./portMeta";
+import { PORT_META, getPortMeta } from "./portMeta";
 import { logCalibrationPrediction } from "./calibration";
+
+// Canonical port label from PORT_META — supersedes whatever Haiku chose.
+// Eliminates label/port_id drift (e.g. "Nuevo Progreso ↔ Donna" labeled on a
+// 230901-only port_id), keeps every output internally consistent.
+function canonicalPortLabel(portId: string): string {
+  const meta = getPortMeta(portId);
+  return meta.localName ? `${meta.localName} (${meta.city})` : meta.city;
+}
+
+function isValidPortId(portId: unknown): portId is string {
+  return typeof portId === "string" && portId in PORT_META;
+}
 
 export const SCENARIO_SIM_VERSION = "v0";
 
@@ -192,6 +204,26 @@ ${RESPONSE_SCHEMA_DOC}`;
   if (!obj.primary_recommendation || !Array.isArray(obj.alternatives) || !Array.isArray(obj.cascade_predictions) || !obj.transcript) {
     throw new Error("Scenario sim output missing required fields");
   }
+
+  // Port hygiene — Haiku occasionally drifts the port_label even when the
+  // port_id is valid (e.g. labels 230901 as "Progreso/Donna" mixing 230901
+  // + 230902). Validate every port_id against PORT_META; replace the label
+  // with the canonical name. Drop alternatives whose port_id is not real.
+  const primary = obj.primary_recommendation as Record<string, unknown>;
+  if (!isValidPortId(primary.port_id)) {
+    throw new Error(
+      `Scenario sim primary port_id "${String(primary.port_id)}" not in PORT_META — re-run`,
+    );
+  }
+  primary.port_label = canonicalPortLabel(primary.port_id);
+
+  const cleanAlternatives = (obj.alternatives as Array<Record<string, unknown>>)
+    .filter((a) => isValidPortId(a.port_id))
+    .map((a) => {
+      a.port_label = canonicalPortLabel(a.port_id as string);
+      return a;
+    });
+  obj.alternatives = cleanAlternatives;
 
   const baseCaveats: string[] =
     lang === "es"

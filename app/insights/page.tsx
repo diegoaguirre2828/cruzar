@@ -1,4 +1,6 @@
 import { MomentsNav } from "@/components/MomentsNav";
+import { getPortMeta } from "@/lib/portMeta";
+import manifest from "@/data/insights-manifest.json";
 
 // Cruzar Insights B2B landing — editorial / data-journalism rebuild.
 //
@@ -10,8 +12,10 @@ import { MomentsNav } from "@/components/MomentsNav";
 // Numerics in mono, bilingual headlines, amber accent, no stock illustrations,
 // inline bar-chart bars sized by the actual % improvement.
 //
-// Source data: backtests verified live against the v0.4 model + CBP
-// historicalwaittimes climatology + persistence baseline.
+// Source data: live v0.5.2 manifest snapshot at data/insights-manifest.json
+// (52 ports across TX / NM / AZ / CA). Refresh via the weekly retrain workflow.
+// Status derives from lift_vs_cbp_climatology_pct against the same baselines
+// every broker already has access to.
 
 export const runtime = "nodejs";
 export const revalidate = 3600;
@@ -19,36 +23,99 @@ export const revalidate = 3600;
 export const metadata = {
   title: "Cruzar Insights — ML wait-time forecasts that beat the CBP baseline",
   description:
-    "Per-port machine-learning forecasts for 36 US-MX border crossings. Backtested against CBP's own free climatology. Decision-grade lift on Laredo, Brownsville, Paso del Norte, Rio Grande City, Eagle Pass. Self-serve API key, MCP-native.",
+    "Per-port machine-learning forecasts for every US-Mexico border crossing CBP publishes wait times for — TX, NM, AZ, CA. Backtested against CBP's own free climatology. Self-serve API key, MCP-native.",
   alternates: { canonical: "https://www.cruzar.app/insights" },
 };
 
-// Backtest results — last 7 days held-out, 6-hour horizon unless noted.
-// These are real model outputs; do not edit casually.
+// Backtest results — derived live from v0.5.2 manifest, 6-hour horizon.
+// Status thresholds mirror the inference API's drift-handling rule:
+//   lift_vs_cbp_climatology_pct >= 5  → decision-grade (we beat CBP meaningfully)
+//   0 < lift_vs_cbp < 5               → marginal (positive but small edge)
+//   lift_vs_cbp == 0                  → coverage-pending (CBP backfill not yet finished for this port)
+//   lift_vs_cbp < 0                   → drift-fallback (inference serves CBP climatology directly)
+type PortStatus = "decision-grade" | "marginal" | "coverage-pending" | "drift-fallback";
+type ClusterKey = "rgv" | "laredo" | "coahuila-tx" | "el-paso" | "sonora-az" | "baja" | "other";
+
 type PortRow = {
+  portId: string;
   name: string;
-  cluster: "Laredo" | "Brownsville" | "RGV West" | "Rio Grande City" | "Eagle Pass" | "Paso del Norte";
+  cluster: ClusterKey;
   rmse: number | null;
   vsCbp: number | null;
   vsPersistence: number | null;
-  status: "decision-grade" | "marginal" | "drift-fallback";
+  status: PortStatus;
   note?: string;
   noteEs?: string;
 };
 
-const PORTS: PortRow[] = [
-  { name: "Laredo World Trade Bridge", cluster: "Laredo", rmse: 16.7, vsCbp: 16.5, vsPersistence: 42.9, status: "decision-grade" },
-  { name: "Laredo II (24h horizon)", cluster: "Laredo", rmse: null, vsCbp: 12.0, vsPersistence: 41.7, status: "decision-grade" },
-  { name: "Brownsville Veterans", cluster: "Brownsville", rmse: 36.4, vsCbp: 18.1, vsPersistence: 35.5, status: "decision-grade" },
-  { name: "Paso del Norte", cluster: "Paso del Norte", rmse: null, vsCbp: 35.1, vsPersistence: null, status: "decision-grade" },
-  { name: "Rio Grande City", cluster: "Rio Grande City", rmse: null, vsCbp: 37.3, vsPersistence: null, status: "decision-grade" },
-  { name: "Eagle Pass I (24h horizon)", cluster: "Eagle Pass", rmse: null, vsCbp: 18.7, vsPersistence: null, status: "decision-grade" },
-  { name: "Hidalgo / McAllen", cluster: "RGV West", rmse: 20.9, vsCbp: 6.4, vsPersistence: 25.3, status: "decision-grade" },
-  { name: "Anzaldúas", cluster: "RGV West", rmse: 18.1, vsCbp: 4.6, vsPersistence: 22.1, status: "decision-grade" },
-  { name: "Brownsville Gateway B&M", cluster: "Brownsville", rmse: 51.2, vsCbp: 1.1, vsPersistence: 23.4, status: "marginal" },
-  { name: "Eagle Pass (6h)", cluster: "Eagle Pass", rmse: 22.9, vsCbp: -3.6, vsPersistence: 17.5, status: "marginal", note: "Persistence beats us at 6h here. We auto-fall-back.", noteEs: "Persistencia gana a 6h. Caemos al baseline." },
-  { name: "Pharr–Reynosa", cluster: "RGV West", rmse: null, vsCbp: null, vsPersistence: null, status: "drift-fallback", note: "Concept drift detected. Inference returns CBP climatology until model retrains.", noteEs: "Drift detectado. Devolvemos climatología CBP hasta reentrenar." },
-];
+interface ManifestModel {
+  port_id: string;
+  port_name: string;
+  horizon_min: number;
+  rmse_min: number | null;
+  lift_vs_persistence_pct: number | null;
+  lift_vs_cbp_climatology_pct: number | null;
+  n_train: number;
+  n_test: number;
+}
+
+interface Manifest {
+  model_version: string;
+  saved_at: string;
+  ports: string[];
+  models: ManifestModel[];
+}
+
+// Pull the 6h (360) horizon row for each port. 24h is in the manifest too;
+// we keep this page focused on the planning horizon dispatchers actually use.
+function buildPortRows(m: Manifest): PortRow[] {
+  const sixH = m.models.filter((row) => row.horizon_min === 360);
+  return sixH.map((row): PortRow => {
+    const meta = getPortMeta(row.port_id);
+    const liftCbp = row.lift_vs_cbp_climatology_pct;
+    const liftPers = row.lift_vs_persistence_pct;
+
+    let status: PortStatus;
+    let note: string | undefined;
+    let noteEs: string | undefined;
+
+    if (liftCbp === null || liftCbp === 0) {
+      // No CBP climatology comparison available yet — backfill incomplete.
+      status = "coverage-pending";
+      note = "CBP climatology backfill in progress for this port. Lift unmeasured until comparison data lands.";
+      noteEs = "Backfill de climatología CBP en progreso. Lift no medido hasta que aterricen los datos.";
+    } else if (liftCbp >= 5) {
+      status = "decision-grade";
+    } else if (liftCbp > 0) {
+      status = "marginal";
+    } else {
+      status = "drift-fallback";
+      note = "Concept drift or regime shift. Inference returns CBP climatology until next retrain restores lift.";
+      noteEs = "Drift o cambio de régimen. Inferencia devuelve climatología CBP hasta que el reentrenamiento restaure la ventaja.";
+    }
+
+    return {
+      portId: row.port_id,
+      name: meta.localName ?? `${meta.city}`,
+      cluster: meta.megaRegion as ClusterKey,
+      rmse: row.rmse_min,
+      // Coverage-pending: no CBP comparison yet, so render as "—" not "0.0%".
+      vsCbp: status === "coverage-pending" ? null : liftCbp,
+      vsPersistence: liftPers,
+      status,
+      note,
+      noteEs,
+    };
+  });
+}
+
+const PORTS: PortRow[] = buildPortRows(manifest as Manifest)
+  // Sort: decision-grade first by lift desc, then marginal, then coverage-pending, then drift.
+  .sort((a, b) => {
+    const order = { "decision-grade": 0, marginal: 1, "coverage-pending": 2, "drift-fallback": 3 } as const;
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    return (b.vsCbp ?? -1000) - (a.vsCbp ?? -1000);
+  });
 
 const TOOLS = [
   {
@@ -95,14 +162,15 @@ const TOOLS = [
   },
 ];
 
-// Cluster grouping for the side-rail navigation
-const CLUSTERS: Array<{ key: PortRow["cluster"]; en: string; es: string }> = [
-  { key: "Laredo", en: "Laredo / I-35 corridor", es: "Laredo / corredor I-35" },
-  { key: "Brownsville", en: "Brownsville / Matamoros", es: "Brownsville / Matamoros" },
-  { key: "RGV West", en: "RGV West (McAllen)", es: "RGV Oeste (McAllen)" },
-  { key: "Eagle Pass", en: "Eagle Pass / Piedras Negras", es: "Eagle Pass / Piedras Negras" },
-  { key: "Rio Grande City", en: "Rio Grande City / Camargo", es: "Rio Grande City / Camargo" },
-  { key: "Paso del Norte", en: "Paso del Norte / Juárez", es: "Paso del Norte / Juárez" },
+// Cluster grouping — every megaRegion that has at least one trained port.
+// Ordered by border state west-to-east: California, Arizona, NM/El Paso, then Texas border (Eagle Pass, Laredo, RGV).
+const CLUSTERS: Array<{ key: ClusterKey; en: string; es: string }> = [
+  { key: "baja", en: "California / Baja", es: "California / Baja" },
+  { key: "sonora-az", en: "Arizona / Sonora", es: "Arizona / Sonora" },
+  { key: "el-paso", en: "El Paso / Juárez / NM", es: "El Paso / Juárez / NM" },
+  { key: "coahuila-tx", en: "Eagle Pass / Del Rio / Coahuila", es: "Eagle Pass / Del Rio / Coahuila" },
+  { key: "laredo", en: "Laredo / I-35 corridor", es: "Laredo / corredor I-35" },
+  { key: "rgv", en: "RGV / McAllen / Brownsville", es: "RGV / McAllen / Brownsville" },
 ];
 
 function fmtPct(n: number | null): string {
@@ -154,10 +222,10 @@ export default function InsightsPage() {
           <div className="flex items-center gap-3">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />
             <span className="font-mono text-white/80">Cruzar Insights</span>
-            <span className="hidden text-white/30 sm:inline">/ Vol. 0 · Iss. 4</span>
+            <span className="hidden text-white/30 sm:inline">/ Vol. 0 · Iss. 5</span>
           </div>
           <div className="hidden items-center gap-5 sm:flex">
-            <span className="font-mono">v0.4 · {new Date().toISOString().slice(0, 10)}</span>
+            <span className="font-mono">{(manifest as Manifest).model_version} · {new Date().toISOString().slice(0, 10)}</span>
             <a href="/" className="text-white/55 transition hover:text-amber-300">cruzar.app</a>
           </div>
         </div>
@@ -174,7 +242,7 @@ export default function InsightsPage() {
             </div>
             <div>
               <div className="text-white/35">Filed</div>
-              <div className="font-mono text-white/80">Apr 2026 · RGV</div>
+              <div className="font-mono text-white/80">Apr 2026 · TX/NM/AZ/CA</div>
             </div>
             <div>
               <div className="text-white/35">Audience</div>
@@ -290,18 +358,26 @@ export default function InsightsPage() {
                   ? "text-amber-400"
                   : p.status === "marginal"
                   ? "text-white/70"
+                  : p.status === "coverage-pending"
+                  ? "text-sky-300/70"
                   : "text-rose-300/70";
               const barColor =
                 p.status === "decision-grade"
                   ? "bg-amber-400"
                   : p.status === "marginal"
                   ? "bg-white/30"
+                  : p.status === "coverage-pending"
+                  ? "bg-sky-400/20"
                   : "bg-rose-400/30";
               return (
                 <div
                   key={p.name + i}
                   className={`grid grid-cols-[1.6fr_2.4fr_auto_auto] items-center gap-3 border-b border-white/[0.05] px-5 py-5 last:border-b-0 sm:grid-cols-[2fr_3fr_1fr_1fr_1fr] sm:gap-4 sm:px-6 sm:py-4 ${
-                    p.status === "drift-fallback" ? "bg-rose-950/10" : ""
+                    p.status === "drift-fallback"
+                      ? "bg-rose-950/10"
+                      : p.status === "coverage-pending"
+                        ? "bg-sky-950/10"
+                        : ""
                   }`}
                 >
                   {/* Name + cluster */}
@@ -356,9 +432,10 @@ export default function InsightsPage() {
           <div className="mt-6 grid gap-2 text-[12.5px] leading-relaxed text-white/45 sm:grid-cols-[auto_1fr] sm:gap-6">
             <div className="font-mono uppercase tracking-[0.16em] text-white/35">Reading the bars</div>
             <div>
-              Tick at the midpoint = +20%. Amber bars are decision-grade lift (sustained &gt; CBP).
-              Grey = marginal. Rose = drift-fallback; the inference API auto-returns CBP climatology so
-              callers never see broken predictions.
+              Tick at the midpoint = +20%. Amber bars are decision-grade lift (sustained &gt; CBP). Grey =
+              marginal positive edge. Sky = coverage-pending (model trained, but CBP-climatology backfill
+              hasn&apos;t completed for this port yet — comparison number unmeasured). Rose = drift-fallback;
+              the inference API auto-returns CBP climatology directly so callers never see broken predictions.
             </div>
           </div>
         </div>
@@ -610,11 +687,11 @@ export default function InsightsPage() {
             <Caveat
               en={{
                 t: "Not lane-aware (yet).",
-                d: "v0.4 forecasts vehicle wait. SENTRI and commercial lane separation is on the roadmap — see Samant 2026 for what shape that takes.",
+                d: "Current models forecast vehicle wait. SENTRI and commercial lane separation is on the roadmap — see Samant 2026 for what shape that takes.",
               }}
               es={{
                 t: "Aún sin separar por carril.",
-                d: "v0.4 pronostica espera vehicular. Separación SENTRI/comercial está en el roadmap.",
+                d: "Los modelos pronostican espera vehicular. Separación SENTRI/comercial está en el roadmap.",
               }}
             />
             <Caveat
@@ -640,7 +717,7 @@ export default function InsightsPage() {
             kickerEs="Cobertura"
             title="Where the model is in production."
             titleEs="Dónde está el modelo en producción."
-            lede="Six clusters across the US-Mexico land border. Decision-grade today, expanding monthly."
+            lede="Every US-Mexico land crossing CBP publishes wait times for. Decision-grade today on the corridors with full CBP-climatology backfill; coverage-pending on the rest as backfill completes."
             ledeEs="Seis clusters en la frontera US-México. Decision-grade hoy, ampliando cada mes."
           />
 
@@ -670,10 +747,12 @@ export default function InsightsPage() {
                               ? "text-amber-400"
                               : p.status === "marginal"
                               ? "text-white/45"
+                              : p.status === "coverage-pending"
+                              ? "text-sky-300/65"
                               : "text-rose-300/70"
                           }`}
                         >
-                          {fmtPct(p.vsCbp)}
+                          {p.status === "coverage-pending" ? "pending" : fmtPct(p.vsCbp)}
                         </span>
                       </li>
                     ))}
@@ -779,7 +858,7 @@ export default function InsightsPage() {
           </div>
           <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-5 text-[11px] text-white/30">
             <span className="font-mono">© 2026 Cruzar · Not affiliated with CBP or DHS.</span>
-            <span className="font-mono">v0.4 · {PORTS.length} ports · MCP</span>
+            <span className="font-mono">{(manifest as Manifest).model_version} · {PORTS.length} ports · MCP</span>
           </div>
         </div>
       </footer>
