@@ -15,10 +15,10 @@ Standing capability across every project Diego owns. Canonical rules live in the
 **Pipeline:** memory pass (handoffs + backlogs, treat all claims as hypotheses) then parallel live-state scan (build, endpoint health, env drift, schema drift, bilingual coverage, security/RLS) then structured **CRITICAL / HIGH / MEDIUM / LOW** report with file:line evidence PLUS a `verified-live-at` evidence cell on every row, then autonomous-safe vs. Diego-input split with ONE pick for the autonomous bundle, then on greenlight ("all in one session", "go", "ship"), execute end-to-end: edits, run the build, commit (named files, never `-A`), push, deploy to prod via the `vercel deploy --prod` command, curl live endpoints to verify landing, self-correct against live state, and append a **Reconciliation log** section to the audit memory noting SUPERSEDED items + their commit SHA.
 
 **Cruzar-specific audit surfaces:**
-- Build: run `npm run build` — must produce 159 of 159 pages clean
+- Build: run `npm run build` — must produce 197 of 197 pages clean
 - Live verify: curl `https://cruzar.app/api/ports` (at least 50 ports), plus `/privacy` and `/pricing`
 - Railway fb-poster: **decommissioned 2026-04-17** — `lastPosted: null` is expected; don't flag. Native Graph API publisher SHIPPED 2026-04-25 (see /api/social + admin/fb).
-- Schema source: `supabase/migrations/` is authoritative (v27 → v57 as of 2026-04-26). Top-level `supabase-schema-v*.sql` files are per-version deltas, not full schema dumps. No canonical full-schema file is committed — rebuild from ordered migrations.
+- Schema source: `supabase/migrations/` is authoritative (v27 → v63 as of 2026-04-28). Top-level `supabase-schema-v*.sql` files are per-version deltas, not full schema dumps. No canonical full-schema file is committed — rebuild from ordered migrations.
 - Coord sync: the files `lib/portMeta.ts` and `components/WaitingMode.tsx` must match exactly on every port's coordinates
 - Bilingual coverage: every user-facing string in `app/` pages and `components/` must route through `LangContext`
 - Cron auth: every route under `/api/cron/` must accept both `?secret=` query and `Authorization: Bearer` header
@@ -121,7 +121,7 @@ Heed all deprecation notices. Do NOT assume standard Next.js 13/14/15 patterns a
 - **File storage:** Vercel Blob (port photos, camera frames, social-post images)
 - **Rate limiting + KV:** Upstash Redis (`@upstash/redis` + `@upstash/ratelimit`)
 - **Errors:** Sentry (`@sentry/nextjs`)
-- **MCP server:** Cruzar MCP at `/api/mcp` — `smart_route`, `live_wait`, `best_times`, `briefing` over Streamable HTTP (bearer-auth, tracked in `mcp_keys` table)
+- **MCP server:** Cruzar MCP at `/api/mcp` — 13 tools (`smart_route`, `live_wait`, `best_times`, `briefing`, `recommend_route`, `forecast`, `anomaly_now`, `compare_ports`, `history`, `load_eta`, `safety_script`, `generate_customs`, `anomaly_camera_recent`) over Streamable HTTP (bearer-auth, tracked in `mcp_keys` table)
 - **iOS native:** Capacitor 8.3.1 + RevenueCat 13.0.1 (IAP) + native plugins (App, Geolocation, Preferences, Push, SplashScreen, StatusBar)
 
 ### Infrastructure
@@ -295,6 +295,7 @@ The top-level `supabase-schema-v12.sql` … `supabase-schema-v26.sql` files are 
 | `/api/auto-crossings` | GET/POST | Opt-in bridge + checkpoint detection (v48/v49) |
 | `/api/intelligence` | GET | Operator+Intel tier dashboards (v52) |
 | `/api/mcp` | POST | Cruzar MCP server (Streamable HTTP, bearer-auth) |
+| `/api/insights/scenario-sim` | POST | Dispatcher scenario simulator (Haiku) — primary rec + alts + cascade + transcript + caveats. Logs every run to `calibration_log`. |
 | `/api/social/*` | various | FB native Graph API publisher pipeline |
 | `/api/port-photos`, `/api/cameras` | various | Camera HLS feeds + frame extraction (v43, v55c) |
 
@@ -545,6 +546,7 @@ Expected response: `{"saved": 52, "at": "..."}`
 - **First-1000 lifetime Pro promo** (v37 + v51 + v57) — gated to PWA install
 - **Operator + Express Cert tier** (v50) — phase 1 auto-crossing infrastructure
 - **3-panel home swipe** — Cerca / Mi puente / Comunidad (commit c2f7745)
+- **Scenario Sim v0** (2026-04-28) — `/api/insights/scenario-sim` + `/admin/scenario-sim` console. Haiku-backed dispatcher decision sim. Always labels `is_simulation: true`. Calibration log wired (v63 migration applied; row id=1 verified live).
 - **Stripe live + rotated** ✅
 - **Anthropic SDK** (`@anthropic-ai/sdk`) — used for AI features
 
