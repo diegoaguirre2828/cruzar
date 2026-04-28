@@ -67,8 +67,9 @@ export default function OGImage() {
           <div style={{ color: '#ffffff', fontSize: 68, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05, display: 'flex' }}>
             Todos los puentes.
           </div>
-          <div style={{ color: '#ffffff', fontSize: 68, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05, display: 'flex' }}>
-            En vivo. <span style={{ color: '#22c55e' }}>Sin adivinar.</span>
+          <div style={{ color: '#ffffff', fontSize: 68, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05, display: 'flex', gap: 18 }}>
+            <span style={{ display: 'flex' }}>En vivo.</span>
+            <span style={{ display: 'flex', color: '#22c55e' }}>Sin adivinar.</span>
           </div>
         </div>
 
@@ -83,7 +84,12 @@ export default function OGImage() {
           Cámaras, historial, alertas y reportes de la comunidad — en un solo lugar.
         </div>
 
-        {/* 4 feature tiles — evergreen value prop, no stale data */}
+        {/* 4 feature tiles — evergreen value prop, no stale data.
+            Column layout was cramming the icon onto the label because
+            Satori didn't honor the column flex inside a flex:1 container
+            with a tight remaining height. Switched to icon-on-top with
+            an explicit min-height + larger inner gap so the layout is
+            stable regardless of available vertical space. */}
         <div style={{
           display: 'flex',
           gap: 12,
@@ -99,23 +105,23 @@ export default function OGImage() {
               key={f.label}
               style={{
                 flex: 1,
+                minHeight: 140,
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 18,
-                padding: '20px 18px',
+                padding: '22px 20px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: 10,
+                gap: 18,
               }}
             >
-              <div style={{ fontSize: 40, display: 'flex' }}>{f.icon}</div>
+              <div style={{ fontSize: 36, lineHeight: 1, display: 'flex' }}>{f.icon}</div>
               <div style={{
                 color: '#e2e8f0',
-                fontSize: 20,
+                fontSize: 19,
                 fontWeight: 700,
-                lineHeight: 1.2,
+                lineHeight: 1.25,
                 display: 'flex',
               }}>
                 {f.label}
