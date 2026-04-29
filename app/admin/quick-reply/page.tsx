@@ -88,7 +88,7 @@ export default function QuickReplyPage() {
           <div>
             <h1 className="text-xl font-bold text-gray-900">⚡ Quick Reply</h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Paste a FB post/comment → get 3 casual RGV Spanish replies. No emojis, not salesy, uses &quot;cruzar punto app&quot;.
+              Paste a FB post/comment → get 3 casual RGV Spanish replies. No emojis, not salesy, uses cruzar.app.
             </p>
           </div>
           <Link href="/admin" className="text-xs text-gray-500 hover:text-gray-800">← Admin</Link>

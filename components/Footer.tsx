@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 // Footer renders on every page via app/layout.tsx. It was previously
 // English-only; since every other top-level chrome element (BottomNav,
@@ -15,8 +16,8 @@ export function Footer() {
   return (
     <footer className="hidden sm:block border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 mt-auto">
       <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400 dark:text-gray-500">
-        <div className="flex items-center gap-1">
-          <span>🌉</span>
+        <div className="flex items-center gap-1.5">
+          <BridgeLogo size={16} />
           <span className="font-medium text-gray-600 dark:text-gray-300">Cruzar</span>
           <span className="ml-1">
             {es

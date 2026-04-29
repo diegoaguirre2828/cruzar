@@ -182,7 +182,7 @@ export default function TranslatePage() {
         )}
 
         <p className="mt-8 text-center text-[10px] text-gray-400 dark:text-gray-500">
-          Voice rules: no emojis · no URLs · &quot;cruzar punto app&quot; verbally · casual RGV Spanish
+          Voice rules: no emojis · cruzar.app · casual RGV Spanish
         </p>
       </div>
     </main>

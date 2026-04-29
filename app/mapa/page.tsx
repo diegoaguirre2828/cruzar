@@ -9,6 +9,7 @@ import { getPortMeta } from '@/lib/portMeta'
 import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import type { MegaRegion } from '@/lib/portMeta'
 import type { PortWaitTime, WaitLevel } from '@/types'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 type RegionFilter = MegaRegion | 'all'
 
@@ -143,8 +144,9 @@ export default function MapaPage() {
             into a name-recognition surface ('what app is this?'). */}
         <div className="pt-6 pb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">
-              {es ? '🌉 Todos los puentes' : '🌉 All bridges'}
+            <h1 className="text-xl font-black text-gray-900 dark:text-gray-100 inline-flex items-center gap-2">
+              <BridgeLogo size={28} />
+              {es ? 'Todos los puentes' : 'All bridges'}
             </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-snug">
               {es
@@ -155,9 +157,9 @@ export default function MapaPage() {
           <Link
             href="/"
             aria-label="cruzar.app"
-            className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-blue-600 text-white text-[11px] font-black tracking-tight shadow-sm hover:bg-blue-700 transition-colors"
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 text-white text-sm font-black tracking-tight shadow-md hover:bg-blue-700 transition-colors"
           >
-            <span className="text-base leading-none">🌉</span>
+            <BridgeLogo size={22} className="bg-white/0" />
             <span className="leading-none">cruzar.app</span>
           </Link>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useLang } from '@/lib/LangContext'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 const STORAGE_KEY = 'cruzar_onboarding_v2'
 
@@ -164,7 +165,9 @@ export function OnboardingTour() {
           </div>
         ) : !current.features ? (
           <div className="text-center">
-            {current.emoji && (
+            {current.emoji === '🌉' ? (
+              <div className="flex justify-center mb-4"><BridgeLogo size={80} /></div>
+            ) : current.emoji && (
               <div className="text-6xl mb-4">{current.emoji}</div>
             )}
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">

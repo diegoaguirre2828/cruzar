@@ -48,7 +48,17 @@ export default function GlobalError({ error, reset }: Props) {
           padding: '1.5rem',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🌉</div>
+          {/* Plain <img> rather than the BridgeLogo wrapper — this file
+              must stay self-contained per Next.js global-error rules
+              (no shared providers / context / component imports that
+              could be what crashed). */}
+          <img
+            src="/logo-icon.svg"
+            alt="Cruzar"
+            width={56}
+            height={56}
+            style={{ width: 56, height: 56, marginBottom: '0.75rem', borderRadius: 12 }}
+          />
           <h1 style={{ fontSize: '1.125rem', fontWeight: 900, margin: '0 0 0.5rem' }}>
             Cruzar está caído · Cruzar is down
           </h1>

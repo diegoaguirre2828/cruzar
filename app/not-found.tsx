@@ -1,10 +1,11 @@
 import Link from 'next/link'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 export default function NotFound() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
       <div className="text-center max-w-sm">
-        <p className="text-6xl mb-4">🌉</p>
+        <div className="flex justify-center mb-4"><BridgeLogo size={72} /></div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
           Página no encontrada · Page not found
         </h1>

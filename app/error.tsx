@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import * as Sentry from '@sentry/nextjs'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 interface Props {
   error: Error & { digest?: string }
@@ -88,7 +89,7 @@ export default function GlobalError({ error, reset }: Props) {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
       <div className="max-w-sm w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm text-center">
-        <div className="text-4xl mb-3">🌉</div>
+        <div className="flex justify-center mb-3"><BridgeLogo size={48} /></div>
         <h1 className="text-lg font-black text-gray-900 dark:text-gray-100 mb-1">
           {online ? 'Algo falló · Something broke' : 'Sin señal · No connection'}
         </h1>
