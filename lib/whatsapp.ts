@@ -201,6 +201,87 @@ export async function sendTemplate(input: SendTemplateInput): Promise<SendResult
 }
 
 /**
+ * Send a free-form text message. Only allowed within the 24-hour customer-service
+ * window — i.e., the recipient must have messaged us in the last 24h. Outside
+ * the window, you must use sendTemplate. Inbound webhook handlers are the
+ * canonical caller of this — replying inside the window is what makes the
+ * inbound→outbound conversation feel native.
+ */
+export async function sendFreeFormText(input: {
+  to_phone_e164: string;
+  body: string;
+  user_id?: string | null;
+}): Promise<SendResult> {
+  const { accessToken, phoneNumberId } = envCreds();
+
+  const payload = {
+    messaging_product: "whatsapp",
+    to: input.to_phone_e164,
+    type: "text",
+    text: { body: input.body, preview_url: false },
+  };
+
+  if (!accessToken || !phoneNumberId) {
+    const log_id = await logMessage({
+      user_id: input.user_id,
+      to_phone_e164: input.to_phone_e164,
+      payload,
+      status: "failed",
+      status_detail: { reason: "missing_creds" },
+    });
+    return { sent: false, reason: "missing_creds", log_id: log_id ?? undefined };
+  }
+
+  try {
+    const res = await fetch(`${META_BASE}/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = (await res.json()) as MetaSendResponse;
+    if (!res.ok || json.error) {
+      const log_id = await logMessage({
+        user_id: input.user_id,
+        to_phone_e164: input.to_phone_e164,
+        payload,
+        status: "failed",
+        status_detail: { http_status: res.status, error: json.error ?? "unknown" },
+      });
+      return {
+        sent: false,
+        reason: json.error?.message ?? `HTTP ${res.status}`,
+        log_id: log_id ?? undefined,
+      };
+    }
+    const meta_msg_id = json.messages?.[0]?.id ?? null;
+    const log_id = await logMessage({
+      user_id: input.user_id,
+      to_phone_e164: input.to_phone_e164,
+      payload,
+      meta_msg_id,
+      status: "sent",
+    });
+    return { sent: true, meta_msg_id: meta_msg_id ?? undefined, log_id: log_id ?? undefined };
+  } catch (err) {
+    const log_id = await logMessage({
+      user_id: input.user_id,
+      to_phone_e164: input.to_phone_e164,
+      payload,
+      status: "failed",
+      status_detail: { exception: err instanceof Error ? err.message : "unknown" },
+    });
+    return {
+      sent: false,
+      reason: err instanceof Error ? err.message : "send threw",
+      log_id: log_id ?? undefined,
+    };
+  }
+}
+
+/**
  * Verify Meta's X-Hub-Signature-256 header on an inbound webhook POST.
  * Returns true on match. Constant-time comparison to defend against timing
  * leaks. The body must be the RAW request body (string or buffer), not a
@@ -290,9 +371,11 @@ export async function ingestWebhookEvent(body: unknown): Promise<{
         if (!error) status_updates++;
       }
 
-      // Inbound messages from users (logged with status='received'). We
-      // don't try to match user_id here — webhook handlers can do that
-      // downstream by looking up profiles.whatsapp_phone_e164.
+      // Inbound messages from users (logged with status='received'), then
+      // routed through the intent parser → free-form reply. Reply happens
+      // inside the 24h customer-service window the inbound message opens.
+      // Lazy-import to keep the cycle (whatsappIntent imports from this file
+      // for getServiceClient) one-directional only.
       for (const m of v.messages ?? []) {
         const { error } = await db.from("whatsapp_messages").insert({
           to_phone_e164: m.from, // for inbound, "from" is what we'd reply to
@@ -301,6 +384,22 @@ export async function ingestWebhookEvent(body: unknown): Promise<{
           meta_msg_id: m.id,
         });
         if (!error) inserted++;
+
+        const text = m.text?.body;
+        if (m.type === "text" && text) {
+          try {
+            const { buildReplyForInbound } = await import("./whatsappIntent");
+            const reply = await buildReplyForInbound(text);
+            if (reply) {
+              await sendFreeFormText({ to_phone_e164: m.from, body: reply });
+            }
+          } catch (err) {
+            console.warn(
+              "[whatsapp] inbound reply failed:",
+              err instanceof Error ? err.message : err,
+            );
+          }
+        }
       }
     }
   }
