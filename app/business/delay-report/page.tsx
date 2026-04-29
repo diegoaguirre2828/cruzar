@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 function formatDateFull(iso: string | null): string {
   if (!iso) return '—'
@@ -61,7 +62,7 @@ function DelayReportContent() {
           <div className="flex items-start justify-between mb-8 pb-6 border-b border-gray-200">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-2xl">🌉</span>
+                <BridgeLogo size={28} />
                 <span className="text-xl font-black tracking-tight text-gray-900">CRUZAR</span>
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-0.5">Border Intelligence</span>
               </div>

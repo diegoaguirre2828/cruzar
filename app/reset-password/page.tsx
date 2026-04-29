@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/auth'
 import { ArrowLeft } from 'lucide-react'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('')
@@ -28,7 +29,7 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">🌉 Cruzar</h1>
+          <h1 className="text-2xl font-bold text-gray-900 inline-flex items-center gap-2"><BridgeLogo size={28} /> Cruzar</h1>
           <p className="text-sm text-gray-500 mt-1">Reset your password</p>
         </div>
 

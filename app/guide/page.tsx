@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { useLang } from '@/lib/LangContext'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 const GUIDES = [
   {
@@ -67,7 +68,7 @@ export default function GuidePage() {
   const { lang } = useLang()
 
   const t = {
-    title: lang === 'es' ? '🌉 Guía Fronteriza' : '🌉 Border Guide',
+    title: lang === 'es' ? 'Guía Fronteriza' : 'Border Guide',
     subtitle: lang === 'es'
       ? 'Todo lo que necesitas saber para cruzar con confianza.'
       : 'Everything you need to know to cross with confidence.',
@@ -84,7 +85,7 @@ export default function GuidePage() {
           <Link href="/" className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mb-3 transition-colors">
             <ArrowLeft className="w-3 h-3" /> {t.back}
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 inline-flex items-center gap-2"><BridgeLogo size={28} /> {t.title}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t.subtitle}</p>
         </div>
 

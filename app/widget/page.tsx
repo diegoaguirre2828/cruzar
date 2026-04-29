@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Copy, Check } from 'lucide-react'
+import { BridgeLogo } from '@/components/BridgeLogo'
 
 export default function WidgetPage() {
   const [portId, setPortId] = useState('')
@@ -25,7 +26,7 @@ export default function WidgetPage() {
           <ArrowLeft className="w-3 h-3" /> Back
         </Link>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">🌉 Embeddable Border Widget</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1 inline-flex items-center gap-2"><BridgeLogo size={28} /> Embeddable Border Widget</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">
           Show live wait times on your website. Free for all businesses near the border.
         </p>
