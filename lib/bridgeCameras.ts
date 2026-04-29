@@ -573,6 +573,24 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
       note: 'Santa Fe (PdN) — ángulo 4 en vivo',
       label: 'US · Santa Fe 4',
     },
+    // Pass-6 add 2026-04-28: Mexican-side feeds via Fideicomiso de Puentes
+    // Fronterizos de Chihuahua (camstreamer wrapper around YouTube live).
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/tRbi7yHcfP1Q0MHaZwXCfd3ymXHZV8QYuulTvofn',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Paso del Norte — vista de norte a sur (lado MX)',
+      label: 'MX · N→S',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/RmKKjLTyispBGGbIfFYnNMasTH45jhRs2Wo9Z1nZ',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Paso del Norte — vista de sur a norte (lado MX)',
+      label: 'MX · S→N',
+    },
   ],
 
   '240203': [
@@ -600,17 +618,197 @@ export const BRIDGE_CAMERAS: Record<string, CameraFeed[]> = {
       note: 'Ysleta / Zaragoza — ángulo 3 en vivo',
       label: 'US · Ángulo 3',
     },
+    // Pass-6 add 2026-04-28: 6 Mexican-side angles from Fideicomiso de
+    // Puentes Fronterizos de Chihuahua (camstreamer/YouTube wrapper).
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/HlfBjAnK17GcfIvm0PzDLDuTLFYdtOtruMOIZeQy',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Zaragoza-Ysleta — vista de norte a sur (lado MX)',
+      label: 'MX · N→S',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/B3cMCOh60f8wcGEGwRhe3WTc8kFqthAFvUUdxGtE',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Zaragoza-Ysleta — vista de sur a norte (lado MX)',
+      label: 'MX · S→N',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/eh5RXRRWvauzFlsuIUWWDO9Dzg4aXy2kN3drkGHF',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Zaragoza-Ysleta — vista a Av. Waterfill (lado MX)',
+      label: 'MX · Waterfill',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/B372xW1vsMl8D4ncXbkr0Skqs1iABInJ9iUFUJi8',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Puente Internacional Zaragoza — Av. Waterfill (lado MX)',
+      label: 'MX · Waterfill 2',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/VGvwCDk2Q3llvv72dI1eSvdoBOiZZ7jnQgV1zvN7',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Zaragoza Carga — vista de sur a norte (lado MX, comercial)',
+      label: 'MX · Carga S→N',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/xJBZVxgjwn8N8ix09zaRnP4B8ZnT3nyapF52p38B',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Zaragoza Carga — vista de norte a sur (lado MX, comercial)',
+      label: 'MX · Carga N→S',
+    },
   ],
 
-  // Stanton DCL — separate physical bridge (BWT 240204), only 1 angle live
+  // Pass-6 add 2026-04-28: Stanton DCL gained 2 working US-side HLS angles
+  // (Stanton1, Stanton2 — published on puentesfronterizos.gob.mx) plus 3 MX
+  // CamStreamer angles. Stanton1/2 ORB-block on first cross-origin load but
+  // serve 206 partial content on retry; hls.js handles this transparently.
   '240204': [
+    {
+      kind: 'hls',
+      src: 'https://zoocams.elpasozoo.org/BridgeStanton1.m3u8',
+      credit: 'City of El Paso',
+      creditUrl: 'https://www2.elpasotexas.gov/misc/externally_linked/bridges/cameras.html',
+      note: 'Stanton DCL / Lerdo — ángulo 1 en vivo',
+      label: 'US · Ángulo 1',
+    },
+    {
+      kind: 'hls',
+      src: 'https://zoocams.elpasozoo.org/BridgeStanton2.m3u8',
+      credit: 'City of El Paso',
+      creditUrl: 'https://www2.elpasotexas.gov/misc/externally_linked/bridges/cameras.html',
+      note: 'Stanton DCL / Lerdo — ángulo 2 en vivo',
+      label: 'US · Ángulo 2',
+    },
     {
       kind: 'hls',
       src: 'https://zoocams.elpasozoo.org/BridgeStanton3.m3u8',
       credit: 'City of El Paso',
       creditUrl: 'https://www2.elpasotexas.gov/misc/externally_linked/bridges/cameras.html',
-      note: 'Stanton DCL — bridge view (live)',
-      label: 'US · Live',
+      note: 'Stanton DCL / Lerdo — ángulo 3 en vivo',
+      label: 'US · Ángulo 3',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/iEKDRVOUybuFhtdKJKdRlaILyhMCSyrkEc8b0WgB',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Lerdo Línea Exprés — vista de norte a sur (lado MX)',
+      label: 'MX · N→S',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/iEHyfOkiGPdnvCO4RYCLZTiFJGGk8InzjI3bXEx4',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Lerdo Línea Exprés — vista de sur a norte (lado MX)',
+      label: 'MX · S→N',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/ozH8YEP3bIkP22lBFoUUdGgB0sEJ1FNppmmw8wJ4',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Lerdo Línea Exprés — vista a Malecón (lado MX)',
+      label: 'MX · Malecón',
+    },
+  ],
+
+  // ─── Texas El Paso — BOTA / Córdova-Américas (NEW PORT) ─────────
+  // Pass-6 add 2026-04-28: 3 YouTube live streams of the Mexican side
+  // republished by puentesfronterizos.gob.mx. NOTE: video IDs may rotate
+  // — re-discover via the source page if any 404. Per the source: this
+  // bridge "no es administrado por el Fideicomiso" so feeds may be less
+  // stable than PDN/Lerdo/Zaragoza.
+  '240201': [
+    {
+      kind: 'youtube',
+      src: 'mp3RS0y77tY',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Córdova-Américas (BOTA) — lado norte (lado MX)',
+      label: 'MX · Norte',
+    },
+    {
+      kind: 'youtube',
+      src: 'CZM5TpXLzE8',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Córdova-Américas (BOTA) — lado sur (lado MX)',
+      label: 'MX · Sur',
+    },
+    {
+      kind: 'youtube',
+      src: 'Y3OESQEXBlI',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Córdova-Américas (BOTA) — vista Av. Rafael (lado MX)',
+      label: 'MX · Av. Rafael',
+    },
+  ],
+
+  // ─── Texas Tornillo — Marcelino Serna (NEW PORT) ────────────────
+  // Pass-6 add 2026-04-28: 2 MX-side CamStreamer/YouTube angles via
+  // puentesfronterizos.gob.mx. No US-side cam known yet.
+  '240401': [
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/pgoN0P9OWpB4C7mWffML3EraMCfHKjDnRGwjQO0p',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Guadalupe-Tornillo (Marcelino Serna) — vista de norte a sur (lado MX)',
+      label: 'MX · N→S',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://camstreamer.com/embed/uixDU3cVNl3OkKDDdEqOIkoiuBMeD2mSznGq0wUu',
+      credit: 'Fideicomiso de Puentes Fronterizos de Chihuahua',
+      creditUrl: 'https://www.puentesfronterizos.gob.mx/camaras-en-vivo.php',
+      note: 'Guadalupe-Tornillo (Marcelino Serna) — vista de sur a norte (lado MX)',
+      label: 'MX · S→N',
+    },
+  ],
+
+  // ─── Texas Del Rio — Cd Acuña ↔ Del Rio (NEW PORT) ──────────────
+  // Pass-6 add 2026-04-28: City of Del Rio publishes 2 ipcamlive feeds
+  // (same publisher pattern as Eagle Pass + Brownsville) plus a YouTube
+  // live embed of the bridge livestream. Source:
+  // https://www.cityofdelrio.com/government/departments/international-bridge
+  '230201': [
+    {
+      kind: 'iframe',
+      src: 'https://www.ipcamlive.com/player/player.php?alias=5da4899f1d893&autoplay=1',
+      credit: 'City of Del Rio',
+      creditUrl: 'https://www.cityofdelrio.com/government/departments/international-bridge',
+      note: 'Del Rio International Bridge — ángulo 1 en vivo',
+      label: 'US · Ángulo 1',
+    },
+    {
+      kind: 'iframe',
+      src: 'https://www.ipcamlive.com/player/player.php?alias=5dd41e07c9949&autoplay=1',
+      credit: 'City of Del Rio',
+      creditUrl: 'https://www.cityofdelrio.com/government/departments/international-bridge',
+      note: 'Del Rio International Bridge — ángulo 2 en vivo',
+      label: 'US · Ángulo 2',
+    },
+    {
+      kind: 'youtube',
+      src: 'lLXXxbzjdx8',
+      credit: 'City of Del Rio',
+      creditUrl: 'https://www.cityofdelrio.com/government/departments/international-bridge',
+      note: 'Bridge Livestream — feed embedded by City of Del Rio',
+      label: 'US · Livestream',
     },
   ],
 }
