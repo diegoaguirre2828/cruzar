@@ -515,30 +515,12 @@ export function PortList() {
             </button>
           </div>
 
-          {/* Live cameras entry point — prominent card the first time a
-              user lands, sells the Facebook-killer angle: watch the real
-              line + see the number in one place. */}
-          {!searchQuery.trim() && (
-            <Link
-              href="/camaras"
-              className="mb-3 flex items-center justify-between gap-3 rounded-xl px-4 py-3 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20 border border-red-200 dark:border-red-900/40 hover:border-red-300 dark:hover:border-red-700 transition-colors group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-xl flex-shrink-0">📹</span>
-                <div className="min-w-0">
-                  <div className="text-xs font-black text-red-900 dark:text-red-200 leading-tight">
-                    {lang === 'es' ? 'Cámaras en vivo de los puentes' : 'Live bridge cameras'}
-                  </div>
-                  <div className="text-[11px] text-red-700/80 dark:text-red-300/70 leading-tight">
-                    {lang === 'es' ? 'Mira las filas reales + el tiempo de espera' : 'See the real lines + wait times'}
-                  </div>
-                </div>
-              </div>
-              <span className="shrink-0 text-[11px] font-bold text-red-700 dark:text-red-300 group-hover:translate-x-0.5 transition-transform">
-                {lang === 'es' ? 'Ver →' : 'Watch →'}
-              </span>
-            </Link>
-          )}
+          {/* (Live cameras entry point relocated 2026-04-28: was here
+              between the legend and the region/favorites banners,
+              creating a 3-banner cluster Diego flagged as misclick-
+              prone. Now lives in HomeClient's Cerca panel right after
+              <LiveActivityTicker /> so it pairs with the live
+              community reports surface.) */}
 
           {/* "See all bridges" deep-link into the read-only /mapa view
               that replaced the Leaflet map. Users stuck in their region
