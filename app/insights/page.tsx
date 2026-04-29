@@ -23,7 +23,7 @@ export const revalidate = 3600;
 export const metadata = {
   title: "Cruzar Insights — ML wait-time forecasts that beat the CBP baseline",
   description:
-    "Per-port machine-learning forecasts for every US-Mexico border crossing CBP publishes wait times for — TX, NM, AZ, CA. Backtested against CBP's own free climatology. Self-serve API key, MCP-native.",
+    "Per-port machine-learning forecasts for every US-Mexico border crossing CBP publishes wait times for — TX, NM, AZ, CA. Delivered to your dispatch desk via WhatsApp, email, and driver SMS. Backtested against CBP's own free climatology.",
   alternates: { canonical: "https://www.cruzar.app/insights" },
 };
 
@@ -362,19 +362,19 @@ export default function InsightsPage() {
               <dd className="mt-1.5 text-[12px] text-white/45">15-min CBP readings, since Mar '26</dd>
             </div>
             <div>
-              <dt className="text-[10.5px] uppercase tracking-[0.2em] text-white/45">Distribution</dt>
-              <dd className="mt-2 font-mono text-[2.2rem] leading-none tracking-tight text-white">MCP</dd>
-              <dd className="mt-1.5 text-[12px] text-white/45">Claude · Cursor · curl · 7 tools</dd>
+              <dt className="text-[10.5px] uppercase tracking-[0.2em] text-white/45">Delivery</dt>
+              <dd className="mt-2 font-mono text-[2.2rem] leading-none tracking-tight text-white">WhatsApp</dd>
+              <dd className="mt-1.5 text-[12px] text-white/45">+ email · driver SMS · API</dd>
             </div>
           </dl>
 
           {/* Primary CTA pair */}
           <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
             <a
-              href="/insights/get-key"
+              href="mailto:diegonaguirre@icloud.com?subject=Cruzar%20Insights%20trial%20-%20%5Byour%20fleet%5D&body=Fleet%20size%3A%20%0ALanes%20%2F%20ports%20you%20cross%3A%20%0ACurrent%20TMS%3A%20%0ABest%20number%20to%20WhatsApp%3A%20"
               className="group inline-flex items-center gap-3 rounded-2xl bg-amber-400 px-6 py-3.5 text-[14px] font-semibold text-[#0a1020] transition hover:bg-amber-300"
             >
-              <span>Get my key</span>
+              <span>Talk to Diego — start a trial</span>
               <span className="font-mono text-[16px] transition group-hover:translate-x-0.5" aria-hidden>→</span>
             </a>
             <a
@@ -384,10 +384,10 @@ export default function InsightsPage() {
               Read the backtest first
             </a>
             <a
-              href="mailto:diegonaguirre@icloud.com?subject=Cruzar%20Insights"
+              href="/insights/get-key"
               className="text-[14px] text-white/45 transition hover:text-white/80"
             >
-              ·  email Diego
+              ·  developer API access
             </a>
           </div>
         </div>
@@ -574,12 +574,12 @@ export default function InsightsPage() {
         <div className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8 sm:py-24">
           <SectionHead
             num="03"
-            kicker="Distribution"
-            kickerEs="Distribución"
-            title="Seven tools. One MCP endpoint."
-            titleEs="Siete herramientas. Un endpoint MCP."
-            lede="Bearer-auth, stateless HTTP, no SDK install. Plug into Claude Desktop, Claude Code, Cursor, or curl from a cron."
-            ledeEs="Bearer-auth, HTTP sin estado, sin SDK. Conecta desde Claude Desktop, Claude Code, Cursor, o curl en un cron."
+            kicker="Capabilities"
+            kickerEs="Capacidades"
+            title="Seven decisions Cruzar makes during the run."
+            titleEs="Siete decisiones que Cruzar toma durante el viaje."
+            lede="While your driver's en route, these are the calls Cruzar makes for the dispatch desk — anomaly catch, route reroute, ETA confirm, morning briefing. Each one is a tool the system runs on its own data feed."
+            ledeEs="Mientras tu chofer maneja, estas son las decisiones que Cruzar toma por la mesa de control — detectar anomalías, reruteo, confirmar ETA, briefing matutino. Cada una corre sobre el feed propio del sistema."
           />
 
           <ol className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] sm:grid-cols-2">
@@ -602,44 +602,85 @@ export default function InsightsPage() {
         </div>
       </section>
 
-      {/* ─── SECTION 4 / INSTALL ──────────────────────────────────── */}
+      {/* ─── SECTION 4 / DELIVERY ─────────────────────────────────── */}
       <section className="border-b border-white/[0.07]">
         <div className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8 sm:py-24">
           <SectionHead
             num="04"
-            kicker="Install"
-            kickerEs="Instalación"
-            title="Thirty seconds to first call."
-            titleEs="Treinta segundos al primer llamado."
-            lede="Drop the snippet into your MCP client config, or curl the endpoint from a cron. Self-serve key arrives by email — we never store the plaintext."
-            ledeEs="Pega el snippet en tu config MCP, o llama el endpoint desde un cron. La key llega por correo — solo guardamos el hash."
+            kicker="Delivery"
+            kickerEs="Entrega"
+            title="Where Cruzar shows up in your day."
+            titleEs="Dónde aparece Cruzar en tu día."
+            lede="WhatsApp push the moment a port flags anomaly. Morning briefing at 5am to your inbox. Direct SMS to the driver when a reroute saves time. No new dashboard to learn — Cruzar lives where your dispatch desk already does."
+            ledeEs="WhatsApp en cuanto un puerto detecta anomalía. Briefing matutino a las 5am al correo. SMS directo al chofer cuando reruteo ahorra tiempo. Sin tableros nuevos — Cruzar vive donde ya trabajas."
           />
 
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            <CodeBlock
-              label="Claude Desktop / Code"
-              labelEs="Claude Desktop / Code"
-              code={`{
-  "mcpServers": {
-    "cruzar-insights": {
-      "transport": {
-        "type": "http",
-        "url": "https://www.cruzar.app/mcp",
-        "headers": { "Authorization": "Bearer YOUR_KEY" }
-      }
-    }
-  }
-}`}
-            />
-            <CodeBlock
-              label="curl from anywhere"
-              labelEs="curl desde cualquier lado"
-              code={`curl -X POST https://www.cruzar.app/mcp \\
-  -H "Authorization: Bearer YOUR_KEY" \\
-  -H "Content-Type: application/json" \\
-  -H "Accept: application/json, text/event-stream" \\
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`}
-            />
+          <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] sm:grid-cols-2">
+            <div className="bg-[#0a1020] p-6 sm:p-7">
+              <div className="flex items-baseline gap-3">
+                <span className="font-mono text-[11px] tabular-nums tracking-[0.15em] text-white/35">01</span>
+                <span className="font-mono text-[13.5px] text-amber-300">WhatsApp</span>
+                <span className="text-[10.5px] uppercase tracking-[0.18em] text-white/40">Push + reply</span>
+              </div>
+              <p className="mt-2 text-[13.5px] leading-[1.55] text-white/70">
+                Anomaly alerts the moment a watched port runs ≥1.5× its baseline. Reply <code className="font-mono text-white/85">wait at pharr</code> from your phone to get the live read. Multi-recipient on fleet tier.
+              </p>
+              <p className="mt-1 text-[12.5px] leading-[1.55] text-white/40" lang="es">
+                Alertas de anomalía cuando un puerto vigilado pasa el 1.5× del baseline. Responde <code className="font-mono text-white/65">espera en pharr</code> para la lectura viva. Multi-destinatario en plan flota.
+              </p>
+            </div>
+
+            <div className="bg-[#0a1020] p-6 sm:p-7">
+              <div className="flex items-baseline gap-3">
+                <span className="font-mono text-[11px] tabular-nums tracking-[0.15em] text-white/35">02</span>
+                <span className="font-mono text-[13.5px] text-amber-300">Email briefing</span>
+                <span className="text-[10.5px] uppercase tracking-[0.18em] text-white/40">5am daily</span>
+              </div>
+              <p className="mt-2 text-[13.5px] leading-[1.55] text-white/70">
+                Top-3 ports for your tracked lanes, ranked by predicted wait + drift status. Sent before your dispatchers come online — they walk in already calibrated.
+              </p>
+              <p className="mt-1 text-[12.5px] leading-[1.55] text-white/40" lang="es">
+                Top-3 puertos de tus carriles, ordenados por espera predicha + estado de drift. Llega antes de que tus dispatchers entren — ya saben qué cruzar.
+              </p>
+            </div>
+
+            <div className="bg-[#0a1020] p-6 sm:p-7">
+              <div className="flex items-baseline gap-3">
+                <span className="font-mono text-[11px] tabular-nums tracking-[0.15em] text-white/35">03</span>
+                <span className="font-mono text-[13.5px] text-amber-300">Driver SMS</span>
+                <span className="text-[10.5px] uppercase tracking-[0.18em] text-white/40">Direct reroute</span>
+              </div>
+              <p className="mt-2 text-[13.5px] leading-[1.55] text-white/70">
+                Cruzar texts the driver direct: <em>"Pharr 47min · switch to Donna +12mi · net save 32min"</em>. Drive-time math factored — only fires when the math actually justifies the switch.
+              </p>
+              <p className="mt-1 text-[12.5px] leading-[1.55] text-white/40" lang="es">
+                Cruzar le manda mensaje directo al chofer: <em>"Pharr 47min · cámbiate a Donna +12mi · ahorras 32min neto"</em>. Solo dispara cuando los números lo justifican.
+              </p>
+            </div>
+
+            <div className="bg-[#0a1020] p-6 sm:p-7">
+              <div className="flex items-baseline gap-3">
+                <span className="font-mono text-[11px] tabular-nums tracking-[0.15em] text-white/35">04</span>
+                <span className="font-mono text-[13.5px] text-amber-300">CSV / TMS hook</span>
+                <span className="text-[10.5px] uppercase tracking-[0.18em] text-white/40">Enterprise</span>
+              </div>
+              <p className="mt-2 text-[13.5px] leading-[1.55] text-white/70">
+                Webhook into McLeod, TMW, Aljex, or your custom dispatch board. Or pull a CSV of forecasts every 15 minutes. Sales-led for now — <a href="mailto:diegonaguirre@icloud.com?subject=Cruzar%20Insights%20-%20TMS%20integration" className="text-amber-300 hover:text-amber-200">email Diego with your stack</a>.
+              </p>
+              <p className="mt-1 text-[12.5px] leading-[1.55] text-white/40" lang="es">
+                Webhook a McLeod, TMW, Aljex, o tu tablero propio. O baja un CSV de pronósticos cada 15 min. Por venta directa — escríbele a Diego con tu stack.
+              </p>
+            </div>
+          </div>
+
+          {/* Quiet developer link — preserves the MCP path without leading with it */}
+          <div className="mt-8 text-center">
+            <a
+              href="/insights/get-key"
+              className="text-[12px] text-white/40 hover:text-white/70 underline decoration-white/20 decoration-1 underline-offset-[5px]"
+            >
+              Building with AI? Cruzar exposes 7 MCP tools at /mcp — get a developer key →
+            </a>
           </div>
         </div>
       </section>
@@ -1038,21 +1079,3 @@ function Caveat(props: { en: { t: string; d: string }; es: { t: string; d: strin
   );
 }
 
-// ─── Code block ─────────────────────────────────────────────────
-function CodeBlock(props: { label: string; labelEs: string; code: string }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#040814]">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3">
-        <div className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/55">
-          {props.label}
-        </div>
-        <div className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/25" lang="es">
-          {props.labelEs}
-        </div>
-      </div>
-      <pre className="overflow-x-auto px-5 py-5 text-[12.5px] leading-[1.65] text-slate-200">
-        <code className="font-mono">{props.code}</code>
-      </pre>
-    </div>
-  );
-}
