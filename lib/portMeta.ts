@@ -24,6 +24,14 @@ export interface PortMeta {
   // Diego flagged B&M showing 10 min while the live cam showed a stopped
   // queue. Set conservatively — default is 'normal'.
   cbpLag?: 'high' | 'normal'
+  // Lane structure of the crossing. Default = vehicle. Tagged when the
+  // CBP feed structurally has no passenger-vehicle data — either the
+  // crossing is freight-only (World Trade Bridge, BOTA Cargo, Otay
+  // Commercial) or pedestrian-only (PedWest, Cross Border Xpress,
+  // Paso del Norte, Morley Gate). The /todos "All bridges" list filters
+  // these out so users browsing wait times don't see "Sin datos" rows
+  // for crossings that never had vehicle data to begin with.
+  crossingType?: 'vehicle' | 'commercial' | 'pedestrian'
 }
 
 export type MegaRegion =
@@ -84,7 +92,7 @@ export const PORT_META: Record<string, PortMeta> = {
   '230401': { city: 'Laredo', region: R_LAREDO, megaRegion: 'laredo', lat: 27.4994, lng: -99.5076, localName: 'Bridge I (Gateway to the Americas)' },
   '230402': { city: 'Laredo', region: R_LAREDO, megaRegion: 'laredo', lat: 27.5628, lng: -99.5019, localName: 'Bridge II (Juárez-Lincoln)' },
   '230403': { city: 'Laredo', region: R_LAREDO, megaRegion: 'laredo', lat: 27.6506, lng: -99.5539, localName: 'Colombia Solidarity' },
-  '230404': { city: 'Laredo', region: R_LAREDO, megaRegion: 'laredo', lat: 27.5533, lng: -99.4786, localName: 'World Trade Bridge' },
+  '230404': { city: 'Laredo', region: R_LAREDO, megaRegion: 'laredo', lat: 27.5533, lng: -99.4786, localName: 'World Trade Bridge', crossingType: 'commercial' },
   '230103': { city: 'Laredo', region: R_LAREDO, megaRegion: 'laredo', lat: 27.5000, lng: -99.5100, localName: 'Gateway' },
 
   // ── Piedras Negras ↔ Eagle Pass ──────────────────────────
@@ -99,13 +107,13 @@ export const PORT_META: Record<string, PortMeta> = {
   // Verified against CBP crossing_name field 2026-04-12. Note that CBP has
   // TWO port numbers for Paso del Norte (202401 and 240202) — keeping both
   // since they appear in different CBP responses.
-  '202401': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7588, lng: -106.4869, localName: 'Paso del Norte' },
+  '202401': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7588, lng: -106.4869, localName: 'Paso del Norte', crossingType: 'pedestrian' },
   '240201': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7619, lng: -106.4850, localName: 'Bridge of the Americas (BOTA)' },
   '240202': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7588, lng: -106.4869, localName: 'Paso del Norte (PDN)' },
   '240203': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.6938, lng: -106.3353, localName: 'Ysleta / Zaragoza' },
   '240204': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7550, lng: -106.4780, localName: 'Stanton DCL' },
   '240207': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7600, lng: -106.4830, localName: 'BOTA (secondary)' },
-  '240215': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7650, lng: -106.4900, localName: 'BOTA Cargo Facility' },
+  '240215': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7650, lng: -106.4900, localName: 'BOTA Cargo Facility', crossingType: 'commercial' },
   '240221': { city: 'El Paso',     region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.7619, lng: -106.4850, localName: 'El Paso' },
   '240401': { city: 'Tornillo',    region: R_EL_PASO, megaRegion: 'el-paso', lat: 31.4336, lng: -106.0728, localName: 'Tornillo (Marcelino Serna)' },
   '240301': { city: 'Presidio',    region: R_EL_PASO, megaRegion: 'el-paso', lat: 29.5602, lng: -104.3718, localName: 'Presidio ↔ Ojinaga' },
@@ -116,7 +124,7 @@ export const PORT_META: Record<string, PortMeta> = {
   // ── Nogales, Sonora ↔ Nogales, Arizona ───────────────────
   '260401': { city: 'Nogales', region: R_NOGALES, megaRegion: 'sonora-az', lat: 31.3364, lng: -110.9388, localName: 'Deconcini' },
   '260402': { city: 'Nogales', region: R_NOGALES, megaRegion: 'sonora-az', lat: 31.3525, lng: -110.9605, localName: 'Mariposa (Commercial)' },
-  '260403': { city: 'Nogales', region: R_NOGALES, megaRegion: 'sonora-az', lat: 31.3380, lng: -110.9380, localName: 'Morley Gate' },
+  '260403': { city: 'Nogales', region: R_NOGALES, megaRegion: 'sonora-az', lat: 31.3380, lng: -110.9380, localName: 'Morley Gate', crossingType: 'pedestrian' },
 
   // ── Agua Prieta ↔ Douglas / Naco / Lukeville ─────────────
   '260101': { city: 'Douglas',   region: R_DOUGLAS, megaRegion: 'sonora-az', lat: 31.3445, lng: -109.5457, localName: 'Agua Prieta ↔ Douglas' },
@@ -139,10 +147,10 @@ export const PORT_META: Record<string, PortMeta> = {
   // Verified 2026-04-12 against CBP crossing_name field. Consistent format:
   //   '<common local name>' or '<entity> (<type>)' for multi-entry ports.
   '250401': { city: 'San Ysidro', region: R_TIJUANA, megaRegion: 'baja', lat: 32.5432, lng: -117.0281, localName: 'San Ysidro (La Línea)' },
-  '250407': { city: 'San Ysidro', region: R_TIJUANA, megaRegion: 'baja', lat: 32.5408, lng: -117.0271, localName: 'San Ysidro PedWest' },
-  '250409': { city: 'San Ysidro', region: R_TIJUANA, megaRegion: 'baja', lat: 32.5700, lng: -116.9700, localName: 'Cross Border Xpress (Tijuana Airport)' },
+  '250407': { city: 'San Ysidro', region: R_TIJUANA, megaRegion: 'baja', lat: 32.5408, lng: -117.0271, localName: 'San Ysidro PedWest', crossingType: 'pedestrian' },
+  '250409': { city: 'San Ysidro', region: R_TIJUANA, megaRegion: 'baja', lat: 32.5700, lng: -116.9700, localName: 'Cross Border Xpress (Tijuana Airport)', crossingType: 'pedestrian' },
   '250601': { city: 'Otay Mesa',  region: R_TIJUANA, megaRegion: 'baja', lat: 32.5526, lng: -116.9734, localName: 'Otay Mesa (Passenger)' },
-  '250602': { city: 'Otay Mesa',  region: R_TIJUANA, megaRegion: 'baja', lat: 32.5540, lng: -116.9750, localName: 'Otay Mesa (Commercial)' },
+  '250602': { city: 'Otay Mesa',  region: R_TIJUANA, megaRegion: 'baja', lat: 32.5540, lng: -116.9750, localName: 'Otay Mesa (Commercial)', crossingType: 'commercial' },
   '250608': { city: 'Otay Mesa',  region: R_TIJUANA, megaRegion: 'baja', lat: 32.5530, lng: -116.9740, localName: 'Otay Mesa East' },
   '250609': { city: 'Otay Mesa',  region: R_TIJUANA, megaRegion: 'baja', lat: 32.5520, lng: -116.9730, localName: 'Otay Mesa' },
 

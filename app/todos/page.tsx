@@ -8,10 +8,17 @@ import { usePorts } from '@/lib/usePorts'
 import { getPortMeta } from '@/lib/portMeta'
 import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import type { MegaRegion } from '@/lib/portMeta'
-import type { PortWaitTime, WaitLevel } from '@/types'
+import type { PortWaitTime } from '@/types'
 import { BridgeLogo } from '@/components/BridgeLogo'
 
 type RegionFilter = MegaRegion | 'all'
+
+// Display levels for the "All bridges" tab. Distinct from the global
+// WaitLevel because /todos has its own contract: the user is browsing,
+// not acting, and should never see a bare "No data" row. Every visible
+// row is either live, closed, or an explicit "typical-for-this-hour"
+// fallback. Ports that produce none of those are filtered out upstream.
+type DisplayLevel = 'low' | 'medium' | 'high' | 'closed' | 'historical'
 
 const REGION_ORDER: MegaRegion[] = ['rgv', 'laredo', 'coahuila-tx', 'el-paso', 'sonora-az', 'baja', 'other']
 
@@ -34,35 +41,69 @@ const REGION_ORDER: MegaRegion[] = ['rgv', 'laredo', 'coahuila-tx', 'el-paso', '
 // alert), the home page shows THEIR region's bridges with full
 // interactivity. This page is for curiosity, not action.
 
+interface Row {
+  port: PortWaitTime
+  name: string
+  city: string
+  level: DisplayLevel
+  // Minutes shown in the row (live wait OR historical avg). Null only
+  // when level === 'closed'.
+  minutes: number | null
+}
+
 interface Section {
   key: string
   region: string
   regionEn: string
-  ports: Array<{ port: PortWaitTime; name: string; city: string; level: WaitLevel }>
+  ports: Row[]
 }
 
-function waitLevel(minutes: number | null, isClosed: boolean): WaitLevel {
-  if (isClosed) return 'closed'
-  if (minutes == null) return 'unknown'
-  if (minutes <= 20) return 'low'
-  if (minutes <= 45) return 'medium'
-  return 'high'
+// Resolve the display state for a single port. Null return = "this port
+// has nothing useful to say right now, hide the row" — never show a
+// bare "Sin datos" / "No data" entry.
+//
+// Cascade:
+//   1. Vehicle lanes explicitly closed (CBP says 'Lanes Closed') →
+//      "Cerrado" / "Closed".
+//   2. Live wait number from the /api/ports blend (CBP, community,
+//      camera, traffic — already merged upstream) → green/yellow/red.
+//   3. Historical average for this DOW × hour → '~X min · típico'.
+//   4. Otherwise hide the port entirely.
+//
+// Note we use `vehicleClosed`, not `isClosed`. The aggregate `isClosed`
+// requires vehicle + pedestrian + commercial all to be closed, but CBP
+// often reports vehicle as 'Lanes Closed' while ped/commercial come
+// back 'N/A' (sensor not even reporting). That mismatch used to render
+// closed RGV bridges as "Sin datos" overnight — we now lean on the
+// per-lane vehicleClosed flag instead.
+function resolveDisplay(port: PortWaitTime): { level: DisplayLevel; minutes: number | null } | null {
+  if (port.vehicleClosed) return { level: 'closed', minutes: null }
+  if (port.vehicle != null) {
+    const m = port.vehicle
+    if (m <= 20) return { level: 'low', minutes: m }
+    if (m <= 45) return { level: 'medium', minutes: m }
+    return { level: 'high', minutes: m }
+  }
+  if (port.historicalVehicle != null) {
+    return { level: 'historical', minutes: port.historicalVehicle }
+  }
+  return null
 }
 
-const LEVEL_DOT: Record<WaitLevel, string> = {
-  low:     'bg-green-500',
-  medium:  'bg-yellow-500',
-  high:    'bg-red-500',
-  closed:  'bg-gray-400',
-  unknown: 'bg-gray-300 dark:bg-gray-600',
+const LEVEL_DOT: Record<DisplayLevel, string> = {
+  low:        'bg-green-500',
+  medium:     'bg-yellow-500',
+  high:       'bg-red-500',
+  closed:     'bg-gray-400',
+  historical: 'bg-gray-300 dark:bg-gray-600',
 }
 
-const LEVEL_TEXT: Record<WaitLevel, string> = {
-  low:     'text-green-700 dark:text-green-400',
-  medium:  'text-yellow-700 dark:text-yellow-400',
-  high:    'text-red-700 dark:text-red-400',
-  closed:  'text-gray-500 dark:text-gray-400',
-  unknown: 'text-gray-400 dark:text-gray-500',
+const LEVEL_TEXT: Record<DisplayLevel, string> = {
+  low:        'text-green-700 dark:text-green-400',
+  medium:     'text-yellow-700 dark:text-yellow-400',
+  high:       'text-red-700 dark:text-red-400',
+  closed:     'text-gray-500 dark:text-gray-400',
+  historical: 'text-gray-500 dark:text-gray-400',
 }
 
 export default function MapaPage() {
@@ -81,6 +122,17 @@ export default function MapaPage() {
     const byRegion = new Map<string, Section>()
     for (const port of ports) {
       const meta = getPortMeta(port.portId)
+      // Skip structurally-non-vehicle crossings (cargo-only freight
+      // bridges and pedestrian-only walking bridges). CBP never publishes
+      // a passenger-vehicle wait for these, so they used to render as
+      // "Sin datos" rows that confused users. The /todos list is now
+      // vehicle-only; pedestrian/commercial crossings are exposed in
+      // their dedicated UIs (Cruzar Insights, etc.).
+      if (meta.crossingType === 'commercial' || meta.crossingType === 'pedestrian') continue
+      const display = resolveDisplay(port)
+      // No live wait, no closed flag, no historical fallback → hide.
+      // Surfacing a row with no number is the "no data" UX we want gone.
+      if (!display) continue
       const region = MEGA_REGION_LABELS[meta.megaRegion]?.es || 'Otros'
       const regionEn = MEGA_REGION_LABELS[meta.megaRegion]?.en || 'Other'
       const name = port.localNameOverride || meta.localName || port.crossingName || port.portName
@@ -91,19 +143,20 @@ export default function MapaPage() {
         port,
         name,
         city: meta.city,
-        level: waitLevel(port.vehicle, port.isClosed),
+        level: display.level,
+        minutes: display.minutes,
       })
     }
-    // Sort inside each section: closed last, unknown second-last,
-    // live bridges first sorted by wait ascending.
+    // Sort inside each section: live bridges first by wait ascending,
+    // then historical-fallback rows, then closed at the bottom.
     for (const section of byRegion.values()) {
       section.ports.sort((a, b) => {
-        const rank = (l: WaitLevel) =>
-          l === 'closed' ? 4 : l === 'unknown' ? 3 : 0
+        const rank = (l: DisplayLevel) =>
+          l === 'closed' ? 4 : l === 'historical' ? 3 : 0
         const rankDiff = rank(a.level) - rank(b.level)
         if (rankDiff !== 0) return rankDiff
-        const av = a.port.vehicle ?? 999
-        const bv = b.port.vehicle ?? 999
+        const av = a.minutes ?? 999
+        const bv = b.minutes ?? 999
         return av - bv
       })
     }
@@ -273,12 +326,12 @@ export default function MapaPage() {
                 </span>
               </h2>
               <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                {section.ports.map(({ port, name, city, level }, i) => {
+                {section.ports.map(({ port, name, city, level, minutes }, i) => {
                   const waitLabel =
                     level === 'closed' ? (es ? 'Cerrado' : 'Closed') :
-                    level === 'unknown' ? (es ? 'Sin datos' : 'No data') :
-                    port.vehicle === 0 ? '<1 min' :
-                    `${port.vehicle} min`
+                    level === 'historical' ? (es ? `~${minutes} min · típico` : `~${minutes} min · typical`) :
+                    minutes === 0 ? '<1 min' :
+                    `${minutes} min`
                   return (
                     <div
                       key={port.portId}
