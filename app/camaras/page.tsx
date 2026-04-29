@@ -72,6 +72,7 @@ export default function CamarasPage() {
       megaRegion: MegaRegion
       lng: number
       wait: number | null
+      lane: 'vehicle' | 'commercial' | 'sentri' | 'pedestrian' | null
       isClosed: boolean
       noData: boolean
       feedIdx: number
@@ -88,6 +89,20 @@ export default function CamarasPage() {
       // Pick representative feed: prefer live video over snapshot
       const liveIdx = feeds.findIndex((f) => f.kind === 'hls' || f.kind === 'iframe' || f.kind === 'youtube')
       const repIdx = liveIdx >= 0 ? liveIdx : 0
+      // Pick the best-available wait. Some bridges (Stanton DCL,
+      // Pharr-Reynosa) close their general-vehicle lanes but stay
+      // active for SENTRI / commercial — vehicle: null then. Falling
+      // back to other lanes shows real numbers instead of 's/datos'.
+      // Lane label is rendered on the tile pill so the user knows
+      // 'this 45 min is for cargo, not GV'.
+      let wait: number | null = null
+      let lane: 'vehicle' | 'commercial' | 'sentri' | 'pedestrian' | null = null
+      if (port) {
+        if (port.vehicle != null) { wait = port.vehicle; lane = 'vehicle' }
+        else if (port.commercial != null) { wait = port.commercial; lane = 'commercial' }
+        else if (port.sentri != null) { wait = port.sentri; lane = 'sentri' }
+        else if (port.pedestrian != null) { wait = port.pedestrian; lane = 'pedestrian' }
+      }
       rows.push({
         portId,
         portName: name,
@@ -95,7 +110,8 @@ export default function CamarasPage() {
         regionLabel,
         megaRegion: meta.megaRegion,
         lng: meta.lng ?? 0,
-        wait: port?.vehicle ?? null,
+        wait,
+        lane,
         isClosed: port?.isClosed ?? false,
         noData: port?.noData ?? true,
         feedIdx: repIdx,
@@ -279,6 +295,7 @@ export default function CamarasPage() {
                                 portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
                                 regionLabel={t.regionLabel}
                                 wait={t.wait}
+                                lane={t.lane}
                                 isClosed={t.isClosed}
                                 noData={t.noData}
                                 feed={feed}
@@ -308,9 +325,11 @@ export default function CamarasPage() {
                     portName={angleNote ? `${t.portName} · ${angleNote}` : t.portName}
                     regionLabel={t.regionLabel}
                     wait={t.wait}
+                    lane={t.lane}
                     isClosed={t.isClosed}
                     noData={t.noData}
                     feed={feed}
+                    onExpand={setExpandedPort}
                   />
                 </div>
               )

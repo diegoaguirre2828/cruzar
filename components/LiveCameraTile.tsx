@@ -12,11 +12,20 @@ import { trackShare } from '@/lib/trackShare'
 import { trackEvent } from '@/lib/trackEvent'
 import { FeedPlayer } from '@/components/BridgeCameras'
 
+type Lane = 'vehicle' | 'commercial' | 'sentri' | 'pedestrian' | null
+
 interface Props {
   portId: string
   portName: string
   regionLabel: string
   wait: number | null
+  // Which CBP lane the wait number is for. When null/'vehicle' the pill
+  // renders bare; for 'commercial'/'sentri'/'pedestrian' it appends a
+  // small label so the user knows '45 min' refers to cargo, not GV.
+  // Bridges like Stanton DCL + Pharr-Reynosa close their general-vehicle
+  // lanes but stay active for commercial / SENTRI — the page falls back
+  // to those waits instead of showing 's/datos'.
+  lane?: Lane
   isClosed: boolean
   noData: boolean
   feed: CameraFeed
@@ -64,7 +73,7 @@ function Polled({ src, alt, intervalMs = 15000 }: { src: string; alt: string; in
   )
 }
 
-export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, noData, feed, onExpand }: Props) {
+export function LiveCameraTile({ portId, portName, regionLabel, wait, lane = 'vehicle', isClosed, noData, feed, onExpand }: Props) {
   const tone = levelTone(wait, isClosed)
   const { tier } = useTier()
   const { user } = useAuth()
@@ -277,6 +286,14 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
           </button>
           <div className={`rounded-full border px-2.5 py-1 text-xs font-bold tabular-nums bg-black/75 backdrop-blur-sm shadow-lg ${tone.text} ${tone.border}`}>
             {tone.label}
+            {wait != null && !isClosed && lane && lane !== 'vehicle' && (
+              <span className="ml-1 text-[9px] font-bold uppercase tracking-wider opacity-80">
+                {lane === 'commercial' ? (es ? 'carga' : 'cargo')
+                  : lane === 'sentri' ? 'SENTRI'
+                  : lane === 'pedestrian' ? (es ? 'peat.' : 'ped.')
+                  : ''}
+              </span>
+            )}
           </div>
         </div>
         {alertState === 'done' && (
