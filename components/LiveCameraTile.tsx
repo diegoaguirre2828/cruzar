@@ -1,17 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, BellRing, Camera, Lock, Share2, Check } from 'lucide-react'
+import { Bell, BellRing, Camera, Lock, Share2, Check, Maximize2 } from 'lucide-react'
 import type { CameraFeed } from '@/lib/bridgeCameras'
-import { isProFeed } from '@/lib/bridgeCameras'
 import { slugForPort } from '@/lib/portSlug'
 import { useTier } from '@/lib/useTier'
 import { useAuth } from '@/lib/useAuth'
 import { useLang } from '@/lib/LangContext'
 import { trackShare } from '@/lib/trackShare'
 import { trackEvent } from '@/lib/trackEvent'
+import { FeedPlayer } from '@/components/BridgeCameras'
 
 interface Props {
   portId: string
@@ -21,6 +20,10 @@ interface Props {
   isClosed: boolean
   noData: boolean
   feed: CameraFeed
+  // When provided, clicking the tile opens the in-page lightbox instead
+  // of navigating to /cruzar/{slug}. Used by /camaras to keep users on
+  // the grid while letting them enlarge a tile + cycle angles.
+  onExpand?: (portId: string) => void
 }
 
 function levelTone(mins: number | null, isClosed: boolean): { text: string; border: string; label: string } {
@@ -61,7 +64,7 @@ function Polled({ src, alt, intervalMs = 15000 }: { src: string; alt: string; in
   )
 }
 
-export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, noData, feed }: Props) {
+export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, noData, feed, onExpand }: Props) {
   const tone = levelTone(wait, isClosed)
   const { tier } = useTier()
   const { user } = useAuth()
@@ -69,10 +72,33 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
   const router = useRouter()
   const es = lang === 'es'
   const isPaid = tier === 'pro' || tier === 'business'
-  const isProPort = isProFeed(feed)
-  const showProLock = isProPort && !isPaid
+  // 2026-04-28: /camaras locked to Pro per Diego's pick. Free users see
+  // a teaser tile (bridge name + region + wait time + locked-camera
+  // overlay) instead of the live feed. Removes the "why is Laredo free
+  // but Eagle Pass Pro?" inconsistency by gating the page wholesale.
+  const showProLock = !isPaid
   const [shareLabel, setShareLabel] = useState<'idle' | 'done'>('idle')
   const [alertState, setAlertState] = useState<'idle' | 'saving' | 'done' | 'exists'>('idle')
+  // Lazy-mount the live feed only when the tile scrolls into view.
+  // Without this, every HLS / iframe / YouTube tile on the grid loads
+  // simultaneously, which crushes mobile and burns publishers' bandwidth
+  // for a stream the user never looks at. rootMargin lets us pre-mount
+  // ~half a screen before viewport so the feed is ready by the time the
+  // user actually sees it. We mount once and KEEP mounted (vs unmount
+  // on scroll-out) to avoid HLS buffer thrash.
+  const tileRef = useRef<HTMLDivElement>(null)
+  const [inView, setInView] = useState(false)
+  useEffect(() => {
+    if (!tileRef.current || inView) return
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setInView(true)
+        obs.disconnect()
+      }
+    }, { rootMargin: '400px 0px' })
+    obs.observe(tileRef.current)
+    return () => obs.disconnect()
+  }, [inView])
 
   async function handleAlert(e: React.MouseEvent) {
     e.preventDefault()
@@ -145,39 +171,75 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
     setTimeout(() => setShareLabel('idle'), 2500)
   }
 
+  // Frame variants:
+  //   - Free user (showProLock): locked teaser. Camera area is dark with
+  //     a centered Pro lock + caption. Click anywhere on the tile bumps
+  //     the user into /signup. No upstream feed loads — saves both
+  //     bandwidth and publisher load for users who can't view it anyway.
+  //   - Paid user + image: <Polled> (existing behavior, unchanged).
+  //   - Paid user + youtube/hls/iframe: <FeedPlayer> from BridgeCameras —
+  //     the same renderer the detail page uses. Only mounts when the
+  //     tile is in view (see IntersectionObserver above). Replaces the
+  //     stub placeholder that left every HLS/iframe tile blank on /camaras.
   const Frame = () => {
-    if (feed.kind === 'image') return <Polled src={feed.src} alt={`${portName} cámara`} />
-    if (feed.kind === 'youtube') {
+    if (showProLock) {
       return (
-        <iframe
-          src={`https://www.youtube.com/embed/${feed.src}?autoplay=1&mute=1&rel=0&modestbranding=1`}
-          className="w-full h-full"
-          allow="autoplay; encrypted-media"
-          loading="lazy"
-          title={`${portName} cámara`}
-        />
-      )
-    }
-    if (feed.kind === 'hls' || feed.kind === 'iframe') {
-      // HLS + iframe live players are heavy to render N times on one
-      // grid page. Show a placeholder tile; the real live view renders
-      // on the port detail page.
-      return (
-        <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-          <Camera className="w-8 h-8 text-white/30" />
+        <div className="w-full h-full bg-gradient-to-br from-gray-900 via-gray-950 to-black flex flex-col items-center justify-center gap-2 text-center px-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+            <Lock className="w-4 h-4 text-white" />
+          </div>
+          <div className="text-[11px] font-black uppercase tracking-widest text-amber-300/90">
+            {es ? 'Cámara en vivo · Pro' : 'Live camera · Pro'}
+          </div>
+          <div className="text-[10px] text-white/50 leading-snug max-w-[200px]">
+            {es ? 'Toca para desbloquear con 3 meses gratis al instalar la app' : 'Tap to unlock — 3 months free when you install'}
+          </div>
         </div>
       )
     }
-    return null
+    if (feed.kind === 'image') return <Polled src={feed.src} alt={`${portName} cámara`} />
+    if (!inView) {
+      return (
+        <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+          <Camera className="w-7 h-7 text-white/20" />
+        </div>
+      )
+    }
+    return <FeedPlayer feed={feed} portName={portName} />
+  }
+
+  // Tile click — free → /signup paywall; Pro → expand lightbox if the
+  // page provides one, else fall back to the port detail page. Keeps
+  // /camaras users in-page when the host page wires onExpand.
+  function handleTileClick(e: React.MouseEvent) {
+    if (showProLock) {
+      e.preventDefault()
+      router.push(`/signup?next=${encodeURIComponent('/camaras')}`)
+      return
+    }
+    if (onExpand) {
+      e.preventDefault()
+      onExpand(portId)
+    }
   }
 
   return (
-    <Link
+    <a
+      ref={tileRef as unknown as React.RefObject<HTMLAnchorElement>}
       href={`/cruzar/${slugForPort(portId)}`}
-      className="group relative block rounded-2xl overflow-hidden border border-white/10 bg-gray-900 hover:border-white/25 transition-colors"
+      onClick={handleTileClick}
+      className="group relative block rounded-2xl overflow-hidden border border-white/10 bg-gray-900 hover:border-white/25 transition-colors cursor-pointer"
     >
       <div className="relative aspect-video w-full bg-black">
         <Frame />
+        {/* Maximize hint — only shown to paid users since free clicks
+            redirect to signup; the lightbox affordance is for Pro. */}
+        {!showProLock && onExpand && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 bg-black/55 backdrop-blur-sm rounded-full px-2 py-0.5 text-[10px] font-semibold text-white/80 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <Maximize2 className="w-2.5 h-2.5" />
+            {es ? 'Toca para ampliar + cambiar ángulo' : 'Tap to enlarge + switch angle'}
+          </div>
+        )}
         <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm rounded-full px-2 py-0.5 text-[10px] font-bold text-white">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
@@ -223,12 +285,6 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
             {es ? 'Alerta creada' : 'Alert created'}
           </div>
         )}
-        {showProLock && (
-          <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 bg-gradient-to-r from-amber-500/90 to-orange-600/90 text-white rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shadow-lg">
-            <Lock className="w-2.5 h-2.5" />
-            Pro
-          </div>
-        )}
       </div>
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
@@ -249,6 +305,6 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, isClosed, 
           <div className="mt-2 text-[10px] text-white/35 truncate">Fuente: {feed.credit}</div>
         )}
       </div>
-    </Link>
+    </a>
   )
 }

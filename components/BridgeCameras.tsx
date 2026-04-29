@@ -123,8 +123,9 @@ function HlsVideo({ src, title }: { src: string; title: string }) {
 
 // Renders a single feed inside the camera card. Used for both Pro
 // state (full clarity) and — indirectly — for the blurred teaser
-// when the feed happens to be kind:'image'.
-function FeedPlayer({ feed, portName }: { feed: CameraFeed; portName: string }) {
+// when the feed happens to be kind:'image'. Exported so the /camaras
+// grid + lightbox can reuse the same iframe/HLS/YouTube/image logic.
+export function FeedPlayer({ feed, portName }: { feed: CameraFeed; portName: string }) {
   if (feed.kind === 'iframe') {
     return (
       <iframe

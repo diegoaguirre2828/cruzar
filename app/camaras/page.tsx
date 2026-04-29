@@ -14,6 +14,7 @@ import { getPortMeta } from '@/lib/portMeta'
 import { MEGA_REGION_LABELS } from '@/lib/useHomeRegion'
 import { BRIDGE_CAMERAS } from '@/lib/bridgeCameras'
 import { LiveCameraTile } from '@/components/LiveCameraTile'
+import { CameraLightbox } from '@/components/CameraLightbox'
 import { StickyCamarasCta } from '@/components/StickyCamarasCta'
 import { CamarasStickyInstallCta } from '@/components/CamarasStickyInstallCta'
 import { ProTabSwitcher } from '@/components/ProTabSwitcher'
@@ -29,6 +30,10 @@ export default function CamarasPage() {
   const es = lang === 'es'
   const { ports, loading } = usePorts()
   const [filter, setFilter] = useState<MegaRegion | 'all'>('all')
+  // Lightbox-expanded port. Click on a tile (Pro user) opens this; ESC,
+  // backdrop click, or X closes. Lets users cycle camera angles for one
+  // port without leaving /camaras.
+  const [expandedPort, setExpandedPort] = useState<string | null>(null)
   const isPaid = tier === 'pro' || tier === 'business'
   // Hide the install-Pro hero for already-installed users — they've
   // already claimed (or will auto-claim) the 3-month grant. Also hide
@@ -169,8 +174,8 @@ export default function CamarasPage() {
                 </p>
                 <p className="text-sm sm:text-base font-bold text-white leading-tight mt-1">
                   {es
-                    ? 'Las cámaras en vivo son gratis. Las alertas push cuando baje tu puente son Pro. Instala Cruzar y desbloquea los dos por 90 días.'
-                    : 'Live cameras here are free. Push alerts when your bridge clears are Pro. Install Cruzar to unlock both for 90 days.'}
+                    ? 'Las cámaras en vivo + alertas push cuando baje tu puente son Pro. Instala Cruzar y desbloquea todo por 90 días — gratis.'
+                    : 'Live cameras + push alerts when your bridge clears are Pro. Install Cruzar to unlock everything for 90 days — free.'}
                 </p>
               </div>
               <span className="flex-shrink-0 text-white text-lg font-black group-hover:translate-x-0.5 transition-transform">→</span>
@@ -277,6 +282,7 @@ export default function CamarasPage() {
                                 isClosed={t.isClosed}
                                 noData={t.noData}
                                 feed={feed}
+                                onExpand={setExpandedPort}
                               />
                             </div>
                           )
@@ -337,6 +343,7 @@ export default function CamarasPage() {
       </div>
       <CamarasStickyInstallCta />
       <StickyCamarasCta />
+      <CameraLightbox portId={expandedPort} onClose={() => setExpandedPort(null)} />
     </main>
   )
 }
