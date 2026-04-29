@@ -59,7 +59,7 @@ export function ConversionRibbon() {
       setState({
         show: true,
         variant: 'guest',
-        href: '/signup',
+        href: '/signup?source=home_ribbon&next=%2F',
         titleEs: 'Alertas + cámaras + favoritos cuando creas cuenta',
         titleEn: 'Alerts + cameras + favorites when you make an account',
         ctaEs: 'Gratis →',

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { PortCard } from './PortCard'
+import { GuestInlineSignupCta } from './GuestInlineSignupCta'
 import type { PortSignal } from './PortCard'
 import { saveCachedPorts, loadCachedPorts } from '@/lib/portCache'
 import type { PortWaitTime } from '@/types'
@@ -575,7 +576,7 @@ export function PortList() {
           })()}
 
           <div className="space-y-7">
-            {Object.entries(grouped).map(([region, regionPorts]) => (
+            {Object.entries(grouped).map(([region, regionPorts], regionIdx) => (
               <div key={region}>
                 <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-1">
                   {region === 'Other' ? (lang === 'es' ? 'Otros' : 'Other') : region}
@@ -585,6 +586,17 @@ export function PortList() {
                     <PortCard key={`${port.portId}-${port.crossingName}`} port={port} signal={signals[port.portId]} />
                   ))}
                 </div>
+                {/* Inline signup CTA for guests, slotted after the
+                    FIRST region. By that point the user has seen
+                    ~3-12 bridges and has demonstrated intent. The
+                    CTA returns null for signed-in users, so it's
+                    invisible to free + Pro tiers. Tagged with
+                    ?source=home_inline for funnel attribution. */}
+                {regionIdx === 0 && (
+                  <div className="mt-5">
+                    <GuestInlineSignupCta />
+                  </div>
+                )}
               </div>
             ))}
           </div>

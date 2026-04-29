@@ -56,6 +56,7 @@ import { useAuth } from '@/lib/useAuth'
 import { useSessionPing } from '@/lib/useSessionPing'
 import { PwaFirstLaunchWelcome } from '@/components/PwaFirstLaunchWelcome'
 import { SocialProofStrip } from '@/components/SocialProofStrip'
+import { GuestBottomCta } from '@/components/GuestBottomCta'
 import { armNudge } from '@/lib/useNudge'
 import { trackEvent } from '@/lib/trackEvent'
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout'
@@ -427,7 +428,7 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
             },
           ]}
         />
-        <Link href="/signup" className="block mt-3">
+        <Link href="/signup?source=home_mi_puente_guest&next=%2F" className="block mt-3">
           <div className="cruzar-press cruzar-shimmer cruzar-rise bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-bold text-white">
@@ -475,6 +476,12 @@ export function HomeClient({ initialPorts, initialReports }: Props) {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <PwaFirstLaunchWelcome />
+      {/* Persistent bottom signup CTA for guests — added 2026-04-29
+          after Vercel Analytics showed only 91/288 home visitors
+          clicking through to /signup. Top ConversionRibbon was the
+          only above-fold CTA; this one survives scroll. Tagged with
+          ?source=home_bottom_strip for funnel attribution. */}
+      <GuestBottomCta />
       <div className="max-w-lg mx-auto px-4 pb-10">
         {/* Sticky app-shell header. Top row (logo + wordmark + nav) is
             always shown. Expandable middle carries the region picker,

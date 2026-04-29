@@ -103,8 +103,23 @@ export default function SignupPage() {
     }
   }, [])
 
-  // Track page view on mount
-  useState(() => { trackFunnel('signup_page_view') })
+  // Track page view on mount with source attribution. Source comes
+  // from the ?source=<cta_id> URL param that every home/camaras CTA
+  // appends — lets us see WHICH CTA each /signup view came from in
+  // Vercel Analytics + PostHog. Also fires via trackEvent for the
+  // Vercel Analytics dashboard surface (trackFunnel only writes to
+  // /api/funnel, which doesn't show up in Vercel's UI).
+  useState(() => {
+    const source = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('source') || 'unknown'
+      : 'unknown'
+    trackFunnel('signup_page_view', { source })
+    if (typeof window !== 'undefined') {
+      import('@/lib/trackEvent').then(({ trackEvent }) => {
+        trackEvent('signup_viewed', { source })
+      }).catch(() => { /* ignore */ })
+    }
+  })
 
   // iOS Safari persona flag — swap the hero subheadline to a
   // persona-specific version for iPhone Safari users so they know
