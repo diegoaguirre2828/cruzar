@@ -62,8 +62,10 @@ export default function CamarasPage() {
     const rows: Array<{
       portId: string
       portName: string
+      city: string
       regionLabel: string
       megaRegion: MegaRegion
+      lng: number
       wait: number | null
       isClosed: boolean
       noData: boolean
@@ -84,8 +86,10 @@ export default function CamarasPage() {
       rows.push({
         portId,
         portName: name,
+        city: meta.city || '',
         regionLabel,
         megaRegion: meta.megaRegion,
+        lng: meta.lng ?? 0,
         wait: port?.vehicle ?? null,
         isClosed: port?.isClosed ?? false,
         noData: port?.noData ?? true,
@@ -93,15 +97,17 @@ export default function CamarasPage() {
         angleCount: feeds.length,
       })
     }
-    // Sort by region order first, then by wait within each region.
+    // Sort by region order first (matches the megaRegion grouping in the
+    // header), then west → east by longitude (ascending lng) within each
+    // region. Was wait-asc, but wait times shuffle every 15 min — users
+    // could never find a specific bridge twice in a row. Geographic order
+    // is stable AND matches the natural mental map.
     const regionRank = (r: MegaRegion) => REGION_ORDER.indexOf(r)
     rows.sort((a, b) => {
       const ra = regionRank(a.megaRegion)
       const rb = regionRank(b.megaRegion)
       if (ra !== rb) return ra - rb
-      const waitA = a.isClosed ? 999 : a.wait ?? 998
-      const waitB = b.isClosed ? 999 : b.wait ?? 998
-      return waitA - waitB
+      return a.lng - b.lng
     })
     return rows
   }, [ports, es])

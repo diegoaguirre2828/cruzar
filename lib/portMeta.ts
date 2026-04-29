@@ -93,7 +93,7 @@ export const PORT_META: Record<string, PortMeta> = {
   '230302': { city: 'Eagle Pass', region: R_EAGLE_PASS, megaRegion: 'coahuila-tx', lat: 28.7150, lng: -100.5010, localName: 'Bridge II (Camino Real)' },
 
   // ── Cd. Acuña ↔ Del Rio ──────────────────────────────────
-  '230201': { city: 'Del Rio', region: R_DEL_RIO, megaRegion: 'coahuila-tx', lat: 29.3627, lng: -100.8974 },
+  '230201': { city: 'Del Rio', region: R_DEL_RIO, megaRegion: 'coahuila-tx', lat: 29.3627, lng: -100.8974, localName: 'Del Rio – Cd. Acuña International' },
 
   // ── Cd. Juárez ↔ El Paso ─────────────────────────────────
   // Verified against CBP crossing_name field 2026-04-12. Note that CBP has
