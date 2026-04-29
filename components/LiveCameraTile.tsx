@@ -115,7 +115,7 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, vehicleClo
     // Guest / free users: route to signup — alerts are Pro-only. Takes them
     // through the signup → welcome → 3-months-Pro funnel then back to /camaras.
     if (!user || !isPaid) {
-      router.push(`/signup?next=${encodeURIComponent('/camaras')}`)
+      router.push(`/signup?source=camaras_alert&next=${encodeURIComponent('/camaras')}`)
       return
     }
     if (alertState !== 'idle') return
@@ -223,7 +223,7 @@ export function LiveCameraTile({ portId, portName, regionLabel, wait, vehicleClo
   function handleTileClick(e: React.MouseEvent) {
     if (showProLock) {
       e.preventDefault()
-      router.push(`/signup?next=${encodeURIComponent('/camaras')}`)
+      router.push(`/signup?source=camaras_lock&next=${encodeURIComponent('/camaras')}`)
       return
     }
     if (onExpand) {

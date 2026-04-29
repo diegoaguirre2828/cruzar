@@ -3,14 +3,12 @@
 // regardless of the chrome language — border-crossing FB group
 // culture is 99% Spanish.
 //
-// ─── IMPORTANT: no links in template text ────────────────────────
+// ─── App-name rule ──────────────────────────────────────────────
 //
-// Facebook group admins reject posts that contain URLs, especially
-// short/ref links. Every template here uses the phrasing
-// "cruzar punto app en tu navegador" (or similar) so users read
-// the app name, type it manually, and the post survives admin
-// review. This costs us per-template ref attribution but the
-// trade-off is acceptance — zero rejected posts > perfect tracking.
+// Templates use the literal "cruzar.app" form (Diego switched from
+// the verbal "cruzar punto app" spelling 2026-04-29). FB group
+// admins still reject deep-link URLs, so don't add any other URLs
+// (https://, /signup, etc.) — just the bare app name.
 //
 // ─── Tone rules ──────────────────────────────────────────────────
 //
@@ -18,7 +16,7 @@
 //   - "ahorita", "chequen", "chance", local register
 //   - Never markety language ("revolutionary", "game-changer")
 //   - Short — people scroll past anything longer than 4 lines
-//   - NO URLs, ever — phrase as "busca cruzar punto app"
+//   - NO URLs, ever — phrase as "busca cruzar.app"
 //   - Emojis sparingly
 //
 // ─── Categories ──────────────────────────────────────────────────
@@ -65,7 +63,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'morning',
     label: '¿Quién va pa\' el puente?',
     labelEn: "Who's going to the bridge?",
-    text: 'Buenos días raza. ¿Quién va pa\' el puente hoy? Yo siempre chequeo los tiempos antes de salir. Busca "cruzar punto app" en tu navegador — sale al instante, en vivo y gratis.',
+    text: 'Buenos días raza. ¿Quién va pa\' el puente hoy? Yo siempre chequeo los tiempos antes de salir. Busca "cruzar.app" en tu navegador — sale al instante, en vivo y gratis.',
     translationEn: 'Morning everyone. Who\'s heading to the bridge today? I always check the wait times before I leave. Search "cruzar dot app" in your browser — shows instantly, live and free.',
   },
   {
@@ -73,7 +71,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'morning',
     label: 'Pa\' los madrugadores',
     labelEn: 'For early risers',
-    text: 'Para los que cruzan temprano — hay una app que muestra los tiempos en vivo de todos los puentes, se actualiza solita. Entra a cruzar punto app en tu navegador, es gratis.',
+    text: 'Para los que cruzan temprano — hay una app que muestra los tiempos en vivo de todos los puentes, se actualiza solita. Entra a cruzar.app en tu navegador, es gratis.',
     translationEn: 'For the early crossers — there\'s an app that shows live wait times for every bridge, updates automatically. Go to cruzar dot app in your browser, it\'s free.',
   },
   {
@@ -81,7 +79,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'morning',
     label: 'Antes de salir',
     labelEn: 'Before you leave',
-    text: 'Antes de salir de la casa, chequen cómo anda el puente. Busca cruzar punto app — muestra el número al instante, sin tener que buscarle en los grupos.',
+    text: 'Antes de salir de la casa, chequen cómo anda el puente. Busca cruzar.app — muestra el número al instante, sin tener que buscarle en los grupos.',
     translationEn: 'Before you leave the house, check how the bridge is looking. Search cruzar dot app — shows the number instantly, without digging through groups.',
   },
 
@@ -91,7 +89,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'midday',
     label: 'Tiempos ahorita',
     labelEn: 'Wait times right now',
-    text: '¿Cómo anda el puente ahorita? Hay una app gratis que te lo dice en vivo — es más rápido que andar buscando en los grupos. Se llama cruzar, entra a cruzar punto app.',
+    text: '¿Cómo anda el puente ahorita? Hay una app gratis que te lo dice en vivo — es más rápido que andar buscando en los grupos. Se llama cruzar, entra a cruzar.app.',
     translationEn: 'How\'s the bridge looking right now? There\'s a free app that tells you live — faster than scrolling through groups. It\'s called cruzar, go to cruzar dot app.',
   },
   {
@@ -99,7 +97,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'midday',
     label: 'No pierdas la tarde',
     labelEn: "Don't waste your afternoon",
-    text: 'Si van a cruzar esta tarde, chequen primero los tiempos. Yo uso cruzar punto app y me ha ahorrado horas — compara todos los puentes al mismo tiempo pa\' que sepas cuál está más fluido.',
+    text: 'Si van a cruzar esta tarde, chequen primero los tiempos. Yo uso cruzar.app y me ha ahorrado horas — compara todos los puentes al mismo tiempo pa\' que sepas cuál está más fluido.',
     translationEn: 'If you\'re crossing this afternoon, check the wait times first. I use cruzar dot app and it\'s saved me hours — compares every bridge at once so you know which is moving best.',
   },
 
@@ -109,7 +107,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'afternoon',
     label: 'Salida escuela / trabajo',
     labelEn: 'School / work end',
-    text: 'A esta hora se pone pesado el puente. Si no quieren esperar de más, hay una app gratis que te muestra los tiempos en vivo — entra a cruzar punto app en tu navegador.',
+    text: 'A esta hora se pone pesado el puente. Si no quieren esperar de más, hay una app gratis que te muestra los tiempos en vivo — entra a cruzar.app en tu navegador.',
     translationEn: 'The bridge gets heavy around this hour. If you don\'t want to wait extra, there\'s a free app that shows you live wait times — go to cruzar dot app in your browser.',
   },
   {
@@ -117,7 +115,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'afternoon',
     label: 'Tiempos de la tarde',
     labelEn: 'Afternoon times',
-    text: 'Tiempos de puentes en vivo para la tarde — entra a cruzar punto app en tu navegador. Muestra todos los puentes de la frontera, no nomás uno. Es gratis.',
+    text: 'Tiempos de puentes en vivo para la tarde — entra a cruzar.app en tu navegador. Muestra todos los puentes de la frontera, no nomás uno. Es gratis.',
     translationEn: 'Live bridge wait times for the afternoon — go to cruzar dot app in your browser. Shows every bridge on the border, not just one. Free.',
   },
 
@@ -127,7 +125,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'evening',
     label: 'Cruzando en la noche',
     labelEn: 'Crossing at night',
-    text: '¿Van a cruzar de noche? Chequen primero los tiempos en cruzar punto app pa\' que no se sorprendan. A esta hora el puente cambia rápido y vale la pena saber.',
+    text: '¿Van a cruzar de noche? Chequen primero los tiempos en cruzar.app pa\' que no se sorprendan. A esta hora el puente cambia rápido y vale la pena saber.',
     translationEn: 'Crossing at night? Check the wait times first at cruzar dot app so nothing catches you off guard. The bridge changes fast at this hour and it\'s worth knowing.',
   },
   {
@@ -135,7 +133,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'evening',
     label: 'Espera nocturna',
     labelEn: 'Night wait',
-    text: 'Hay una app que te avisa cuando baja la espera de tu puente, incluso de noche. Entra a cruzar punto app en tu navegador, es gratis.',
+    text: 'Hay una app que te avisa cuando baja la espera de tu puente, incluso de noche. Entra a cruzar.app en tu navegador, es gratis.',
     translationEn: 'There\'s an app that alerts you when the wait at your bridge drops, even at night. Go to cruzar dot app in your browser, it\'s free.',
   },
 
@@ -145,7 +143,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'heads_up',
     label: 'Aviso general',
     labelEn: 'General heads up',
-    text: 'OJO raza — si van a cruzar, chequen primero los tiempos en vivo. Hay una app gratis llamada cruzar, entra a cruzar punto app en tu navegador y sabes al instante cuál puente está más fluido.',
+    text: 'OJO raza — si van a cruzar, chequen primero los tiempos en vivo. Hay una app gratis llamada cruzar, entra a cruzar.app en tu navegador y sabes al instante cuál puente está más fluido.',
     translationEn: 'Heads up everyone — if you\'re crossing, check the live wait times first. There\'s a free app called cruzar, go to cruzar dot app in your browser and you\'ll instantly know which bridge is moving best.',
   },
   {
@@ -153,7 +151,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'heads_up',
     label: 'Clima / lluvia',
     labelEn: 'Weather / rain',
-    text: 'Con la lluvia el puente se pone lento. Chequen cruzar punto app antes de salir — muestra los tiempos en vivo y los reportes de la gente en la fila.',
+    text: 'Con la lluvia el puente se pone lento. Chequen cruzar.app antes de salir — muestra los tiempos en vivo y los reportes de la gente en la fila.',
     translationEn: 'The bridge slows way down in the rain. Check cruzar dot app before leaving — shows live wait times and reports from people already in line.',
   },
   {
@@ -161,7 +159,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'heads_up',
     label: 'Fin de semana',
     labelEn: 'Weekend',
-    text: 'Este finde se pone pesado el puente. Pa\' los que van a cruzar, chequen los tiempos en cruzar punto app — te ayuda a escoger la mejor hora.',
+    text: 'Este finde se pone pesado el puente. Pa\' los que van a cruzar, chequen los tiempos en cruzar.app — te ayuda a escoger la mejor hora.',
     translationEn: 'The bridge gets heavy this weekend. For anyone crossing, check the wait times at cruzar dot app — helps you pick the best hour.',
   },
   {
@@ -169,7 +167,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'heads_up',
     label: 'Fila larga (commiseration)',
     labelEn: 'Long line reply',
-    text: 'Qué fila más pesada 😩. La próxima vez, antes de salir de casa, entra a cruzar punto app y chequea los tiempos — muestra todos los puentes al instante. ¿Cuántas horas de tu vida piensas seguir esperando así?',
+    text: 'Qué fila más pesada 😩. La próxima vez, antes de salir de casa, entra a cruzar.app y chequea los tiempos — muestra todos los puentes al instante. ¿Cuántas horas de tu vida piensas seguir esperando así?',
     translationEn: 'That\'s a brutal line 😩. Next time, before you leave home, go to cruzar dot app and check the wait times — shows every bridge instantly. How many hours of your life are you willing to keep spending like this?',
   },
 
@@ -179,7 +177,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'tip',
     label: 'SENTRI',
     labelEn: 'SENTRI',
-    text: 'Un consejo: SENTRI te puede ahorrar hasta 2 horas en días pesados. En cruzar punto app pueden ver los tiempos en vivo de SENTRI vs filas normales pa\' saber cuándo vale la pena.',
+    text: 'Un consejo: SENTRI te puede ahorrar hasta 2 horas en días pesados. En cruzar.app pueden ver los tiempos en vivo de SENTRI vs filas normales pa\' saber cuándo vale la pena.',
     translationEn: 'Tip: SENTRI can save you up to 2 hours on heavy days. On cruzar dot app you can see live times for SENTRI vs regular lanes to know when it\'s worth it.',
   },
   {
@@ -195,7 +193,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'tip',
     label: 'Compara puentes',
     labelEn: 'Compare bridges',
-    text: 'Cuando un puente está pesado, otros a veces están fluidos. En cruzar punto app los pueden comparar todos al mismo tiempo, no nomás uno. Te ahorra andar probando.',
+    text: 'Cuando un puente está pesado, otros a veces están fluidos. En cruzar.app los pueden comparar todos al mismo tiempo, no nomás uno. Te ahorra andar probando.',
     translationEn: 'When one bridge is heavy, others are sometimes flowing. On cruzar dot app you can compare them all at the same time, not just one. Saves you from trying each one.',
   },
   {
@@ -213,7 +211,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'ask',
     label: '"¿Cómo anda el puente?"',
     labelEn: '"How\'s the bridge?"',
-    text: 'En cruzar punto app sale en vivo, no tienes que esperar a que alguien conteste. Muestra todos los puentes al instante. Es gratis.',
+    text: 'En cruzar.app sale en vivo, no tienes que esperar a que alguien conteste. Muestra todos los puentes al instante. Es gratis.',
     translationEn: 'It\'s on cruzar dot app live, you don\'t have to wait for someone to answer. Shows every bridge instantly. Free.',
   },
   {
@@ -221,7 +219,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'ask',
     label: '"¿Cuál puente está mejor?"',
     labelEn: '"Which bridge is best?"',
-    text: 'En cruzar punto app los puedes comparar todos al mismo tiempo. Se actualiza cada pocos minutos y tiene reportes de la gente que ya cruzó.',
+    text: 'En cruzar.app los puedes comparar todos al mismo tiempo. Se actualiza cada pocos minutos y tiene reportes de la gente que ya cruzó.',
     translationEn: 'On cruzar dot app you can compare all of them at once. Updates every few minutes and has reports from people who already crossed.',
   },
   {
@@ -237,7 +235,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'ask',
     label: '"¿Dónde hay mejor cambio?"',
     labelEn: '"Where\'s the best exchange?"',
-    text: 'En cruzar punto app tienen una lista de casas de cambio con los reportes de la gente sobre las mejores tasas. Gratis y se actualiza con los reportes de la comunidad.',
+    text: 'En cruzar.app tienen una lista de casas de cambio con los reportes de la gente sobre las mejores tasas. Gratis y se actualiza con los reportes de la comunidad.',
     translationEn: 'On cruzar dot app they have a list of casas de cambio with people\'s reports on the best rates. Free and updates with community reports.',
   },
   {
@@ -245,7 +243,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'ask',
     label: '"¿A qué hora bajan los tiempos?"',
     labelEn: '"When do wait times drop?"',
-    text: 'En cruzar punto app hay una gráfica de patrones por hora pa\' cada puente. Te muestra cuándo suelen bajar los tiempos basado en los datos de las semanas pasadas. Así planeas tu cruce con cabeza.',
+    text: 'En cruzar.app hay una gráfica de patrones por hora pa\' cada puente. Te muestra cuándo suelen bajar los tiempos basado en los datos de las semanas pasadas. Así planeas tu cruce con cabeza.',
     translationEn: 'On cruzar dot app there\'s an hourly pattern chart for each bridge. Shows you when wait times usually drop based on data from past weeks. That way you plan your crossing smart.',
   },
   {
@@ -253,7 +251,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'ask',
     label: 'Recomendación educada',
     labelEn: 'Educated recommendation',
-    text: 'Sin ofender, pero ya hay una app gratis que muestra todo esto en vivo. Se llama cruzar — entra a cruzar punto app en tu navegador. Es más rápido que esperar a que alguien conteste en el grupo.',
+    text: 'Sin ofender, pero ya hay una app gratis que muestra todo esto en vivo. Se llama cruzar — entra a cruzar.app en tu navegador. Es más rápido que esperar a que alguien conteste en el grupo.',
     translationEn: 'No offense, but there\'s already a free app that shows all this live. It\'s called cruzar — go to cruzar dot app in your browser. Faster than waiting for someone to reply in the group.',
   },
 
@@ -263,7 +261,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'evergreen',
     label: 'Presentación general',
     labelEn: 'General intro',
-    text: 'Raza, les paso el dato: hay una app que muestra los tiempos de todos los puentes EN VIVO, gratis. Se llama cruzar — entra a cruzar punto app en tu navegador. Les va a servir mucho si cruzan seguido.',
+    text: 'Raza, les paso el dato: hay una app que muestra los tiempos de todos los puentes EN VIVO, gratis. Se llama cruzar — entra a cruzar.app en tu navegador. Les va a servir mucho si cruzan seguido.',
     translationEn: 'Everyone, here\'s the tip: there\'s an app that shows LIVE wait times for every bridge, free. It\'s called cruzar — go to cruzar dot app in your browser. It\'ll help you a lot if you cross often.',
   },
   {
@@ -271,7 +269,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'evergreen',
     label: 'Recomendación personal',
     labelEn: 'Personal recommendation',
-    text: 'Yo ya la uso y me ha ahorrado mucho tiempo. Se llama cruzar, entra a cruzar punto app en tu navegador. Muestra todos los puentes en vivo, tiene alertas, y es totalmente gratis. La comparto por si a alguien más le sirve.',
+    text: 'Yo ya la uso y me ha ahorrado mucho tiempo. Se llama cruzar, entra a cruzar.app en tu navegador. Muestra todos los puentes en vivo, tiene alertas, y es totalmente gratis. La comparto por si a alguien más le sirve.',
     translationEn: 'I already use it and it\'s saved me a lot of time. It\'s called cruzar, go to cruzar dot app in your browser. Shows every bridge live, has alerts, and it\'s completely free. Sharing in case it helps someone else.',
   },
   {
@@ -279,7 +277,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'evergreen',
     label: 'Notificaciones',
     labelEn: 'Notifications',
-    text: 'Lo mejor de cruzar punto app es que te puede avisar cuando baja la espera de tu puente. Ya no tienes que andar chequeando cada rato. Es gratis, pruébenlo.',
+    text: 'Lo mejor de cruzar.app es que te puede avisar cuando baja la espera de tu puente. Ya no tienes que andar chequeando cada rato. Es gratis, pruébenlo.',
     translationEn: 'The best part of cruzar dot app is that it can alert you when the wait at your bridge drops. No more checking every few minutes. It\'s free, try it.',
   },
 
@@ -321,7 +319,7 @@ export const PROMOTER_TEMPLATES: ContentTemplate[] = [
     category: 'page_follow',
     label: 'Doble recomendación',
     labelEn: 'Double recommendation',
-    text: 'Dos cosas que les van a servir si cruzan seguido:\n\n1️⃣ La app: entra a cruzar punto app en tu navegador — tiempos en vivo de todos los puentes\n2️⃣ La página de FB "Cruzar - Tiempos de Puentes" — notificaciones cuatro veces al día\n\nLas dos son gratis.',
+    text: 'Dos cosas que les van a servir si cruzan seguido:\n\n1️⃣ La app: entra a cruzar.app en tu navegador — tiempos en vivo de todos los puentes\n2️⃣ La página de FB "Cruzar - Tiempos de Puentes" — notificaciones cuatro veces al día\n\nLas dos son gratis.',
     translationEn: 'Two things that will help if you cross often:\n\n1️⃣ The app: go to cruzar dot app in your browser — live wait times for every bridge\n2️⃣ The FB page "Cruzar - Tiempos de Puentes" — notifications four times a day\n\nBoth are free.',
   },
 ]

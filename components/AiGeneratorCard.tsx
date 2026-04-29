@@ -12,8 +12,10 @@ import { useLang } from '@/lib/LangContext'
 //   - comment → pasted thread → 3 one-sentence comment variants
 //
 // Uses /api/admin/ai-generate. Admin + promoter users only.
-// Outputs are copy-to-clipboard pastable — never include URLs
-// (FB groups reject them), always spell "cruzar punto app" verbally.
+// Outputs are copy-to-clipboard pastable. Templates reference the
+// literal "cruzar.app" form (switched from "cruzar punto app"
+// 2026-04-29). Don't add any other URLs to outputs — FB groups
+// still reject deep-link URLs.
 
 type GenType = 'reply' | 'post' | 'comment'
 

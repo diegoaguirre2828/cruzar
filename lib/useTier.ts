@@ -6,27 +6,102 @@ import { createClient } from './auth'
 
 export type Tier = 'guest' | 'free' | 'pro' | 'business'
 
-function readCachedTier(): Tier {
-  if (typeof window === 'undefined') return 'guest'
+// Cache key + TTL.
+//
+// Diego flagged 2026-04-29 that the app "feels like a website not an
+// app" because Pro state takes a beat to sync on every cold render.
+// Root cause: useTier was firing a Supabase profiles SELECT on every
+// mount across every page, AND setting loading=true while the network
+// roundtrip happened — so even when localStorage had the right tier,
+// consumers gating on `!loading` flashed free-tier UI for 200-800ms.
+//
+// Fix is stale-while-revalidate:
+//   - Read cache + ts on init. If fresh (< TTL), render from cache,
+//     loading=false IMMEDIATELY, NO network fetch. Most page navs hit
+//     this path — zero Supabase reads, zero flash.
+//   - If cache is stale OR missing, fetch from Supabase. loading is
+//     only true when there's NO cached value to fall back on.
+//   - On fetch success, write { tier, ts: now() }.
+//
+// Side benefit: cuts Supabase reads dramatically (was N reads per
+// session per page; now 1 per 5 min per logged-in user).
+const CACHE_KEY = 'cruzar_tier'
+const CACHE_TS_KEY = 'cruzar_tier_ts'
+const TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+interface CachedTier {
+  tier: Tier
+  fresh: boolean
+}
+
+function readCache(): CachedTier {
+  if (typeof window === 'undefined') return { tier: 'guest', fresh: false }
   try {
-    const v = localStorage.getItem('cruzar_tier')
-    if (v === 'free' || v === 'pro' || v === 'business') return v
+    const v = localStorage.getItem(CACHE_KEY)
+    const tsRaw = localStorage.getItem(CACHE_TS_KEY)
+    if (v === 'free' || v === 'pro' || v === 'business') {
+      const ts = tsRaw ? Number(tsRaw) : 0
+      const fresh = ts > 0 && Date.now() - ts < TTL_MS
+      return { tier: v as Tier, fresh }
+    }
   } catch { /* SSR or private browsing */ }
-  return 'guest'
+  return { tier: 'guest', fresh: false }
+}
+
+function writeCache(tier: Tier) {
+  if (typeof window === 'undefined') return
+  try {
+    if (tier === 'guest') {
+      localStorage.removeItem(CACHE_KEY)
+      localStorage.removeItem(CACHE_TS_KEY)
+    } else {
+      localStorage.setItem(CACHE_KEY, tier)
+      localStorage.setItem(CACHE_TS_KEY, String(Date.now()))
+    }
+  } catch { /* ignore */ }
 }
 
 export function useTier(): { tier: Tier; loading: boolean } {
   const { user, loading: authLoading } = useAuth()
-  const [tier, setTier] = useState<Tier>(readCachedTier)
-  const [loading, setLoading] = useState(true)
+  // Eager read from cache on init. If cache is fresh AND we're past
+  // auth load, we won't network-fetch at all.
+  const [tier, setTier] = useState<Tier>(() => readCache().tier)
+  // loading defaults to TRUE only when we have no cached tier to fall
+  // back on. With a fresh cache, components render the right tier
+  // instantly without flashing free.
+  const [loading, setLoading] = useState<boolean>(() => {
+    const c = readCache()
+    return !c.fresh
+  })
 
   useEffect(() => {
     if (authLoading) return
+
+    // Logged out → guest. Wipe cache + done.
     if (!user) {
       setTier('guest')
-      try { localStorage.removeItem('cruzar_tier') } catch {}
+      writeCache('guest')
       setLoading(false)
       return
+    }
+
+    // If cache is fresh, skip the Supabase fetch entirely. This is the
+    // common case — most page navs hit this and burn zero reads.
+    const cached = readCache()
+    if (cached.fresh) {
+      setTier(cached.tier)
+      setLoading(false)
+      return
+    }
+
+    // Cache stale or missing — fetch from Supabase. Only show loading
+    // if there's no cached value at all; if we have a stale cache, we
+    // render that immediately and revalidate quietly in the background.
+    if (cached.tier === 'guest') {
+      setLoading(true)
+    } else {
+      setTier(cached.tier)
+      setLoading(false)
     }
 
     const supabase = createClient()
@@ -63,7 +138,7 @@ export function useTier(): { tier: Tier; loading: boolean } {
               const { tier: syncedTier } = await res.json()
               const resolved = (syncedTier as Tier) || 'free'
               setTier(resolved)
-              try { localStorage.setItem('cruzar_tier', resolved) } catch {}
+              writeCache(resolved)
               setLoading(false)
               return
             }
@@ -81,7 +156,7 @@ export function useTier(): { tier: Tier; loading: boolean } {
             : dbTier
 
         setTier(effective)
-        try { localStorage.setItem('cruzar_tier', effective) } catch {}
+        writeCache(effective)
         setLoading(false)
       })
   }, [user, authLoading])
