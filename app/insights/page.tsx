@@ -478,6 +478,10 @@ export default function InsightsPage() {
             </div>
 
             {PORTS.map((p, i) => {
+              // drift-fallback used to render rose (= "wrong/dangerous"). New
+              // semantic: it means "matching CBP baseline" (we serve their
+              // number rather than fake one). Slate is neutral — honest
+              // disclosure, not failure. Same data, opposite signal.
               const tone =
                 p.status === "decision-grade"
                   ? "text-amber-400"
@@ -485,7 +489,7 @@ export default function InsightsPage() {
                   ? "text-sky-300"
                   : p.status === "marginal" || p.status === "marginal-self"
                   ? "text-white/70"
-                  : "text-rose-300/70";
+                  : "text-slate-400";
               const barColor =
                 p.status === "decision-grade"
                   ? "bg-amber-400"
@@ -493,7 +497,7 @@ export default function InsightsPage() {
                   ? "bg-sky-400/40"
                   : p.status === "marginal" || p.status === "marginal-self"
                   ? "bg-white/30"
-                  : "bg-rose-400/30";
+                  : "bg-slate-500/30";
               // For self-baseline / marginal-self ports, bar reads against the
               // self-climatology baseline (CBP isn't published for those).
               const barLift =
@@ -505,7 +509,7 @@ export default function InsightsPage() {
                   key={p.name + i}
                   className={`grid grid-cols-[1.6fr_2.4fr_auto_auto] items-center gap-3 border-b border-white/[0.05] px-5 py-5 last:border-b-0 sm:grid-cols-[2fr_3fr_1fr_1fr_1fr] sm:gap-4 sm:px-6 sm:py-4 ${
                     p.status === "drift-fallback"
-                      ? "bg-rose-950/10"
+                      ? "bg-slate-800/15"
                       : p.status === "self-baseline" || p.status === "marginal-self"
                         ? "bg-sky-950/10"
                         : ""
@@ -527,8 +531,11 @@ export default function InsightsPage() {
                         />
                       )}
                       {barLift !== null && barLift < 0 && (
+                        // drift-fallback = "matching CBP baseline" (we serve
+                        // their number). Bar is slate, not rose — honest
+                        // neutral disclosure, not visual failure.
                         <div
-                          className="absolute inset-y-0 right-1/2 bg-rose-400/40"
+                          className="absolute inset-y-0 right-1/2 bg-slate-500/40"
                           style={{ width: barWidth(Math.abs(barLift)) }}
                         />
                       )}
@@ -568,8 +575,9 @@ export default function InsightsPage() {
               <span className="text-sky-300">Sky</span> = self-baseline (CBP doesn&apos;t publish for that
               corridor — typically CA/AZ/NM — so the bar reads against Cruzar&apos;s own DOW × hour
               climatology computed from the training window). Grey = small positive edge.{' '}
-              <span className="text-rose-300/80">Rose</span> = drift-fallback; the inference API auto-returns
-              whichever baseline is available so callers never see broken predictions.
+              <span className="text-slate-300">Slate</span> = matching CBP baseline; we serve CBP&apos;s
+              own number rather than a model output we can&apos;t beat. Honest disclosure, not failure —
+              most ML wait-time products don&apos;t tell you when they fall back. We do.
             </div>
           </div>
         </div>
@@ -928,7 +936,7 @@ export default function InsightsPage() {
                               ? "text-sky-300"
                               : p.status === "marginal" || p.status === "marginal-self"
                               ? "text-white/45"
-                              : "text-rose-300/70"
+                              : "text-slate-400"
                           }`}
                         >
                           {p.status === "self-baseline" || p.status === "marginal-self"
