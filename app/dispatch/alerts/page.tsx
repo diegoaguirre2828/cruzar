@@ -109,6 +109,39 @@ export default function AlertsManager() {
     }
   }
 
+  // Test-fire state (Phase 4) — proves the email plumbing + 3-persona narrative
+  const [testPort, setTestPort] = useState<string>(watched[0] ?? "230502");
+  const [testForce, setTestForce] = useState(true);
+  const [testFiring, setTestFiring] = useState(false);
+  const [testResult, setTestResult] = useState<{ sent: boolean; error?: string | null; baseline?: { live_wait_min: number | null; baseline_avg_min: number | null; ratio: number | null; anomaly: boolean }; rendered?: { subject: string } } | null>(null);
+
+  async function fireTest() {
+    if (!config.email_to) {
+      setTestResult({ sent: false, error: "Set an email address in the Channels section above first." });
+      return;
+    }
+    setTestFiring(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/dispatch/alerts/fire-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: config.email_to,
+          port_id: testPort || (watched[0] ?? "230502"),
+          threshold_ratio: config.port_thresholds[testPort] ?? 1.5,
+          force: testForce,
+        }),
+      });
+      const json = await res.json();
+      setTestResult(json);
+    } catch (e) {
+      setTestResult({ sent: false, error: e instanceof Error ? e.message : "request failed" });
+    } finally {
+      setTestFiring(false);
+    }
+  }
+
   if (!hydrated) {
     return <main className="mx-auto max-w-[860px] px-5 py-6 text-white/45">Loading…</main>;
   }
@@ -248,6 +281,88 @@ export default function AlertsManager() {
           <span className="text-[12px] text-white/55">/ hour</span>
           <span className="ml-2 text-[10.5px] text-white/35">industry default $85/hr</span>
         </div>
+      </Section>
+
+      {/* Test fire (Phase 4) */}
+      <Section title="Send a test alert" subtitle="Fire one alert through the email channel to confirm delivery + see how a real anomaly notification will read.">
+        <div className="grid gap-3 sm:grid-cols-[160px_1fr]">
+          <div>
+            <label className="block text-[10.5px] uppercase tracking-[0.15em] text-white/55 mb-1.5">Port</label>
+            {watched.length === 0 ? (
+              <input
+                type="text"
+                value={testPort}
+                onChange={(e) => setTestPort(e.target.value)}
+                placeholder="230502"
+                className="w-full rounded-lg border border-white/[0.08] bg-[#040814] px-2 py-1.5 font-mono text-[12.5px] text-white focus:border-amber-300/40 focus:outline-none"
+              />
+            ) : (
+              <select
+                value={testPort}
+                onChange={(e) => setTestPort(e.target.value)}
+                style={{ colorScheme: "dark" }}
+                className="w-full rounded-lg border border-white/[0.08] bg-[#040814] px-2 py-1.5 text-[12.5px] text-white focus:border-amber-300/40 focus:outline-none"
+              >
+                {watched.map((id) => {
+                  const meta = PORT_META[id];
+                  return (
+                    <option key={id} value={id}>
+                      {meta?.localName ?? meta?.city ?? id}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
+          </div>
+          <div>
+            <label className="block text-[10.5px] uppercase tracking-[0.15em] text-white/55 mb-1.5">Mode</label>
+            <label className="flex items-center gap-2 text-[12.5px] text-white/75">
+              <input
+                type="checkbox"
+                checked={testForce}
+                onChange={(e) => setTestForce(e.target.checked)}
+                className="accent-amber-400"
+              />
+              Force send (preview format even when port isn&apos;t actually anomalous)
+            </label>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={fireTest}
+            disabled={testFiring || !config.email_to}
+            className="rounded-lg bg-amber-400 px-3 py-1.5 text-[12px] font-semibold text-[#0a1020] hover:bg-amber-300 disabled:opacity-40"
+          >
+            {testFiring ? "Sending…" : "Send test alert →"}
+          </button>
+          {!config.email_to && (
+            <span className="text-[11px] text-amber-300/80">Set your email above first.</span>
+          )}
+        </div>
+        {testResult && (
+          <div
+            className={`mt-3 rounded-lg border px-3 py-2 text-[12px] ${
+              testResult.sent
+                ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                : "border-rose-400/30 bg-rose-950/30 text-rose-200"
+            }`}
+          >
+            {testResult.sent ? (
+              <>
+                ✓ Sent to <span className="font-mono">{config.email_to}</span> · subject: <span className="text-white/85">{testResult.rendered?.subject}</span>
+              </>
+            ) : (
+              <>
+                ✗ {testResult.error ?? "did not send"}
+                {testResult.baseline && (
+                  <div className="mt-1 text-[11px] text-white/60">
+                    live={testResult.baseline.live_wait_min ?? "—"}min · baseline={testResult.baseline.baseline_avg_min ?? "—"}min · ratio={testResult.baseline.ratio ?? "—"}× · anomaly={String(testResult.baseline.anomaly)}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </Section>
 
       <div className="sticky bottom-4 mt-8 flex justify-end">
