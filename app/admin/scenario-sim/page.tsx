@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/useAuth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PersonaPanelDisplay, type PanelResult } from '@/components/PersonaPanelDisplay'
 
 const ADMIN_EMAIL = 'cruzabusiness@gmail.com'
 
@@ -36,6 +37,7 @@ interface SimResult {
   }
   caveats: string[]
   is_simulation: true
+  panel?: PanelResult | null
 }
 
 const SAMPLE_SCENARIOS = [
@@ -323,6 +325,20 @@ export default function ScenarioSimPage() {
                 ))}
               </div>
             </div>
+
+            {result.panel && (
+              <div className="rounded-2xl border border-amber-400/20 bg-white/[0.02] p-5">
+                <div className="mb-3 flex items-baseline justify-between">
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-amber-400">
+                    3-persona pre-execution review · MiroFish
+                  </div>
+                  <div className="font-mono text-[10px] text-white/35">
+                    Driver · Dispatcher · Receiver Ops
+                  </div>
+                </div>
+                <PersonaPanelDisplay result={result.panel} />
+              </div>
+            )}
 
             {result.caveats.length > 0 && (
               <div className="rounded-2xl border border-rose-400/20 bg-rose-950/10 p-5">

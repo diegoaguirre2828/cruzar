@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { runScenarioSim } from "@/lib/scenarioSim";
+import { runPersonaPanel, ROUTE_PERSONAS } from "@/lib/personaPanel";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +58,56 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await runScenarioSim(parsed.data);
-    return NextResponse.json(result, { status: 200 });
+
+    // MiroFish 3-persona panel — adds Driver / Dispatcher / Receiver Ops review
+    // of the structured recommendation. Surfaces issues a single LLM pass
+    // would miss (HOS, customer SLA, dock-window fit). Failure is non-fatal:
+    // sim still ships even if panel call errors, just without the panel block.
+    let panel: Awaited<ReturnType<typeof runPersonaPanel>> | null = null;
+    try {
+      panel = await runPersonaPanel({
+        input: [
+          "Pre-execution review of a dispatcher scenario simulation. The sim recommends a primary port + alternatives. From your perspective, is this the right call?",
+          "",
+          "SCENARIO:",
+          parsed.data.scenario,
+          "",
+          "PRIMARY RECOMMENDATION:",
+          `${result.primary_recommendation.port_label} (${result.primary_recommendation.port_id})`,
+          `Delta vs baseline: ${result.primary_recommendation.delta_vs_baseline_minutes >= 0 ? "+" : ""}${result.primary_recommendation.delta_vs_baseline_minutes} min`,
+          `Confidence: ${result.primary_recommendation.confidence}`,
+          `Reasoning: ${result.primary_recommendation.reasoning}`,
+          "",
+          result.alternatives.length > 0
+            ? `ALTERNATIVES: ${result.alternatives.map((a) => `${a.port_label} (${a.delta_vs_baseline_minutes >= 0 ? "+" : ""}${a.delta_vs_baseline_minutes}m)`).join(" · ")}`
+            : "ALTERNATIVES: none",
+          "",
+          result.cascade_predictions.length > 0
+            ? `CASCADE PREDICTIONS:\n${result.cascade_predictions.map((c) => `- ${c}`).join("\n")}`
+            : "",
+          "",
+          "Each persona — assess from your professional standpoint:",
+          "- Driver: hours-of-service, fuel/parking, route safety, sleep tonight, SENTRI/FAST relevance",
+          "- Dispatcher: customer SLA, broker relationships, OTP impact, knock-on effect on next load",
+          "- Receiver Operations: dock window fit, lumper, OS&D risk, trailer-pool churn",
+          "Flag concrete issues — not generic warnings.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        personas: ROUTE_PERSONAS,
+        synthesisInstruction:
+          "Recommend: stick with the primary, switch to a named alternative, or pause and reroute. Cite the dominant concern if you flag a switch.",
+        maxTokens: 1800,
+      });
+    } catch (panelErr) {
+      // Panel failure is logged but does not break the sim response.
+      console.warn(
+        "[scenario-sim] panel call failed:",
+        panelErr instanceof Error ? panelErr.message : panelErr,
+      );
+    }
+
+    return NextResponse.json({ ...result, panel }, { status: 200 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "unknown_error";
     // Surface error as 502 so callers know it's an upstream / generation issue,
