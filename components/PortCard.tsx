@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Share2, Check, Star } from 'lucide-react'
+import { Share2, Check, Star, Bell } from 'lucide-react'
 import { getWaitLevel, waitLevelDot } from '@/lib/cbp'
 import { WaitBadge } from './WaitBadge'
 import { useLang } from '@/lib/LangContext'
@@ -13,6 +13,7 @@ import { getMyRecentReportAgeMin } from '@/lib/myReports'
 import { useFavorites } from '@/lib/useFavorites'
 import { hasCamera, hasProLiveCamera } from '@/lib/bridgeCameras'
 import { slugForPort } from '@/lib/portSlug'
+import { SignupIntentModal, type SignupIntent } from './SignupIntentModal'
 import type { PortWaitTime } from '@/types'
 
 export interface PortSignal {
@@ -54,6 +55,10 @@ export function PortCard({ port, signal }: Props) {
   const primaryWait = port.vehicle ?? port.pedestrian
   const [shared, setShared] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  // Moments-of-want signup modal — opens when guests tap the inline 🔔
+  // (alert) or ⭐ (favorite) buttons. Replaces the redirect-to-/signup
+  // pattern with an inline modal that captures the specific user gesture.
+  const [signupModalIntent, setSignupModalIntent] = useState<SignupIntent | null>(null)
   // Did the user report on this specific bridge in the last 2 hours?
   // Pulled from localStorage (set in ReportForm on successful submit)
   // so the badge works for guests and signed-in users equally. Listens
@@ -83,10 +88,27 @@ export function PortCard({ port, signal }: Props) {
     e.preventDefault()
     e.stopPropagation()
     if (!signedIn) {
-      router.push(`/signup?next=${encodeURIComponent(`/cruzar/${slugForPort(port.portId)}`)}`)
+      // Moments-of-want — inline modal w/ favorite intent. Better conversion
+      // than the previous /signup redirect because the user keeps their
+      // visual context. /welcome executes the favorite save post-auth.
+      setSignupModalIntent('favorite')
       return
     }
     await toggleFavorite(port.portId, port.portName)
+  }
+
+  function handleAlertBell(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!signedIn) {
+      // Guests: open the modal w/ alert intent + threshold picker. The
+      // /signup flow queues the intent; /welcome creates the alert post-auth.
+      setSignupModalIntent('alert')
+      return
+    }
+    // Signed-in users go straight to the port detail page where the alert
+    // UI lives — anchor `#alert-card` jumps to the existing alert section.
+    router.push(`/cruzar/${slugForPort(port.portId)}#alert-card`)
   }
 
   async function handleShare(e: React.MouseEvent) {
@@ -257,6 +279,16 @@ export function PortCard({ port, signal }: Props) {
               aria-pressed={starred}
             >
               <Star className={`w-4 h-4 ${starred ? 'fill-current' : ''}`} />
+            </button>
+            {/* Moments-of-want bell — inline alert CTA on every port card.
+                Guests get the SignupIntentModal w/ threshold picker; signed-in
+                users jump to the alert UI on the port detail page. */}
+            <button
+              onClick={handleAlertBell}
+              className="cruzar-press-sm p-2 rounded-lg bg-white dark:bg-gray-700 text-gray-400 hover:text-blue-500 flex-shrink-0"
+              title={lang === 'es' ? 'Avísame cuando baje' : 'Alert me when wait drops'}
+            >
+              <Bell className="w-4 h-4" />
             </button>
             <button
               onClick={handleShare}
@@ -442,6 +474,18 @@ export function PortCard({ port, signal }: Props) {
           </div>
         )}
       </div>
+      {/* Moments-of-want signup modal — renders inside the Link wrapper but
+          uses fixed positioning so it sits above the page chrome regardless.
+          Internal click handlers stopPropagation so taps don't bubble to the
+          parent Link's navigation. */}
+      <SignupIntentModal
+        open={signupModalIntent !== null}
+        onClose={() => setSignupModalIntent(null)}
+        intent={signupModalIntent ?? 'favorite'}
+        portId={port.portId}
+        portName={port.portName}
+        nextPath={`/cruzar/${slugForPort(port.portId)}`}
+      />
     </Link>
   )
 }

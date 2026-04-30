@@ -1146,6 +1146,19 @@ export function PortDetailClient({ port, portId }: Props) {
           </a>
         </div>
       )}
+
+      {/* Moments-of-want signup modal — opens when guests tap save/alert.
+          Threshold inherited from the alert UI's slider so the user's
+          intent flows through /signup → /welcome → /api/alerts cleanly. */}
+      <SignupIntentModal
+        open={signupModalIntent !== null}
+        onClose={() => setSignupModalIntent(null)}
+        intent={signupModalIntent ?? 'favorite'}
+        portId={portId}
+        portName={port.portName}
+        defaultThresholdMin={alertThreshold}
+        nextPath={`/port/${portId}`}
+      />
     </div>
   )
 }
