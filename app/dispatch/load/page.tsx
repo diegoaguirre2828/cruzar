@@ -150,8 +150,31 @@ export default function LoadAdvisor() {
             type="datetime-local"
             value={apptAt}
             onChange={(e) => setApptAt(e.target.value)}
+            // colorScheme:dark forces the browser's native date picker
+            // chrome (popup, today indicator, OK/Cancel buttons, the
+            // calendar/clock toggle icon) to render in dark mode. Without
+            // this Chrome+Safari render the icon black-on-black and
+            // the calendar pop-up appears as a white block — typing
+            // works but the picker is effectively invisible.
+            style={{ colorScheme: "dark" }}
             className="w-full rounded-lg border border-white/[0.08] bg-[#040814] px-3 py-2 text-[13px] text-white focus:border-amber-300/40 focus:outline-none"
           />
+          {apptAt && (
+            <div className="mt-1.5 text-[11px] text-white/55">
+              <span className="text-white/40">Set for </span>
+              <span className="font-mono text-amber-200/85">
+                {new Date(apptAt).toLocaleString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: "America/Chicago",
+                })}{" "}
+                CT
+              </span>
+            </div>
+          )}
 
           <label className="block text-[11px] uppercase tracking-[0.15em] text-white/55 mt-4 mb-1.5">
             Cargo type
@@ -207,7 +230,7 @@ export default function LoadAdvisor() {
           {result && result.picks.length > 0 && (
             <div className="space-y-3">
               {result.picks.map((p, i) => (
-                <PickCard key={p.port_id} pick={p} rank={i + 1} apptProvided={!!apptAt} />
+                <PickCard key={p.port_id} pick={p} rank={i + 1} apptProvided={!!apptAt} apptAt={apptAt} />
               ))}
             </div>
           )}
@@ -227,10 +250,12 @@ function PickCard({
   pick,
   rank,
   apptProvided,
+  apptAt,
 }: {
   pick: RecommendPort;
   rank: number;
   apptProvided: boolean;
+  apptAt: string;
 }) {
   const [copied, setCopied] = useState(false);
   const winner = rank === 1;
@@ -239,6 +264,18 @@ function PickCard({
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   }
+
+  // appt-vs-arrival math (client-side so we can show slack even when the
+  // server returns detention_usd_at_risk = null because we arrive early).
+  let apptSlackMin: number | null = null;
+  let isLate = false;
+  if (apptProvided && apptAt && pick.estimated_arrival_at) {
+    const apptMs = new Date(apptAt).getTime();
+    const arrivalMs = new Date(pick.estimated_arrival_at).getTime();
+    apptSlackMin = Math.round((apptMs - arrivalMs) / 60_000);
+    isLate = apptSlackMin < 0;
+  }
+
   return (
     <div
       className={`rounded-2xl border p-5 ${
@@ -258,12 +295,31 @@ function PickCard({
             ${pick.detention_usd_at_risk.toLocaleString()} detention risk
           </span>
         )}
-        {apptProvided && pick.detention_usd_at_risk === 0 && (
+        {apptProvided && !isLate && apptSlackMin !== null && (
           <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-200">
-            on-time
+            on-time · +{apptSlackMin}m slack
           </span>
         )}
       </div>
+
+      {apptProvided && apptSlackMin !== null && (
+        <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#040814] px-3 py-2 text-[11.5px]">
+          <span className="text-white/45">Arrives </span>
+          <span className="font-mono text-white/80">
+            {new Date(pick.estimated_arrival_at).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              timeZone: "America/Chicago",
+            })}{" "}
+            CT
+          </span>
+          {isLate ? (
+            <span className="ml-2 text-rose-300">· {Math.abs(apptSlackMin)} min LATE for appt</span>
+          ) : (
+            <span className="ml-2 text-emerald-300/85">· {apptSlackMin} min before appt</span>
+          )}
+        </div>
+      )}
 
       <div className="mt-3 grid grid-cols-3 gap-3 text-center">
         <div className="rounded-lg border border-white/[0.06] bg-[#040814] p-2.5">
