@@ -136,6 +136,7 @@ export default function DispatchConsole() {
   function addPort(id: string) {
     setWatched((prev) => (prev.includes(id) ? prev : [...prev, id].slice(0, 12)));
     setPickerQuery("");
+    setPickerOpen(false);
   }
   function removePort(id: string) {
     setWatched((prev) => prev.filter((p) => p !== id));
@@ -164,9 +165,13 @@ export default function DispatchConsole() {
           })}
           <button
             onClick={() => setPickerOpen((v) => !v)}
-            className="rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1 text-[12px] text-white/65 hover:bg-white/[0.08] hover:text-white transition"
+            className={`rounded-full px-3 py-1 text-[12px] transition border ${
+              pickerOpen
+                ? "border-white/30 bg-white/[0.1] text-white"
+                : "border-white/[0.12] bg-white/[0.04] text-white/65 hover:bg-white/[0.08] hover:text-white"
+            }`}
           >
-            + add port
+            {pickerOpen ? "× close" : "+ add port"}
           </button>
           {watched.length === 0 && (
             <span className="text-[12px] text-white/45 ml-2">
@@ -189,14 +194,26 @@ export default function DispatchConsole() {
 
         {pickerOpen && (
           <div className="mt-3 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-            <input
-              type="text"
-              value={pickerQuery}
-              onChange={(e) => setPickerQuery(e.target.value)}
-              placeholder="Search by name, city, or port ID..."
-              className="w-full rounded-lg border border-white/[0.08] bg-[#040814] px-3 py-2 text-[13px] text-white placeholder-white/35 focus:border-amber-300/40 focus:outline-none"
-              autoFocus
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={pickerQuery}
+                onChange={(e) => setPickerQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setPickerOpen(false);
+                }}
+                placeholder="Search by name, city, or port ID..."
+                className="flex-1 rounded-lg border border-white/[0.08] bg-[#040814] px-3 py-2 text-[13px] text-white placeholder-white/35 focus:border-amber-300/40 focus:outline-none"
+                autoFocus
+              />
+              <button
+                onClick={() => setPickerOpen(false)}
+                aria-label="Close picker"
+                className="flex-shrink-0 rounded-lg border border-white/[0.12] px-2.5 py-1.5 text-[12px] text-white/55 hover:bg-white/[0.06] hover:text-white transition"
+              >
+                ×
+              </button>
+            </div>
             <ul className="mt-2 max-h-60 overflow-y-auto divide-y divide-white/[0.04]">
               {pickerCandidates.map(([id, meta]) => (
                 <li key={id}>
