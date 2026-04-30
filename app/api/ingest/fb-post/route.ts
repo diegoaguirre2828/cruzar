@@ -76,24 +76,13 @@ type ParsedPost = {
   observations: Observation[]
 }
 
-async function parseWithClaude(
-  text: string,
-  groupName: string,
-  image?: { base64: string; mediaType: string } | null,
-): Promise<ParsedPost | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) return null
-
-  const prompt = `You extract US–Mexico border crossing wait time information from Spanish Facebook content. The input may be a SINGLE post, a post + comments, or a LARGE BLOB of many posts pasted together (when someone did Ctrl+A on a whole group feed). Treat all cases — extract every distinct wait-time observation you can find.
+// Static system prompt — caches well across every fb-post ingest. ~2.5k tokens
+// of role + port catalog + output schema + extraction rules. Per the
+// Anthropic-budget rule, every Anthropic call site must use cache_control.
+const SYSTEM_PROMPT = `You extract US–Mexico border crossing wait time information from Spanish Facebook content. The input may be a SINGLE post, a post + comments, or a LARGE BLOB of many posts pasted together (when someone did Ctrl+A on a whole group feed). Treat all cases — extract every distinct wait-time observation you can find.
 
 Known crossings (port_id  name):
 ${PORT_CATALOG}
-
-Content from group "${groupName}":
-"""
-${text}
-"""
-${image ? '\nAn image is attached. It is a photo of the border crossing from a user\'s point of view (often from inside their car in the queue, or showing the line ahead/behind).' : ''}
 
 Return ONLY valid JSON matching this schema. No markdown, no prose.
 {
@@ -130,16 +119,24 @@ Rules:
 - "rayos x", "inspección", "retén" → set has_inspection=true. "choque", "accidente" → has_accident=true.
 - "sentri"/"sentry"/"express lane" = sentri. "a pie"/"peatonal"/"caminando" = pedestrian.
 - "traila"/"tráiler"/"camión"/"comercial"/"carga" = commercial.
-${image ? `- IMAGE ANALYSIS: Look at the attached photo. If it shows a visible queue of cars at a border bridge:
+- IMAGE ANALYSIS (when an image is attached): Look at the attached photo. If it shows a visible queue of cars at a border bridge:
   - Count the cars visible (approximate is fine — "~25 cars" rather than exact).
   - Estimate wait minutes using ~3 min per car per open lane (so 25 cars in 2 open lanes ≈ 40 min).
   - Combine image evidence with the text. If text says "Los Tomates ahorita" and image shows a full queue, emit Los Tomates with the image-derived wait.
   - If image does NOT clearly show a border crossing line (selfie, landscape, wrong location), ignore it and only use the text.
-  - When the image is the primary signal, set confidence to "medium".` : ''}
-- If the post is a question ("alguien sabe...?") or unrelated chit-chat AND the image doesn't help, return {"observations":[]}.
+  - When the image is the primary signal, set confidence to "medium".
+- If the post is a question ("alguien sabe...?") or unrelated chit-chat AND no image helps, return {"observations":[]}.
 - If the crossing is ambiguous and can't be mapped to a port_id, skip that observation.`
 
-  // Multi-modal message content when an image is attached
+async function parseWithClaude(
+  text: string,
+  groupName: string,
+  image?: { base64: string; mediaType: string } | null,
+): Promise<ParsedPost | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) return null
+
+  // Dynamic per-call content only — group + post text (+ optional image)
   const userContent: Array<Record<string, unknown>> = []
   if (image) {
     userContent.push({
@@ -147,7 +144,10 @@ ${image ? `- IMAGE ANALYSIS: Look at the attached photo. If it shows a visible q
       source: { type: 'base64', media_type: image.mediaType, data: image.base64 },
     })
   }
-  userContent.push({ type: 'text', text: prompt })
+  userContent.push({
+    type: 'text',
+    text: `Content from group "${groupName}":\n"""\n${text}\n"""${image ? '\n\nAn image is attached. It is a photo of the border crossing from a user\'s point of view (often from inside their car in the queue, or showing the line ahead/behind).' : ''}`,
+  })
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -160,6 +160,7 @@ ${image ? `- IMAGE ANALYSIS: Look at the attached photo. If it shows a visible q
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 3000,
+        system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: userContent }],
       }),
     })
