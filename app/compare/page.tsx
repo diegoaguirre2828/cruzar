@@ -106,7 +106,7 @@ const ROWS: Row[] = [
     cruzar: 'yes',
     fbGroups: 'partial',
     borderTimes: 'no',
-    note: { es: 'Con verificación GPS y extracción AI de características', en: 'With GPS verification + AI feature extraction' },
+    note: { es: 'Con verificación GPS y extracción estructurada de la foto', en: 'With GPS verification + structured photo extraction' },
   },
 
   // ─── Alerts + AI ───
@@ -117,7 +117,7 @@ const ROWS: Row[] = [
     borderTimes: 'no',
   },
   {
-    feature: { es: 'Asistente AI (preguntas sobre la frontera)', en: 'AI assistant (border questions)' },
+    feature: { es: 'Pregunta a Cruzar (rutas, lanes, papeleos)', en: 'Ask Cruzar (routes, lanes, paperwork)' },
     cruzar: 'yes',
     fbGroups: 'no',
     borderTimes: 'no',

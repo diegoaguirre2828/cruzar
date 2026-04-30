@@ -741,15 +741,7 @@ export default function InsightsPage() {
             </div>
           </div>
 
-          {/* Quiet developer link — preserves the MCP path without leading with it */}
-          <div className="mt-8 text-center">
-            <a
-              href="/insights/get-key"
-              className="text-[12px] text-white/40 hover:text-white/70 underline decoration-white/20 decoration-1 underline-offset-[5px]"
-            >
-              Building with AI? Cruzar exposes 7 MCP tools at /mcp — get a developer key →
-            </a>
-          </div>
+          {/* Dev/MCP hook lives on /mcp + /insights/get-key directly — buyer surface keeps no AI-tooling framing per the operator pivot 2026-04-29. */}
         </div>
       </section>
 
