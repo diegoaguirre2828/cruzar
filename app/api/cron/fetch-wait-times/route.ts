@@ -75,6 +75,11 @@ export async function GET(req: NextRequest) {
     const s = secret || process.env.CRON_SECRET
     fetch(`${base}/api/cron/report-quality?secret=${s}`).catch(() => {})
     fetch(`${base}/api/cron/health-check?secret=${s}`).catch(() => {})
+    // Calibration loop piggybacks on the same scheduler — no separate
+    // cron-job.org registration needed. Writes 6h-ahead predictions for
+    // each tracked port and fills observed for predictions whose 6h
+    // target has elapsed. See app/api/cron/calibration-tick/route.ts.
+    fetch(`${base}/api/cron/calibration-tick?secret=${s}`).catch(() => {})
 
     // FB-page social posting — replaces the Make.com scenario that
     // was firing only 3×/week instead of the intended 4×/day. We're

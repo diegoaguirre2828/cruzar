@@ -86,6 +86,9 @@ export async function GET(req: NextRequest) {
   const lookbackUpper = new Date(now.getTime() - HORIZON_MIN * 60 * 1000 + TARGET_GRACE_MIN * 60 * 1000).toISOString()
   const lookbackLower = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
 
+  // Limit fill to 80 rows per tick. At steady state (~52 expected),
+  // 80 gives headroom; if we ever fall behind, next tick picks up the rest.
+  // Keeps total tick time well under the 60s function timeout.
   const { data: pendingRows, error: pendingErr } = await sb
     .from('calibration_log')
     .select('id, predicted, context, created_at')
@@ -94,6 +97,8 @@ export async function GET(req: NextRequest) {
     .is('observed', null)
     .gte('created_at', lookbackLower)
     .lte('created_at', lookbackUpper)
+    .order('created_at', { ascending: true })
+    .limit(80)
 
   let filledCount = 0
   let fillSkipped = 0
@@ -194,7 +199,13 @@ export async function GET(req: NextRequest) {
         cbp_at_t_vehicle_wait: cbpAtT,
         cbp_recorded_at: cbpRecordedAt,
       },
-      tags: { port_id: portId, model_version: f.model, sim: 'wait_forecast_6h' },
+      // tags is TEXT[] per v63 migration — array of strings only.
+      tags: [
+        `port:${portId}`,
+        `model:${f.model || 'unknown'}`,
+        `horizon:6h`,
+        'sim:wait_forecast_6h',
+      ],
     }
 
     const { error: insertErr } = await sb.from('calibration_log').insert(insertRow)
