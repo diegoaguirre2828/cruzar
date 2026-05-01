@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/fetch-wait-times",     "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/calibration-tick",     "schedule": "*/15 * * * *" },
     { "path": "/api/cron/send-alerts",          "schedule": "*/15 * * * *" },
     { "path": "/api/cron/daily-digest",         "schedule": "*/15 * * * *" },
     { "path": "/api/cron/cleanup-port-photos",  "schedule": "*/30 * * * *" },
