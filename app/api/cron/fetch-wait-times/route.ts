@@ -3,6 +3,14 @@ import { fetchRgvWaitTimes, portUtcOffsetHours } from '@/lib/cbp'
 import { getServiceClient } from '@/lib/supabase'
 import { fetchAllClusterWeather, weatherForPort } from '@/lib/clusterWeather'
 
+// Bumped from default to 60s 2026-05-01 — function now awaits the
+// inlined calibration tick (~30s with 16 forecast calls) so the worker
+// must stay alive long enough for both the wait-times scrape AND the
+// calibration write/fill to complete in a single invocation.
+export const maxDuration = 60
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get('secret')
   const authHeader = req.headers.get('authorization')
@@ -76,10 +84,16 @@ export async function GET(req: NextRequest) {
     fetch(`${base}/api/cron/report-quality?secret=${s}`).catch(() => {})
     fetch(`${base}/api/cron/health-check?secret=${s}`).catch(() => {})
     // Calibration loop piggybacks on the same scheduler — no separate
-    // cron-job.org registration needed. Writes 6h-ahead predictions for
-    // each tracked port and fills observed for predictions whose 6h
-    // target has elapsed. See app/api/cron/calibration-tick/route.ts.
-    fetch(`${base}/api/cron/calibration-tick?secret=${s}`).catch(() => {})
+    // cron-job.org registration needed. Inlined import (not HTTP fetch)
+    // because hitting our own public domain hits Vercel Attack Challenge
+    // Mode and gets 403'd. Awaited so Vercel doesn't kill the worker
+    // mid-tick — adds ~30s to this function but stays under 60s timeout.
+    try {
+      const { runCalibrationTick } = await import('@/lib/calibrationTick')
+      await runCalibrationTick()
+    } catch (calErr) {
+      console.warn('[fetch-wait-times] calibration tick failed:', calErr)
+    }
 
     // FB-page social posting — replaces the Make.com scenario that
     // was firing only 3×/week instead of the intended 4×/day. We're
