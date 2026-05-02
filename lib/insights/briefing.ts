@@ -90,6 +90,11 @@ export async function buildBriefRows(sub: SubscriberRow): Promise<PortBriefRow[]
     accByPort.set(pid, cur);
   }
 
+  // Fetch 6h ML forecast for every watched port in parallel (mirrors the
+  // pattern used by /live/page.tsx and /api/dispatch/snapshot). Falls back
+  // to null when CRUZAR_INSIGHTS_API_URL is unset or the upstream fails.
+  const forecastByPort = await fetchForecasts6h(ports);
+
   return ports.map((pid) => {
     const meta = PORT_META[pid];
     const live = liveByPort.get(pid) ?? null;
@@ -109,13 +114,35 @@ export async function buildBriefRows(sub: SubscriberRow): Promise<PortBriefRow[]
       port_id: pid,
       name: meta?.localName ?? meta?.city ?? pid,
       current_min: live,
-      forecast_6h_min: null, // Pop in via cruzar-insights-api before render in the cron route
+      forecast_6h_min: forecastByPort.get(pid) ?? null,
       hist_avg_min: histAvg,
       ratio,
       status,
       accuracy_30d_pct,
     };
   });
+}
+
+async function fetchForecasts6h(portIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const url = process.env.CRUZAR_INSIGHTS_API_URL?.replace(/\/$/, '');
+  const key = process.env.CRUZAR_INSIGHTS_API_KEY;
+  if (!url || !key || portIds.length === 0) return out;
+  const calls = portIds.map((pid) =>
+    fetch(`${url}/api/forecast`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ port_id: pid, horizon_min: 360 }),
+      cache: 'no-store',
+    })
+      .then((r) => (r.ok ? (r.json() as Promise<{ port_id: string; prediction_min: number }>) : null))
+      .catch(() => null),
+  );
+  const results = await Promise.all(calls);
+  for (const r of results) {
+    if (r && typeof r.prediction_min === 'number') out.set(r.port_id, Math.round(r.prediction_min));
+  }
+  return out;
 }
 
 export function renderBrief(sub: SubscriberRow, rows: PortBriefRow[]): { subject: string; html: string; text: string } {
@@ -136,11 +163,16 @@ export function renderBrief(sub: SubscriberRow, rows: PortBriefRow[]): { subject
 
   function formatRow(r: PortBriefRow): string {
     const cur = r.current_min != null ? `${r.current_min} min` : '—';
-    const fc = r.forecast_6h_min != null ? `${r.forecast_6h_min} min` : '—';
-    const ratio = r.ratio != null ? ` · ${r.ratio.toFixed(1)}× baseline` : '';
+    const fcClause =
+      r.forecast_6h_min != null
+        ? es
+          ? `, pronóstico 6h ${r.forecast_6h_min} min`
+          : `, ${r.forecast_6h_min} min forecast 6h`
+        : '';
+    const ratioClause = r.ratio != null ? ` · ${r.ratio.toFixed(1)}× baseline` : '';
     return es
-      ? `${r.name} — ${cur} ahora, pronóstico 6h ${fc}${ratio}.`
-      : `${r.name} — ${cur} now, ${fc} forecast 6h${ratio}.`;
+      ? `${r.name} — ${cur} ahora${fcClause}${ratioClause}.`
+      : `${r.name} — ${cur} now${fcClause}${ratioClause}.`;
   }
 
   const lines: string[] = [];
