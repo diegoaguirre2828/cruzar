@@ -1,17 +1,16 @@
 'use client'
 
-// Cross-page "moments" navigation — the load-bearing operator/concierge frame.
-// Every Cruzar surface lives in one of three moments in the crossing journey:
-//   before  — planning, picking your time, /insights
-//   during  — at the bridge, live state, /live
-//   after   — post-crossing log + Cruzar Wrapped, /memory
+// Cross-page "moments" navigation — consumer crossing journey only.
+// Two moments now: /live (during, ahorita) and /memory (after, después).
 //
-// Pin this strip to the top of each moment-aware page so users feel the
-// journey instead of staring at disconnected dashboards.
+// /insights used to be the "before" slot but it's the B2B sales surface
+// (different audience entirely — RGV freight brokers, not commuters).
+// B2B has its own nav (components/B2BNav.tsx). Per the 2026-05-01
+// stress-reliever redesign — see docs/superpowers/specs/2026-05-01-cruzar-b2b-stress-reliever-design.md.
 
 import Link from 'next/link'
 import { useLang } from '@/lib/LangContext'
-import { Calendar, Eye, Clock } from 'lucide-react'
+import { Eye, Clock } from 'lucide-react'
 
 type Moment = 'before' | 'during' | 'after'
 
@@ -19,14 +18,7 @@ interface Props {
   current: Moment
 }
 
-const MOMENTS: { key: Moment; href: string; icon: typeof Calendar; label: { en: string; es: string }; sub: { en: string; es: string } }[] = [
-  {
-    key: 'before',
-    href: '/insights',
-    icon: Calendar,
-    label: { en: 'Before', es: 'Antes' },
-    sub: { en: 'Planning ahead', es: 'Planeando' },
-  },
+const MOMENTS: { key: Moment; href: string; icon: typeof Eye; label: { en: string; es: string }; sub: { en: string; es: string } }[] = [
   {
     key: 'during',
     href: '/live',
