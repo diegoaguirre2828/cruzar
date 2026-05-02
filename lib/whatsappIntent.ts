@@ -10,7 +10,7 @@
 import { PORT_META } from "./portMeta";
 import { getServiceClient } from "./supabase";
 
-export type IntentKind = "live_wait" | "help" | "stop";
+export type IntentKind = "live_wait" | "best_now" | "anomaly" | "help" | "stop";
 
 export interface ParsedIntent {
   kind: IntentKind;
@@ -113,6 +113,16 @@ export function parseInbound(text: string): ParsedIntent {
   // STOP intent — always wins
   if (STOP_TOKENS.some((tok) => t === tok || t.startsWith(`${tok} `))) {
     return { kind: "stop", lang, raw: text };
+  }
+
+  // ANOMALY — list ports running hot right now (no port required)
+  if (/\b(anomaly|anomalia|hot|caliente|que esta mal|qu[eé] est[aá] mal)\b/.test(t)) {
+    return { kind: "anomaly", lang, raw: text };
+  }
+
+  // BEST NOW — recommend a port across the corridor (no port required)
+  if (/\b(best now|best port|mejor puente|mejor ahora|recommend|recomienda|cual cruzo|cu[aá]l cruzo)\b/.test(t)) {
+    return { kind: "best_now", lang, raw: text };
   }
 
   // Wait intent — explicit wait verb OR a recognized port name alone
@@ -264,6 +274,48 @@ export function buildStopReply(lang: "en" | "es"): string {
 }
 
 /**
+ * Anomaly scan across the covered corridor — returns a comma list of ports
+ * running ≥1.5× their 90-day DOW × hour baseline right now.
+ */
+async function buildAnomalyReply(lang: "en" | "es"): Promise<string> {
+  const COVERED = ['230501', '230502', '230503', '230402', '230401', '230301', '535502', '535501'];
+  try {
+    const db = getServiceClient();
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const ninety = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date();
+    const dow = now.getDay();
+    const hour = now.getHours();
+    const [{ data: live }, { data: hist }] = await Promise.all([
+      db.from('wait_time_readings').select('port_id, vehicle_wait').in('port_id', COVERED).gte('recorded_at', since).order('recorded_at', { ascending: false }).limit(500),
+      db.from('wait_time_readings').select('port_id, vehicle_wait').in('port_id', COVERED).gte('recorded_at', ninety).eq('day_of_week', dow).eq('hour_of_day', hour).limit(20000),
+    ]);
+    const liveBy = new Map<string, number>();
+    for (const r of live ?? []) if (!liveBy.has(String(r.port_id)) && r.vehicle_wait != null) liveBy.set(String(r.port_id), r.vehicle_wait);
+    const sums = new Map<string, { s: number; n: number }>();
+    for (const r of hist ?? []) {
+      if (r.vehicle_wait == null) continue;
+      const cur = sums.get(String(r.port_id)) ?? { s: 0, n: 0 };
+      cur.s += r.vehicle_wait; cur.n += 1; sums.set(String(r.port_id), cur);
+    }
+    const hot: string[] = [];
+    for (const pid of COVERED) {
+      const lv = liveBy.get(pid); const sm = sums.get(pid);
+      if (lv == null || !sm || sm.n === 0) continue;
+      const ratio = lv / (sm.s / sm.n);
+      if (ratio >= 1.5) {
+        const meta = PORT_META[pid];
+        hot.push(`${meta?.localName ?? meta?.city ?? pid} ${ratio.toFixed(1)}×`);
+      }
+    }
+    if (hot.length === 0) return lang === 'es' ? 'Cruzar — nada anómalo ahorita.' : 'Cruzar — nothing flagging right now.';
+    return lang === 'es' ? `Cruzar — anómalos: ${hot.join(', ')}.` : `Cruzar — anomalies: ${hot.join(', ')}.`;
+  } catch {
+    return lang === 'es' ? 'Cruzar — error al consultar. Intenta de nuevo.' : 'Cruzar — query failed. Try again.';
+  }
+}
+
+/**
  * Resolve an inbound message to a reply string. Returns null when no reply
  * should be sent (e.g., we couldn't even parse a coherent intent).
  */
@@ -272,6 +324,12 @@ export async function buildReplyForInbound(messageText: string): Promise<string 
   const intent = parseInbound(messageText);
 
   if (intent.kind === "stop") return buildStopReply(intent.lang);
+  if (intent.kind === "anomaly") return buildAnomalyReply(intent.lang);
+  if (intent.kind === "best_now") {
+    return intent.lang === 'es'
+      ? 'Cruzar — abre cruzar.app/dispatch para la recomendación.'
+      : 'Cruzar — open cruzar.app/dispatch for the recommendation.';
+  }
   if (intent.kind === "live_wait" && intent.port_id) {
     return buildLiveWaitReply(intent.port_id, intent.lang);
   }
