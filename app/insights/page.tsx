@@ -109,6 +109,16 @@ export default async function InsightsPage({
             <p className="mt-3 max-w-2xl text-[15px] text-white/65">{c.scoreboard.sub}</p>
           </div>
           <CalibrationScoreboard portIds={dgPortIds.length > 0 ? dgPortIds : undefined} lang={lang} />
+          <div className="mt-4 text-[13px]">
+            <a
+              href="/insights/accuracy"
+              className="text-amber-300 hover:text-amber-200 underline decoration-amber-300/40"
+            >
+              {lang === 'es'
+                ? 'Ver el remojo en vivo + backtest completo →'
+                : 'See the full live soak + backtest →'}
+            </a>
+          </div>
         </div>
       </section>
 

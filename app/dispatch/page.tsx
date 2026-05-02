@@ -15,10 +15,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { PORT_META } from "@/lib/portMeta";
 import Link from "next/link";
+import { B2BNav } from "@/components/B2BNav";
+import { DispatchHero } from "@/components/DispatchHero";
+import { AlertsRail } from "@/components/AlertsRail";
 
 const REFRESH_MS = 60_000;
 const STORAGE_KEY = "cruzar.dispatch.watched.v1";
 const DEFAULT_WATCHED = ["230502", "230501", "230503", "535501", "230402"]; // RGV-heavy starter
+const DEMO_WATCHED = ["230502", "230501", "230503", "230402", "230403", "535501"]; // Raul's broker-office demo preset
 
 interface DispatchPort {
   port_id: string;
@@ -46,7 +50,23 @@ interface SnapshotResponse {
   snapshot: { generated_at: string; ports: DispatchPort[] };
 }
 
-const fetcher = (url: string): Promise<SnapshotResponse> => fetch(url).then((r) => r.json());
+interface SubscriberPrefs {
+  id: number;
+  tier: 'free' | 'starter' | 'pro' | 'fleet';
+  status: string;
+  language: 'en' | 'es';
+  briefing_enabled: boolean;
+  briefing_local_hour: number;
+  briefing_tz: string;
+  channel_email: boolean;
+  channel_sms: boolean;
+  channel_whatsapp: boolean;
+  recipient_emails: string[];
+  recipient_phones: string[];
+  last_anomaly_fired_at: string | null;
+}
+
+const fetcher = <T,>(url: string): Promise<T> => fetch(url).then((r) => r.json());
 
 function loadWatched(): string[] {
   if (typeof window === "undefined") return DEFAULT_WATCHED;
@@ -88,16 +108,24 @@ export default function DispatchConsole() {
   const [pickerQuery, setPickerQuery] = useState("");
 
   // Hydrate from URL → fallback to localStorage. URL wins so shared links work.
+  // Demo mode (?demo=rgv) loads a preset RGV-heavy list and skips persistence.
   useEffect(() => {
+    if (params.get("demo") === "rgv") {
+      setWatched(DEMO_WATCHED);
+      setHydrated(true);
+      return;
+    }
     const fromUrl = params.get("ports")?.split(",").filter(Boolean) ?? null;
     const initial = fromUrl && fromUrl.length > 0 ? fromUrl : loadWatched();
     setWatched(initial);
     setHydrated(true);
   }, [params]);
 
-  // Persist + mirror to URL whenever watched changes after hydration
+  // Persist + mirror to URL whenever watched changes after hydration.
+  // Demo mode skips persistence — read-only preset for in-office demos.
   useEffect(() => {
     if (!hydrated) return;
+    if (params.get("demo") === "rgv") return;
     saveWatched(watched);
     const next = new URLSearchParams(params.toString());
     if (watched.length > 0) next.set("ports", watched.join(","));
@@ -116,8 +144,40 @@ export default function DispatchConsole() {
     },
   );
 
+  // Subscriber preferences + accuracy summary fuel the stress-reliever hero.
+  const { data: prefsData } = useSWR<{ subscriber: SubscriberPrefs | null }>(
+    hydrated ? "/api/insights/preferences" : null,
+    fetcher,
+  );
+  const subscriber = prefsData?.subscriber ?? null;
+  const { data: accData } = useSWR<{ median_pct: number | null }>(
+    hydrated && watched.length > 0 ? `/api/insights/accuracy-summary?ports=${portsQuery}` : null,
+    fetcher,
+  );
+  const accuracyPct = accData?.median_pct ?? null;
+
   const generated = data?.snapshot.generated_at;
   const ports = data?.snapshot.ports ?? [];
+  const anomalyCount = ports.filter((p) => p.anomaly_high).length;
+
+  function nextBriefingLabel(): string | null {
+    if (!subscriber?.briefing_enabled) return null;
+    try {
+      const tz = subscriber.briefing_tz || "America/Chicago";
+      const local = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+      const next = new Date(local);
+      next.setHours(subscriber.briefing_local_hour, 0, 0, 0);
+      if (next <= local) next.setDate(next.getDate() + 1);
+      return next.toLocaleString("en-US", {
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: tz,
+      });
+    } catch {
+      return null;
+    }
+  }
 
   // Picker — all known ports filtered by query, minus already-watched
   const pickerCandidates = useMemo(() => {
@@ -143,7 +203,17 @@ export default function DispatchConsole() {
   }
 
   return (
+    <>
+      <B2BNav current="console" lang={subscriber?.language ?? "en"} />
     <main className="mx-auto max-w-[1180px] px-5 sm:px-8 py-6">
+      <DispatchHero
+        watchedCount={watched.length}
+        anomalyCount={anomalyCount}
+        accuracyPct={accuracyPct}
+        briefingTimeLabel={nextBriefingLabel()}
+        recipientLabel={subscriber?.recipient_emails?.[0] ?? null}
+        lang={subscriber?.language ?? "en"}
+      />
       {/* Watched chips */}
       <section className="mb-6">
         <div className="flex flex-wrap items-center gap-2">
@@ -259,7 +329,21 @@ export default function DispatchConsole() {
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
                 {ports.map((p) => (
-                  <DispatchRow key={p.port_id} p={p} />
+                  <DispatchRow
+                    key={p.port_id}
+                    p={p}
+                    subscriberChannels={
+                      subscriber
+                        ? {
+                            email: subscriber.channel_email,
+                            sms: subscriber.channel_sms,
+                            whatsapp: subscriber.channel_whatsapp,
+                          }
+                        : null
+                    }
+                    lastFired={subscriber?.last_anomaly_fired_at ?? null}
+                    lang={subscriber?.language ?? "en"}
+                  />
                 ))}
               </tbody>
             </table>
@@ -274,16 +358,30 @@ export default function DispatchConsole() {
         </p>
         <p className="mt-3 text-[12px] text-white/55">
           Want anomaly pushes to your phone or email?{" "}
-          <Link href="/dispatch/alerts" className="text-amber-300 hover:text-amber-200 underline decoration-amber-300/40">
+          <Link
+            href="/dispatch/account"
+            className="text-amber-300 hover:text-amber-200 underline decoration-amber-300/40"
+          >
             Set up alerts →
           </Link>
         </p>
       </section>
     </main>
+    </>
   );
 }
 
-function DispatchRow({ p }: { p: DispatchPort }) {
+function DispatchRow({
+  p,
+  subscriberChannels,
+  lastFired,
+  lang,
+}: {
+  p: DispatchPort;
+  subscriberChannels: { email: boolean; sms: boolean; whatsapp: boolean } | null;
+  lastFired: string | null;
+  lang: 'en' | 'es';
+}) {
   const status = STATUS_LABEL[p.drift_status];
   const live =
     typeof p.live_wait_min === "number" ? `${p.live_wait_min} min` : "—";
@@ -333,7 +431,14 @@ function DispatchRow({ p }: { p: DispatchPort }) {
       <td className={`px-4 py-3.5 text-right font-mono text-[13px] tabular-nums ${deltaTone}`}>
         {delta}
       </td>
-      <td className={`px-4 py-3.5 text-[11.5px] ${status.tone}`}>{status.en}</td>
+      <td className={`px-4 py-3.5 text-[11.5px] ${status.tone}`}>
+        {status.en}
+        {subscriberChannels && (
+          <div className="mt-1.5">
+            <AlertsRail channels={subscriberChannels} lastFiredAt={lastFired} lang={lang} />
+          </div>
+        )}
+      </td>
     </tr>
   );
 }
