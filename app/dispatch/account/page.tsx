@@ -17,6 +17,7 @@ interface Subscriber {
   channel_whatsapp: boolean;
   recipient_emails: string[];
   recipient_phones: string[];
+  has_stripe_subscription?: boolean;
 }
 
 export default function AccountPage() {
@@ -61,20 +62,96 @@ export default function AccountPage() {
     if (data.url) window.location.href = data.url;
   }
 
+  async function startSubscribe(targetTier: InsightsTier) {
+    setSaving(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/insights/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tier: targetTier,
+          watched_port_ids:
+            targetTier === 'free'
+              ? ['230502']
+              : ['230502', '230501', '230503', '230402', '230403', '535501'].slice(
+                  0,
+                  TIER_LIMITS[targetTier].maxWatchedPorts,
+                ),
+          briefing_local_hour: 5,
+          briefing_tz: 'America/Chicago',
+          language: 'en' as const,
+          channel_email: true,
+          channel_sms: targetTier !== 'free',
+          channel_whatsapp: targetTier === 'pro' || targetTier === 'fleet',
+          recipient_emails: [],
+          recipient_phones: [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data.error ?? 'subscribe_failed');
+        setSaving(false);
+        return;
+      }
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      // Free tier — reload to show the configured row
+      window.location.reload();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : 'subscribe_failed');
+      setSaving(false);
+    }
+  }
+
   if (loading) return <main className="p-8 text-white/60">Loading…</main>;
   if (!sub)
     return (
       <main className="mx-auto max-w-[860px] px-5 sm:px-8 py-12">
-        <h1 className="font-serif text-[28px] text-white mb-3">No active Insights subscription</h1>
-        <p className="text-white/60 mb-6">
-          Pick a plan on /insights or talk to Diego/Raul to start a trial.
+        <h1 className="font-serif text-[28px] text-white mb-3">Pick your plan</h1>
+        <p className="text-white/60 mb-8">
+          Start free with 1 port + the morning brief. Upgrade anytime — billing kicks in only on paid tiers.
         </p>
-        <a
-          href="/insights"
-          className="inline-block rounded-2xl bg-amber-400 px-5 py-3 font-semibold text-[#0a1020]"
-        >
-          See plans →
-        </a>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+          {(['free', 'starter', 'pro', 'fleet'] as InsightsTier[]).map((t) => {
+            const limits = TIER_LIMITS[t];
+            return (
+              <div
+                key={t}
+                className="rounded-2xl border border-white/[0.10] bg-white/[0.02] p-5 flex flex-col"
+              >
+                <div className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-amber-300">
+                  {t}
+                </div>
+                <div className="font-serif text-[24px] text-white mt-2">
+                  {limits.monthlyUsd === 0 ? 'Free' : `$${limits.monthlyUsd}/mo`}
+                </div>
+                <ul className="mt-3 space-y-1 text-[12px] text-white/65 flex-1">
+                  <li>· {limits.maxWatchedPorts} watched port{limits.maxWatchedPorts === 1 ? '' : 's'}</li>
+                  <li>· {limits.channels.email && 'email'}{limits.channels.sms && ' + SMS'}{limits.channels.whatsapp && ' + WhatsApp'}</li>
+                  <li>
+                    · {limits.maxRecipientEmails} email{limits.maxRecipientEmails === 1 ? '' : 's'}
+                    {limits.maxRecipientPhones > 0 && `, ${limits.maxRecipientPhones} phone${limits.maxRecipientPhones === 1 ? '' : 's'}`}
+                  </li>
+                  {limits.perPortThresholds && <li>· Custom per-port thresholds</li>}
+                </ul>
+                <button
+                  onClick={() => startSubscribe(t)}
+                  disabled={saving}
+                  className="mt-4 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0a1020] font-semibold py-2 text-[13px] disabled:opacity-50"
+                >
+                  {t === 'free' ? 'Start free' : `Subscribe · $${limits.monthlyUsd}/mo`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {msg && <p className="text-[12px] text-rose-300">{msg}</p>}
+        <p className="text-[12px] text-white/40">
+          Prefer to talk first? <a href="mailto:diegonaguirre@icloud.com?subject=Cruzar%20Insights%20trial" className="text-amber-300 hover:text-amber-200">Email Diego</a>.
+        </p>
       </main>
     );
 
@@ -161,7 +238,7 @@ export default function AccountPage() {
         </Section>
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
-          {sub.tier !== 'free' && (
+          {sub.has_stripe_subscription && (
             <button
               onClick={openPortal}
               className="rounded-xl bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.12] px-4 py-2 text-[13px] text-white"

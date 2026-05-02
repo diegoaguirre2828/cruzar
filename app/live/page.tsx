@@ -1,6 +1,9 @@
 // Public live ops feed — shows real-time wait + 90d baseline anomaly status
 // for every RGV crossing the model covers. No auth, indexed by search engines.
 //
+// Bilingual via ?lang=es URL param (matches /insights pattern). Spanish-first
+// audience: most RGV commuters reading this surface read Spanish first.
+//
 // Data block lives in <LiveBoard /> (client SWR, polls /api/live/board every
 // 60s). The page itself stays server-rendered for SEO + JSON-LD, but the per-
 // port grid hydrates client-side. This replaces the old <meta http-equiv=
@@ -16,11 +19,19 @@ export const revalidate = 60;
 export const metadata = {
   title: "Live RGV border crossing — what's happening right now | Cruzar",
   description:
-    "The DURING moment. Real-time RGV wait times and anomaly badges for 8 crossings. Refreshes every 60s without reloading the page.",
+    "Tiempos de espera en vivo + alertas de anomalía para 8 cruces RGV. Se refresca cada 60s sin recargar la página. Real-time RGV wait times.",
   alternates: { canonical: "https://www.cruzar.app/live" },
 };
 
-export default function LivePage() {
+export default async function LivePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ lang?: string }>;
+}) {
+  const params = await searchParams;
+  const lang: "en" | "es" = params?.lang === "es" ? "es" : "en";
+  const es = lang === "es";
+
   const ldjson = {
     "@context": "https://schema.org",
     "@type": "Dataset",
@@ -57,14 +68,17 @@ export default function LivePage() {
             margin: "0 0 6px",
           }}
         >
-          During · Ahorita
+          {es ? "Ahorita · During" : "During · Ahorita"}
         </p>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 4 }}>
-          What&apos;s happening at the border right now
+          {es
+            ? "Qué está pasando en la frontera ahorita"
+            : "What's happening at the border right now"}
         </h1>
         <p style={{ color: "rgba(255,255,255,0.65)", margin: "0 0 16px" }}>
-          Live waits and anomaly badges for 8 RGV crossings. Refreshes every 60s without
-          reloading the page.
+          {es
+            ? "Esperas en vivo + alertas de anomalía para 8 cruces RGV. Se refresca cada 60s sin recargar la página."
+            : "Live waits and anomaly badges for 8 RGV crossings. Refreshes every 60s without reloading the page."}
         </p>
 
         <LiveBoard />
@@ -78,13 +92,13 @@ export default function LivePage() {
             fontSize: 12,
           }}
         >
-          Source: Cruzar wait_time_readings (CBP scrape, 15-min cadence). Anomaly badges
-          fire when current wait crosses ±50% of the 90-day day-of-week × hour baseline.
-          For B2B forecast access + alerts, see{" "}
-          <a href="/insights" style={{ color: "#fbbf24" }}>
-            cruzar.app/insights
+          {es
+            ? "Datos: lectura CBP cada 15 min. Las alertas de anomalía disparan cuando la espera actual cruza ±50% del baseline 90 días por día-de-semana × hora."
+            : "Source: CBP scrape every 15 min. Anomaly badges fire when current wait crosses ±50% of the 90-day day-of-week × hour baseline."}
+          {" · "}
+          <a href={es ? "?lang=en" : "?lang=es"} style={{ color: "#fbbf24" }}>
+            {es ? "EN" : "ES"}
           </a>
-          .
         </footer>
       </main>
     </div>

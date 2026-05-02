@@ -19,13 +19,29 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
+  // Whitelist of fields safe to expose to the frontend. Excludes the
+  // raw Stripe customer + subscription IDs (least-privilege — those
+  // belong server-side only; the frontend only needs to know whether
+  // a Stripe row exists, not the actual ID).
   const { data, error } = await supabase
     .from('insights_subscribers')
-    .select('*')
+    .select(
+      'id, tier, status, watched_port_ids, port_thresholds, briefing_enabled, briefing_local_hour, briefing_tz, language, channel_email, channel_sms, channel_whatsapp, recipient_emails, recipient_phones, anomaly_threshold_default, last_briefing_sent_at, last_anomaly_fired_at, stripe_subscription_id'
+    )
     .eq('user_id', user.id)
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ subscriber: data ?? null });
+  // Convert stripe_subscription_id to a boolean flag — the frontend
+  // only needs to know whether to show the billing-portal button, not
+  // the actual ID.
+  const subscriber = data
+    ? {
+        ...data,
+        has_stripe_subscription: !!data.stripe_subscription_id,
+        stripe_subscription_id: undefined,
+      }
+    : null;
+  return NextResponse.json({ subscriber });
 }
 
 interface PrefsBody {
