@@ -324,8 +324,40 @@ The top-level `supabase-schema-v12.sql` … `supabase-schema-v26.sql` files are 
 | `/api/cron/fetch-wait-times` | Every 15 min | Fetch CBP data → store in wait_time_readings |
 | `/api/cron/send-alerts` | Every 15 min | Check thresholds → send email/push/SMS |
 | `/api/cron/weekly-digest` | Monday 8am | Send weekly summary to Pro/Business users |
+| `/api/cron/insights-briefing` | Every hour (top of hour) | Per-subscriber morning brief at their local hour |
+| `/api/cron/insights-anomaly-broadcast` | Every 30 min | Watched-port anomaly fanout to SMS + email |
+| `/api/cron/calibration-tick` | Every 15 min | Score predictions made 6h ago against actuals (Diego registers at cron-job.org) |
 
 **Cron auth:** Accepts `?secret=CRON_SECRET` query param OR `Authorization: Bearer CRON_SECRET` header.
+
+### Insights B2B (subscriber-gated)
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/insights/preferences` | GET / PUT | Own subscriber prefs with tier-bounded validation |
+| `/api/insights/subscribe` | POST | Free-direct or Stripe checkout for paid tiers |
+| `/api/insights/portal` | POST | Stripe billing portal session |
+| `/api/insights/accuracy-summary` | GET | Median 30d accuracy across given ports (drives /dispatch hero) |
+| `/api/admin/create-insights-cron-jobs` | POST | Register both insights crons at cron-job.org (admin only) |
+
+### Insights schema (v70)
+- `insights_subscribers` — tier (free/starter/pro/fleet), watched_port_ids[], briefing prefs (local hour + tz + language), channels (email/sms/whatsapp), recipient_emails[]/recipient_phones[], anomaly_threshold_default, port_thresholds JSONB. RLS: own-row select/update/insert.
+- `insights_anomaly_fires` — fire log + dedupe table. Service-role only.
+
+### B2B architecture notes
+- `/insights` is the **sales page** (editorial, ~190 lines). Hero = verbatim "the border is the black hole" copy from RGV broker dossier. Inline calibration scoreboard teaser → links to full `/insights/accuracy`.
+- `/dispatch` is the **operator panel** — config + watchlist + hero strip (watching N · X anomalies firing · 30d accuracy · next briefing label) + per-row AlertsRail.
+- `/dispatch/account` — subscription management (briefing time/tz/language, channels, recipients, watched ports, Stripe billing portal).
+- `/dispatch?demo=rgv` — Raul's broker-office demo preset (RGV-heavy watchlist, persistence skipped).
+- The actual product is the **morning briefing + anomaly push + calibration receipts**. The panel is the configuration surface.
+- B2B nav = `<B2BNav />` (Sales · Console · Account). Consumer nav = `<MomentsNav />` (During · After). DO NOT mix them.
+- **Strip every "AI" / "model" / "MCP" mention from customer-visible surfaces** per `feedback_ai_as_infrastructure_not_product_20260430.md`. Internal code keeps it.
+
+### Insights env vars (Vercel prod)
+- `STRIPE_INSIGHTS_STARTER_PRICE_ID` ($99/mo)
+- `STRIPE_INSIGHTS_PRO_PRICE_ID` ($299/mo)
+- `STRIPE_INSIGHTS_FLEET_PRICE_ID` ($999/mo)
+
+Until Diego creates the Stripe price IDs and adds the env vars, the free tier still works (no Stripe needed). Paid checkout returns `price_id_not_configured` cleanly.
 
 ---
 
