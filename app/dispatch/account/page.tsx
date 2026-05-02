@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { B2BNav } from '@/components/B2BNav';
 import { TIER_LIMITS, type InsightsTier } from '@/lib/insights/stripe-tiers';
 
 interface Subscriber {
@@ -62,31 +61,26 @@ export default function AccountPage() {
     if (data.url) window.location.href = data.url;
   }
 
-  if (loading) return <main className="p-8 text-white/60 bg-[#0a1020] min-h-screen">Loading…</main>;
+  if (loading) return <main className="p-8 text-white/60">Loading…</main>;
   if (!sub)
     return (
-      <div className="bg-[#0a1020] min-h-screen text-slate-100">
-        <B2BNav current="account" />
-        <main className="mx-auto max-w-[860px] px-5 sm:px-8 py-12">
-          <h1 className="font-serif text-[28px] text-white mb-3">No active Insights subscription</h1>
-          <p className="text-white/60 mb-6">
-            Pick a plan on /insights or talk to Diego/Raul to start a trial.
-          </p>
-          <a
-            href="/insights"
-            className="inline-block rounded-2xl bg-amber-400 px-5 py-3 font-semibold text-[#0a1020]"
-          >
-            See plans →
-          </a>
-        </main>
-      </div>
+      <main className="mx-auto max-w-[860px] px-5 sm:px-8 py-12">
+        <h1 className="font-serif text-[28px] text-white mb-3">No active Insights subscription</h1>
+        <p className="text-white/60 mb-6">
+          Pick a plan on /insights or talk to Diego/Raul to start a trial.
+        </p>
+        <a
+          href="/insights"
+          className="inline-block rounded-2xl bg-amber-400 px-5 py-3 font-semibold text-[#0a1020]"
+        >
+          See plans →
+        </a>
+      </main>
     );
 
   const limits = TIER_LIMITS[sub.tier];
 
   return (
-    <div className="bg-[#0a1020] min-h-screen text-slate-100">
-      <B2BNav current="account" lang={sub.language} />
       <main className="mx-auto max-w-[860px] px-5 sm:px-8 py-10">
         <h1 className="font-serif text-[28px] text-white mb-1">Insights account</h1>
         <p className="text-white/55 mb-8">
@@ -178,7 +172,6 @@ export default function AccountPage() {
           {msg && <span className="text-[12px] text-white/55">{msg}</span>}
         </div>
       </main>
-    </div>
   );
 }
 

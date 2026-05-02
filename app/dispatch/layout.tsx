@@ -19,6 +19,7 @@ const NAV: Array<{ href: string; en: string; es: string }> = [
   { href: "/dispatch/load", en: "Load advisor", es: "Asesor de carga" },
   { href: "/dispatch/paperwork", en: "Paperwork", es: "Trámites" },
   { href: "/dispatch/alerts", en: "Alerts", es: "Alertas" },
+  { href: "/dispatch/account", en: "Account", es: "Cuenta" },
   { href: "/dispatch/export", en: "Export", es: "Exportar" },
 ];
 

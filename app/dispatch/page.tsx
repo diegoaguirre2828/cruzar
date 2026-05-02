@@ -15,7 +15,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { PORT_META } from "@/lib/portMeta";
 import Link from "next/link";
-import { B2BNav } from "@/components/B2BNav";
 import { DispatchHero } from "@/components/DispatchHero";
 import { AlertsRail } from "@/components/AlertsRail";
 
@@ -203,8 +202,6 @@ export default function DispatchConsole() {
   }
 
   return (
-    <>
-      <B2BNav current="console" lang={subscriber?.language ?? "en"} />
     <main className="mx-auto max-w-[1180px] px-5 sm:px-8 py-6">
       <DispatchHero
         watchedCount={watched.length}
@@ -367,7 +364,6 @@ export default function DispatchConsole() {
         </p>
       </section>
     </main>
-    </>
   );
 }
 
